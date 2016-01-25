@@ -30,12 +30,32 @@ using namespace Utils;
 TableTailer::TableTailer(Ndb* ndb, const char* eventTableName, const char** eventColumnNames,
         const int noEventColumns, const NdbDictionary::Event::TableEvent watchEventType) : mNdbConnection(ndb),
 mEventTableName(eventTableName), mEventName(concat("tail-", eventTableName)),
-mEventColumnNames(eventColumnNames), mNoEventColumns(noEventColumns), mWatchEventType(watchEventType) {
+mEventColumnNames(eventColumnNames), mNoEventColumns(noEventColumns), mWatchEventType(watchEventType), mStarted(false) {
 }
 
 void TableTailer::start() {
+    if (mStarted) {
+        return;
+    }
+
     createListenerEvent();
-    run();
+    mThread = boost::thread(&TableTailer::run, this);
+    mStarted = true;
+}
+
+void TableTailer::waitToFinish(){
+    if(mStarted){
+        mThread.join();
+    }
+}
+
+void TableTailer::run() {
+    try {
+        waitForEvents();
+    } catch (boost::thread_interrupted&) {
+        cout << "Thread is stopped" << endl;
+        return;
+    }
 }
 
 void TableTailer::createListenerEvent() {
@@ -72,7 +92,7 @@ void TableTailer::removeListenerEvent() {
     if (myDict->dropEvent(mEventName)) APIERROR(myDict->getNdbError());
 }
 
-void TableTailer::run() {
+void TableTailer::waitForEvents() {
     NdbEventOperation* op;
     printf("create EventOperation for %s \n", mEventName);
     if ((op = mNdbConnection->createEventOperation(mEventName)) == NULL)
@@ -100,7 +120,7 @@ void TableTailer::run() {
                     case NdbDictionary::Event::TE_INSERT:
                     case NdbDictionary::Event::TE_DELETE:
                     case NdbDictionary::Event::TE_UPDATE:
-                        handleValue(op->getEventType(), recAttrPre, recAttr);
+                        handleEvent(op->getEventType(), recAttrPre, recAttr);
                         break;
                     default:
                         break;
@@ -113,6 +133,6 @@ void TableTailer::run() {
 }
 
 TableTailer::~TableTailer() {
-
+    delete mNdbConnection;
 }
 

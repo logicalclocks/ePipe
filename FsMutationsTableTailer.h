@@ -16,13 +16,13 @@
 #include "TableTailer.h"
 
   
-class MutationsTableTailer : public TableTailer{
+class FsMutationsTableTailer : public TableTailer{
 public:
-    MutationsTableTailer(Ndb* ndb);
-    virtual ~MutationsTableTailer();
+    FsMutationsTableTailer(Ndb* ndb);
+    virtual ~FsMutationsTableTailer();
     
 private:
-    virtual void handleValue(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
+    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
 
 };
 

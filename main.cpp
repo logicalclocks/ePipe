@@ -21,11 +21,7 @@
  * Author: Mahmoud Ismail<maism@kth.se>
  *
  */
-#include"common.h"
-#include "MutationsTableTailer.h"
-
-Ndb_cluster_connection* connect_to_cluster(const char *connection_string);
-void disconnect_from_cluster(Ndb_cluster_connection *c);
+#include "Notifier.h"
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -35,48 +31,8 @@ int main(int argc, char** argv) {
     const char *connection_string = argv[1];
     const char *database_name = argv[2];
     
-    Ndb_cluster_connection *ndb_connection = connect_to_cluster(connection_string);
-
-    printf("Connection Established.\n\n");
-
+    Notifier *notifer = new Notifier(connection_string, database_name);
+    notifer->start();
     
-    Ndb* ndb = new Ndb(ndb_connection, database_name);
-    if(ndb->init() == -1){
-        APIERROR(ndb->getNdbError());
-    }
-    
-    
-    MutationsTableTailer* mTable = new MutationsTableTailer(ndb);
-    mTable->start();
-    
-    disconnect_from_cluster(ndb_connection);
-
     return EXIT_SUCCESS;
-}
-
-Ndb_cluster_connection* connect_to_cluster(const char *connection_string) {
-    Ndb_cluster_connection* c;
-
-    if (ndb_init())
-        exit(EXIT_FAILURE);
-
-    c = new Ndb_cluster_connection(connection_string);
-
-    if (c->connect(RETRIES, DELAY_BETWEEN_RETRIES, VERBOSE)) {
-        fprintf(stderr, "Unable to connect to cluster.\n\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if (c->wait_until_ready(WAIT_UNTIL_READY, WAIT_UNTIL_READY) < 0) {
-        fprintf(stderr, "Cluster was not ready.\n\n");
-        exit(EXIT_FAILURE);
-    }
-
-    return c;
-}
-
-void disconnect_from_cluster(Ndb_cluster_connection *c) {
-    delete c;
-
-    ndb_end(2);
 }

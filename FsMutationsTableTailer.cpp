@@ -22,7 +22,7 @@
  * 
  */
 
-#include "MutationsTableTailer.h"
+#include "FsMutationsTableTailer.h"
 #include "Utils.h"
 
 using namespace Utils;
@@ -40,12 +40,12 @@ const char *MUTATION_TABLE_COLUMNS[NO_MUTATION_TABLE_COLUMNS]=
 
 const NdbDictionary::Event::TableEvent WATCH_EVENT_TYPE = NdbDictionary::Event::TE_INSERT;
 
-MutationsTableTailer::MutationsTableTailer(Ndb* ndb) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
+FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
         NO_MUTATION_TABLE_COLUMNS, WATCH_EVENT_TYPE) {
 
 }
 
-void MutationsTableTailer::handleValue(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
+void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
     printf("-------------------------\n");
     printf("%s = from (%i) to (%i) \n", MUTATION_TABLE_COLUMNS[0], preValue[0]->int32_value(), value[0]->int32_value());
     printf("%s = from (%i) to (%i) \n", MUTATION_TABLE_COLUMNS[1], preValue[1]->int32_value(), value[1]->int32_value());
@@ -58,6 +58,6 @@ void MutationsTableTailer::handleValue(NdbDictionary::Event::TableEvent eventTyp
     
 }
 
-MutationsTableTailer::~MutationsTableTailer() {
+FsMutationsTableTailer::~FsMutationsTableTailer() {
 }
 

@@ -26,6 +26,7 @@
 #define TABLETAILER_H
 
 #include "common.h"
+#include <boost/thread/thread.hpp>
 
 class TableTailer {
 public:
@@ -33,16 +34,21 @@ public:
             const char **eventColumnNames, const int noEventColumnNames, 
             const NdbDictionary::Event::TableEvent watchEventType);
     void start();
+    void waitToFinish();
     virtual ~TableTailer();
 
 protected:
-    virtual void handleValue(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) = 0;
+    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) = 0;
 
 private:
     void createListenerEvent();
     void removeListenerEvent();
+    void waitForEvents();
     void run();
-
+    
+    bool mStarted;
+    boost::thread mThread;
+    
     Ndb* mNdbConnection;
     const NdbDictionary::Event::TableEvent mWatchEventType;
     const char* mEventName;

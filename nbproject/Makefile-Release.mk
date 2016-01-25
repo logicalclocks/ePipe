@@ -35,7 +35,8 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
-	${OBJECTDIR}/_ext/a0c56a08/MutationsTableTailer.o \
+	${OBJECTDIR}/_ext/a0c56a08/FsMutationsTableTailer.o \
+	${OBJECTDIR}/_ext/a0c56a08/Notifier.o \
 	${OBJECTDIR}/_ext/a0c56a08/TableTailer.o \
 	${OBJECTDIR}/_ext/a0c56a08/main.o
 
@@ -64,10 +65,15 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/hopsfs-elastic-notifier: ${OBJECTFILE
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/hopsfs-elastic-notifier ${OBJECTFILES} ${LDLIBSOPTIONS}
 
-${OBJECTDIR}/_ext/a0c56a08/MutationsTableTailer.o: /home/maism/src/hopsfs-elastic-notifier/MutationsTableTailer.cpp 
+${OBJECTDIR}/_ext/a0c56a08/FsMutationsTableTailer.o: /home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp 
 	${MKDIR} -p ${OBJECTDIR}/_ext/a0c56a08
 	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -I/usr/local/mysql/include -I/usr/local/mysql/include/storage/ndb -I/usr/local/mysql/include/storage/ndb/ndbapi -I/usr/local/mysql/include/storage/ndb/mgmapi -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/a0c56a08/MutationsTableTailer.o /home/maism/src/hopsfs-elastic-notifier/MutationsTableTailer.cpp
+	$(COMPILE.cc) -O2 -I/usr/local/mysql/include -I/usr/local/mysql/include/storage/ndb -I/usr/local/mysql/include/storage/ndb/ndbapi -I/usr/local/mysql/include/storage/ndb/mgmapi -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/a0c56a08/FsMutationsTableTailer.o /home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp
+
+${OBJECTDIR}/_ext/a0c56a08/Notifier.o: /home/maism/src/hopsfs-elastic-notifier/Notifier.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/a0c56a08
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -I/usr/local/mysql/include -I/usr/local/mysql/include/storage/ndb -I/usr/local/mysql/include/storage/ndb/ndbapi -I/usr/local/mysql/include/storage/ndb/mgmapi -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/a0c56a08/Notifier.o /home/maism/src/hopsfs-elastic-notifier/Notifier.cpp
 
 ${OBJECTDIR}/_ext/a0c56a08/TableTailer.o: /home/maism/src/hopsfs-elastic-notifier/TableTailer.cpp 
 	${MKDIR} -p ${OBJECTDIR}/_ext/a0c56a08
