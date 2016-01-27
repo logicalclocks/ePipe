@@ -120,7 +120,9 @@ void TableTailer::waitForEvents() {
                     case NdbDictionary::Event::TE_INSERT:
                     case NdbDictionary::Event::TE_DELETE:
                     case NdbDictionary::Event::TE_UPDATE:
-                        handleEvent(op->getEventType(), recAttrPre, recAttr);
+                        if(correctResult(recAttr)){
+                            handleEvent(op->getEventType(), recAttrPre, recAttr);
+                        }
                         break;
                     default:
                         break;
@@ -128,8 +130,19 @@ void TableTailer::waitForEvents() {
 
             }
         }
+        boost::this_thread::sleep(boost::posix_time::microseconds(POLL_EVENTS_TIMEOUT));
     }
 
+}
+
+bool TableTailer::correctResult(NdbRecAttr* values[]){
+    for(int col=0; col<mNoEventColumns; col++){
+        if(values[col]->isNULL() != 0){
+            printf("Error at %s \n", mEventColumnNames[col]);
+            return false;
+        }
+    }
+    return true;
 }
 
 TableTailer::~TableTailer() {

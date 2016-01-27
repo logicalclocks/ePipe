@@ -42,22 +42,28 @@ const NdbDictionary::Event::TableEvent WATCH_EVENT_TYPE = NdbDictionary::Event::
 
 FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
         NO_MUTATION_TABLE_COLUMNS, WATCH_EVENT_TYPE) {
-
+    mQueue = new ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator>();
 }
 
 void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
-    printf("-------------------------\n");
-    printf("%s = from (%i) to (%i) \n", MUTATION_TABLE_COLUMNS[0], preValue[0]->int32_value(), value[0]->int32_value());
-    printf("%s = from (%i) to (%i) \n", MUTATION_TABLE_COLUMNS[1], preValue[1]->int32_value(), value[1]->int32_value());
-    printf("%s = from (%i) to (%i) \n", MUTATION_TABLE_COLUMNS[2], preValue[2]->int32_value(), value[2]->int32_value());
-
-    printf("%s = from (%s) to (%s) \n", MUTATION_TABLE_COLUMNS[3], get_string(preValue[3]), get_string(value[3]));
-    printf("%s = from (%i) to (%i) \n", MUTATION_TABLE_COLUMNS[4], preValue[4]->int32_value(), value[4]->int32_value());
-    printf("%s = from (%i) to (%i) \n", MUTATION_TABLE_COLUMNS[5], preValue[5]->int8_value(), value[5]->int8_value());
-    printf("-------------------------\n");
+    FsMutationRow row;
+    row.mDatasetId = value[0]->int32_value();
+    row.mInodeId =  value[1]->int32_value();
+    row.mParentId = value[2]->int8_value();
+    row.mInodeName = get_string(value[3]);
+    row.mLogicalTime = value[4]->int32_value();
+    row.mOperation = value[5]->int8_value();
     
+    mQueue->push(row);
+}
+
+FsMutationRow FsMutationsTableTailer::consume(){
+    FsMutationRow row;
+    mQueue->wait_and_pop(row);
+    return row;
 }
 
 FsMutationsTableTailer::~FsMutationsTableTailer() {
+    delete mQueue;
 }
 

@@ -17,13 +17,13 @@
  */
 
 /* 
- * File:   NdbUtils.h
+ * File:   Utils.h
  * Author: Mahmoud Ismail<maism@kth.se>
  *
  */
 
-#ifndef NDBUTILS_H
-#define NDBUTILS_H
+#ifndef UTILS_H
+#define UTILS_H
 
 #include "common.h"
 #include<cstdlib>
@@ -87,7 +87,7 @@ namespace Utils {
      Extracts the string from given NdbRecAttr
      Uses get_byte_array internally
      */
-    static const char* get_string(const NdbRecAttr* attr) {
+    static string get_string(const NdbRecAttr* attr) {
         size_t attr_bytes;
         const char* data_start_ptr = NULL;
 
@@ -102,11 +102,11 @@ namespace Utils {
                     str = str.substr(0, endpos + 1);
                 }
             }
-            return str.c_str();
+            return string(str);
         }
         return NULL;
     }
 }
 
-#endif /* NDBUTILS_H */
+#endif /* UTILS_H */
 

@@ -45,6 +45,7 @@ private:
     void removeListenerEvent();
     void waitForEvents();
     void run();
+    bool correctResult(NdbRecAttr* values[]);
     
     bool mStarted;
     boost::thread mThread;

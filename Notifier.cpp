@@ -33,7 +33,17 @@ void Notifier::start() {
     Ndb* ndb1 = create_ndb_connection();
     mFsMutationsTable = new FsMutationsTableTailer(ndb1);
     mFsMutationsTable->start();
-    mFsMutationsTable->waitToFinish();
+    while (true) {
+        FsMutationRow row = mFsMutationsTable->consume();
+        printf("-------------------------\n");
+        printf("DatasetId = (%i) \n", row.mDatasetId);
+        printf("InodeId = (%i) \n", row.mInodeId);
+        printf("ParentId = (%i) \n", row.mParentId);
+        printf("InodeName = (%s) \n", row.mInodeName.c_str());
+        printf("LogicalTime = (%i) \n", row.mLogicalTime);
+        printf("Operation = (%i) \n", row.mOperation);
+        printf("-------------------------\n");
+    }
 }
 
 void Notifier::runFsMutationsTableTailer() {
