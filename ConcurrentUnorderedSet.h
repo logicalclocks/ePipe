@@ -33,7 +33,9 @@ class ConcurrentUnorderedSet {
 public:
     ConcurrentUnorderedSet();
     void add(const Data &data);
+    void unsynchronized_add(const Data &data);
     Data remove();
+    Data unsynchronized_remove();
     int size();
     virtual ~ConcurrentUnorderedSet();
 private:
@@ -50,19 +52,28 @@ ConcurrentUnorderedSet<Data, DataHash, DataEqual>::ConcurrentUnorderedSet() {
 template<typename Data, typename DataHash, typename DataEqual>
 void ConcurrentUnorderedSet<Data, DataHash, DataEqual>::add(const Data &data) {
     boost::mutex::scoped_lock lock(mLock);
+    unsynchronized_add(data);
+}
+
+template<typename Data, typename DataHash, typename DataEqual>
+void ConcurrentUnorderedSet<Data, DataHash, DataEqual>::unsynchronized_add(const Data &data) {
     mSet.insert(data);
 }
 
 template<typename Data, typename DataHash, typename DataEqual>
 Data ConcurrentUnorderedSet<Data, DataHash, DataEqual>::remove() {
     boost::mutex::scoped_lock lock(mLock);
+    return unsynchronized_remove();
+}
+
+template<typename Data, typename DataHash, typename DataEqual>
+Data ConcurrentUnorderedSet<Data, DataHash, DataEqual>::unsynchronized_remove() {
     if (!mSet.empty()) {
         Data data = *mSet.begin();
         mSet.erase(mSet.begin());
         return data;
     }
 }
-
 
 template<typename Data, typename DataHash, typename DataEqual>
 int ConcurrentUnorderedSet<Data, DataHash, DataEqual>::size() {

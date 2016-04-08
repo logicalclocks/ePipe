@@ -33,18 +33,17 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
 : mDatabaseName(database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), mPollMaxTimeToWait(poll_maxTimeToWait) {
     mClusterConnection = connect_to_cluster(connection_string);
     printf("Connection Established.\n\n");
-    mTimerStarted = false;
     mAddOperations = new Cus();
     mDeleteOperations = new Cus();
+    mTimerProcessing=false;
 }
 
 void Notifier::start() {
     Ndb* ndb1 = create_ndb_connection();
     mFsMutationsTable = new FsMutationsTableTailer(ndb1, mPollMaxTimeToWait);
     mFsMutationsTable->start();
-
+    start_timer();      
     while (true) {
-        start_timer_if_possible();
         FsMutationRow row = mFsMutationsTable->consume();
 
         LOG_DEBUG() << "-------------------------";
@@ -55,39 +54,59 @@ void Notifier::start() {
         LOG_DEBUG() << "Timestamp = " << row.mTimestamp;
         LOG_DEBUG() << "Operation = " << row.mOperation;
         LOG_DEBUG() << "-------------------------";
-
+        
         if (row.mOperation == DELETE) {
-            mDeleteOperations->add(row);
+            mLock.lock();
+            mDeleteOperations->unsynchronized_add(row);
+            mLock.unlock();
         } else if (row.mOperation == ADD) {
-            mAddOperations->add(row);
+            mLock.lock();
+            mAddOperations->unsynchronized_add(row);
+            mLock.unlock();
         } else {
 
             LOG_ERROR() << "Unknown Operation code " << row.mOperation;
         }
-
+        
+        if(mAddOperations->size() == mBatchSize && !mTimerProcessing){
+            process_batch();
+        }
     }
 
 }
 
-void Notifier::start_timer_if_possible() {
-    if (!mTimerStarted) {
-
-        mTimerThread = boost::thread(&Notifier::timer_thread, this);
-        mTimerStarted = true;
-    }
+void Notifier::start_timer() {
+   LOG_DEBUG() << "start timer";
+   mTimerThread = boost::thread(&Notifier::timer_thread, this);
 }
 
 void Notifier::timer_thread() {
-
-    boost::asio::io_service io;
-    boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(mTimeBeforeIssuingNDBReqs));
-    timer.async_wait(boost::bind(&Notifier::timer_expired, this));
-    io.run();
-    mTimerStarted = false;
+    while (true) {
+        boost::asio::io_service io;
+        boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(mTimeBeforeIssuingNDBReqs));
+        timer.async_wait(boost::bind(&Notifier::timer_expired, this));
+        io.run();
+    }
 }
 
 void Notifier::timer_expired() {
+    LOG_DEBUG() << "time expired before reaching the batch size";
+    mTimerProcessing=true;
+    process_batch();
+    mTimerProcessing=false;
+}
 
+void Notifier::process_batch() {
+    if (mDeleteOperations->size() > 0 || mAddOperations->size() > 0) {
+        LOG_DEBUG() << "process batch";
+        
+        mLock.lock();
+        Cus* deleted_batch = mDeleteOperations;
+        mDeleteOperations = new Cus();
+        Cus* added_batch = mAddOperations;
+        mAddOperations = new Cus();
+        mLock.unlock();
+    }
 }
 
 Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_string) {

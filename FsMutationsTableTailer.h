@@ -15,6 +15,7 @@
 
 #include "TableTailer.h"
 #include "ConcurrentPriorityQueue.h"
+#include "ConcurrentUnorderedSet.h"
 
 struct FsMutationRow {
      int mDatasetId;
@@ -60,6 +61,7 @@ struct FsMutationRowComparator
 };
 
 typedef ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator> Cpq;
+typedef ConcurrentUnorderedSet<FsMutationRow,FsMutationRowHash,FsMutationRowEqual> Cus;
 
 class FsMutationsTableTailer : public TableTailer{
 public:
