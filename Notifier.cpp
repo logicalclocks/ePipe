@@ -29,18 +29,19 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 Notifier::Notifier(const char* connection_string, const char* database_name,
-        const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait)
-: mDatabaseName(database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), mPollMaxTimeToWait(poll_maxTimeToWait) {
+        const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, const int num_ndb_readers)
+: mDatabaseName(database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
+        mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers) {
     mClusterConnection = connect_to_cluster(connection_string);
-    printf("Connection Established.\n\n");
     mAddOperations = new Cus();
     mDeleteOperations = new Cus();
     mTimerProcessing=false;
+    setup_ndb_reader();
+    setup_tailer();
 }
 
 void Notifier::start() {
-    Ndb* ndb1 = create_ndb_connection();
-    mFsMutationsTable = new FsMutationsTableTailer(ndb1, mPollMaxTimeToWait);
+    setup_ndb_reader();
     mFsMutationsTable->start();
     start_timer();      
     while (true) {
@@ -75,6 +76,19 @@ void Notifier::start() {
 
 }
 
+void Notifier::setup_tailer() {
+    Ndb* conn = create_ndb_connection();
+    mFsMutationsTable = new FsMutationsTableTailer(conn, mPollMaxTimeToWait);
+}
+
+void Notifier::setup_ndb_reader() {
+    const Ndb* connections[mNumNdbReaders];
+    for(int i=0; i< mNumNdbReaders; i++){
+        connections[i] = create_ndb_connection();
+    }
+    mNdbDataReader = new NdbDataReader(connections, mNumNdbReaders);
+}
+
 void Notifier::start_timer() {
    LOG_DEBUG() << "start timer";
    mTimerThread = boost::thread(&Notifier::timer_thread, this);
@@ -101,11 +115,14 @@ void Notifier::process_batch() {
         LOG_DEBUG() << "process batch";
         
         mLock.lock();
-        Cus* deleted_batch = mDeleteOperations;
+        Cus_Cus added_deleted_batch;
+        added_deleted_batch.deleted = mDeleteOperations;
         mDeleteOperations = new Cus();
-        Cus* added_batch = mAddOperations;
+        added_deleted_batch.added = mAddOperations;
         mAddOperations = new Cus();
         mLock.unlock();
+        
+        mNdbDataReader->process_batch(added_deleted_batch);
     }
 }
 
@@ -143,5 +160,7 @@ Ndb* Notifier::create_ndb_connection() {
 
 Notifier::~Notifier() {
     delete mClusterConnection;
+    delete mDeleteOperations;
+    delete mAddOperations;
     ndb_end(2);
 }

@@ -58,8 +58,8 @@ int main(int argc, char** argv) {
             ("poll_maxTimeToWait", po::value<int>(), "max time to wait in miliseconds while waiting for events in pollEvents")
             ("wait_time", po::value<int>(), "time to wait in miliseconds before issuing the ndb request or the batch size reached")
             ("ndb_batch", po::value<int>(), "batch size for reading from ndb")
+            ("num_ndb_readers", po::value<int>(), "num of ndb reader threads")
             ("log", po::value<int>(), "log level debug=0, info=1, error=2")
-
             ;
 
     string connection_string;
@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
     int wait_time = 1000;
     int ndb_batch = 5;
     int poll_maxTimeToWait = 1000;
+    int num_ndb_readers = 1;
     int log_level = 0;
 
     po::variables_map vm;
@@ -91,21 +92,25 @@ int main(int argc, char** argv) {
     }
 
     if (vm.count("wait_time")) {
-        log_level = vm["wait_time"].as<int>();
+        wait_time = vm["wait_time"].as<int>();
     }
 
     if (vm.count("ndb_batch")) {
-        log_level = vm["ndb_batch"].as<int>();
+        ndb_batch = vm["ndb_batch"].as<int>();
     }
 
     if (vm.count("poll_maxTimeToWait")) {
-        log_level = vm["poll_maxTimeToWait"].as<int>();
+        poll_maxTimeToWait = vm["poll_maxTimeToWait"].as<int>();
     }
 
+    if (vm.count("num_ndb_readers")) {
+        num_ndb_readers = vm["num_ndb_readers"].as<int>();
+    }
+    
     init_logging(log_level);
 
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), 
-            wait_time, ndb_batch, poll_maxTimeToWait);
+            wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers);
     notifer->start();
 
     return EXIT_SUCCESS;

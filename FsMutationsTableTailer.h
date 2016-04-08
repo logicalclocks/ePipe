@@ -63,6 +63,11 @@ struct FsMutationRowComparator
 typedef ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator> Cpq;
 typedef ConcurrentUnorderedSet<FsMutationRow,FsMutationRowHash,FsMutationRowEqual> Cus;
 
+struct Cus_Cus{
+    Cus* added;
+    Cus* deleted;
+};
+
 class FsMutationsTableTailer : public TableTailer{
 public:
     FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait);

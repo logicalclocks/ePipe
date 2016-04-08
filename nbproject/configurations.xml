@@ -5,7 +5,9 @@
                    displayName="Header Files"
                    projectFiles="true">
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/ConcurrentPriorityQueue.h</itemPath>
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/ConcurrentQueue.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.h</itemPath>
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/NdbDataReader.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/Notifier.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/TableTailer.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/Utils.h</itemPath>
@@ -19,6 +21,7 @@
                    displayName="Source Files"
                    projectFiles="true">
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp</itemPath>
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/NdbDataReader.cpp</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/Notifier.cpp</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/TableTailer.cpp</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/main.cpp</itemPath>
@@ -76,7 +79,7 @@
             tool="3"
             flavor2="0">
       </item>
-      <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentUnorderedSet.h"
+      <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentQueue.h"
             ex="false"
             tool="3"
             flavor2="0">
@@ -87,6 +90,16 @@
             flavor2="0">
       </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/NdbDataReader.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/NdbDataReader.h"
             ex="false"
             tool="3"
             flavor2="0">
@@ -176,7 +189,7 @@
             tool="3"
             flavor2="0">
       </item>
-      <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentUnorderedSet.h"
+      <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentQueue.h"
             ex="false"
             tool="3"
             flavor2="0">
@@ -187,6 +200,16 @@
             flavor2="0">
       </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/NdbDataReader.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/NdbDataReader.h"
             ex="false"
             tool="3"
             flavor2="0">
