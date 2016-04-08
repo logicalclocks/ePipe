@@ -32,7 +32,7 @@ class TableTailer {
 public:
     TableTailer(Ndb* ndb, const char *eventTableName,
             const char **eventColumnNames, const int noEventColumnNames, 
-            const NdbDictionary::Event::TableEvent watchEventType);
+            const NdbDictionary::Event::TableEvent watchEventType, const int poll_maxTimeToWait);
     void start();
     void waitToFinish();
     virtual ~TableTailer();
@@ -56,6 +56,7 @@ private:
     const char* mEventTableName;
     const char** mEventColumnNames;
     const int mNoEventColumns;
+    const int mPollMaxTimeToWait;
 };
 
 #endif /* TABLETAILER_H */

@@ -63,7 +63,7 @@ typedef ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator> Cpq;
 
 class FsMutationsTableTailer : public TableTailer{
 public:
-    FsMutationsTableTailer(Ndb* ndb);
+    FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait);
     FsMutationRow consume();
     virtual ~FsMutationsTableTailer();    
 private:

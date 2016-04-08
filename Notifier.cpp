@@ -29,8 +29,8 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 Notifier::Notifier(const char* connection_string, const char* database_name,
-        const int time_before_issuing_ndb_reqs, const int batch_size)
-: mDatabaseName(database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size) {
+        const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait)
+: mDatabaseName(database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), mPollMaxTimeToWait(poll_maxTimeToWait) {
     mClusterConnection = connect_to_cluster(connection_string);
     printf("Connection Established.\n\n");
     mTimerStarted = false;
@@ -40,42 +40,45 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
 
 void Notifier::start() {
     Ndb* ndb1 = create_ndb_connection();
-    mFsMutationsTable = new FsMutationsTableTailer(ndb1);
+    mFsMutationsTable = new FsMutationsTableTailer(ndb1, mPollMaxTimeToWait);
     mFsMutationsTable->start();
 
     while (true) {
         start_timer_if_possible();
         FsMutationRow row = mFsMutationsTable->consume();
-        
+
+        LOG_DEBUG() << "-------------------------";
+        LOG_DEBUG() << "DatasetId = " << row.mDatasetId;
+        LOG_DEBUG() << "InodeId = " << row.mInodeId;
+        LOG_DEBUG() << "ParentId = " << row.mParentId;
+        LOG_DEBUG() << "InodeName = " << row.mInodeName;
+        LOG_DEBUG() << "Timestamp = " << row.mTimestamp;
+        LOG_DEBUG() << "Operation = " << row.mOperation;
+        LOG_DEBUG() << "-------------------------";
+
         if (row.mOperation == DELETE) {
             mDeleteOperations->add(row);
         } else if (row.mOperation == ADD) {
             mAddOperations->add(row);
         } else {
-            printf("Unknown Operation code %i", row.mOperation);
+
+            LOG_ERROR() << "Unknown Operation code " << row.mOperation;
         }
 
-        printf("-------------------------\n");
-        printf("DatasetId = (%i) \n", row.mDatasetId);
-        printf("InodeId = (%i) \n", row.mInodeId);
-        printf("ParentId = (%i) \n", row.mParentId);
-        printf("InodeName = (%s) \n", row.mInodeName.c_str());
-        printf("LogicalTime = (%li) \n", row.mTimestamp);
-        printf("Operation = (%i) \n", row.mOperation);
-        printf("-------------------------\n");
-        
     }
-    
+
 }
 
 void Notifier::start_timer_if_possible() {
     if (!mTimerStarted) {
+
         mTimerThread = boost::thread(&Notifier::timer_thread, this);
         mTimerStarted = true;
     }
 }
 
 void Notifier::timer_thread() {
+
     boost::asio::io_service io;
     boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(mTimeBeforeIssuingNDBReqs));
     timer.async_wait(boost::bind(&Notifier::timer_expired, this));
@@ -101,6 +104,7 @@ Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_stri
     }
 
     if (c->wait_until_ready(WAIT_UNTIL_READY, WAIT_UNTIL_READY) < 0) {
+
         fprintf(stderr, "Cluster was not ready.\n\n");
         exit(EXIT_FAILURE);
     }
@@ -111,6 +115,7 @@ Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_stri
 Ndb* Notifier::create_ndb_connection() {
     Ndb* ndb = new Ndb(mClusterConnection, mDatabaseName);
     if (ndb->init() == -1) {
+
         LOG_NDB_API_ERROR(ndb->getNdbError());
     }
 

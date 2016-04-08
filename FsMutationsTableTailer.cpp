@@ -40,8 +40,8 @@ const char *MUTATION_TABLE_COLUMNS[NO_MUTATION_TABLE_COLUMNS]=
 
 const NdbDictionary::Event::TableEvent WATCH_EVENT_TYPE = NdbDictionary::Event::TE_INSERT;
 
-FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
-        NO_MUTATION_TABLE_COLUMNS, WATCH_EVENT_TYPE) {
+FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
+        NO_MUTATION_TABLE_COLUMNS, WATCH_EVENT_TYPE, poll_maxTimeToWait) {
     mQueue = new Cpq();
 }
 

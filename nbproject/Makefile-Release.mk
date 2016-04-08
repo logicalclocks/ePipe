@@ -55,7 +55,7 @@ FFLAGS=
 ASFLAGS=
 
 # Link Libraries and Options
-LDLIBSOPTIONS=-L/usr/local/mysql/lib -lndbclient
+LDLIBSOPTIONS=-L/usr/local/mysql/lib -lndbclient -lboost_system -lcppnetlib-client-connections -lboost_thread -lpthread -lcppnetlib-uri -lboost_log -lboost_log_setup -lboost_date_time -lboost_program_options
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}

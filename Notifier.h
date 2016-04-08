@@ -21,13 +21,14 @@ typedef ConcurrentUnorderedSet<FsMutationRow,FsMutationRowHash,FsMutationRowEqua
 class Notifier {
 public:
     Notifier(const char* connection_string, const char* database_name, 
-            const int time_before_issuing_ndb_reqs, const int batch_size);
+            const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait);
     void start();
     virtual ~Notifier();
 private:
     const char* mDatabaseName;
     const int mTimeBeforeIssuingNDBReqs;
     const int mBatchSize;
+    const int mPollMaxTimeToWait;
     
     Ndb_cluster_connection *mClusterConnection;
     

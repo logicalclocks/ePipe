@@ -46,7 +46,6 @@ using namespace std;
 #define DELAY_BETWEEN_RETRIES 3
 #define VERBOSE 0
 #define WAIT_UNTIL_READY 30
-#define POLL_EVENTS_TIMEOUT 1000
 
 #define LOG(severity) \
     BOOST_LOG_TRIVIAL(severity) << "(" << __FILE__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") "

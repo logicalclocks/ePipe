@@ -67,6 +67,7 @@
             <linkerLibLibItem>boost_log</linkerLibLibItem>
             <linkerLibLibItem>boost_log_setup</linkerLibLibItem>
             <linkerLibLibItem>boost_date_time</linkerLibLibItem>
+            <linkerLibLibItem>boost_program_options</linkerLibLibItem>
           </linkerLibItems>
         </linkerTool>
       </compileType>
@@ -158,6 +159,15 @@
           </linkerAddLib>
           <linkerLibItems>
             <linkerLibLibItem>ndbclient</linkerLibLibItem>
+            <linkerLibLibItem>boost_system</linkerLibLibItem>
+            <linkerLibLibItem>cppnetlib-client-connections</linkerLibLibItem>
+            <linkerLibLibItem>boost_thread</linkerLibLibItem>
+            <linkerLibLibItem>pthread</linkerLibLibItem>
+            <linkerLibLibItem>cppnetlib-uri</linkerLibLibItem>
+            <linkerLibLibItem>boost_log</linkerLibLibItem>
+            <linkerLibLibItem>boost_log_setup</linkerLibLibItem>
+            <linkerLibLibItem>boost_date_time</linkerLibLibItem>
+            <linkerLibLibItem>boost_program_options</linkerLibLibItem>
           </linkerLibItems>
         </linkerTool>
       </compileType>

@@ -28,9 +28,9 @@
 using namespace Utils;
 
 TableTailer::TableTailer(Ndb* ndb, const char* eventTableName, const char** eventColumnNames,
-        const int noEventColumns, const NdbDictionary::Event::TableEvent watchEventType) : mNdbConnection(ndb),
+        const int noEventColumns, const NdbDictionary::Event::TableEvent watchEventType, const int poll_maxTimeToWait) : mNdbConnection(ndb),
 mEventTableName(eventTableName), mEventName(concat("tail-", eventTableName)),
-mEventColumnNames(eventColumnNames), mNoEventColumns(noEventColumns), mWatchEventType(watchEventType), mStarted(false) {
+mEventColumnNames(eventColumnNames), mNoEventColumns(noEventColumns), mWatchEventType(watchEventType), mStarted(false), mPollMaxTimeToWait(poll_maxTimeToWait) {
 }
 
 void TableTailer::start() {
@@ -75,8 +75,7 @@ void TableTailer::createListenerEvent() {
         myEvent.print();
     else if (myDict->getNdbError().classification ==
             NdbError::SchemaObjectExists) {
-        LOG_ERROR() << "Event creation failed, event exists";
-        LOG_ERROR() << "dropping Event...";
+        LOG_ERROR() << "Event creation failed, event exists, dropping Event...";
         if (myDict->dropEvent(mEventName)) LOG_NDB_API_ERROR(myDict->getNdbError());
         // try again
         // Add event to database
@@ -112,7 +111,7 @@ void TableTailer::waitForEvents() {
     if (op->execute())
         LOG_NDB_API_ERROR(op->getNdbError());
     while (true) {
-        int r = mNdbConnection->pollEvents(POLL_EVENTS_TIMEOUT);
+        int r = mNdbConnection->pollEvents(mPollMaxTimeToWait);
         if (r > 0) {
             while ((op = mNdbConnection->nextEvent())) {
                 switch (op->getEventType()) {
@@ -129,7 +128,7 @@ void TableTailer::waitForEvents() {
 
             }
         }
-        boost::this_thread::sleep(boost::posix_time::microseconds(POLL_EVENTS_TIMEOUT));
+        boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait));
     }
 
 }
