@@ -71,6 +71,11 @@
             tool="3"
             flavor2="0">
       </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentUnorderedSet.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp"
             ex="false"
             tool="1"
@@ -152,6 +157,11 @@
         </linkerTool>
       </compileType>
       <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentPriorityQueue.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentUnorderedSet.h"
             ex="false"
             tool="3"
             flavor2="0">

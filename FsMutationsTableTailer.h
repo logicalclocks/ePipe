@@ -21,17 +21,45 @@ struct FsMutationRow {
      int mParentId;
      int mInodeId;
      string mInodeName;
-     int mLogicalTime;
+     long mTimestamp;
      char mOperation;
+};
+
+struct FsMutationRowEqual {
+    
+    bool operator()(const FsMutationRow &lhs, const FsMutationRow &rhs) const {
+        return lhs.mDatasetId == rhs.mDatasetId && lhs.mParentId == rhs.mParentId
+                && lhs.mInodeName == rhs.mInodeName && lhs.mInodeId == rhs.mInodeId;
+    }
+};
+
+struct FsMutationRowHash {
+
+    std::size_t operator()(const FsMutationRow &a) const {
+        std::size_t seed = 0;
+        boost::hash_combine(seed, a.mDatasetId);
+        boost::hash_combine(seed, a.mParentId);
+        boost::hash_combine(seed, a.mInodeName);
+        boost::hash_combine(seed, a.mInodeId);
+        
+        return seed;
+    }
+};
+
+enum Operation{
+    ADD = 0,
+    DELETE = 1
 };
 
 struct FsMutationRowComparator
 {
     bool operator()(const FsMutationRow &r1, const FsMutationRow &r2) const
     {
-        return r1.mLogicalTime > r2.mLogicalTime;
+        return r1.mTimestamp > r2.mTimestamp;
     }
 };
+
+typedef ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator> Cpq;
 
 class FsMutationsTableTailer : public TableTailer{
 public:
@@ -40,7 +68,7 @@ public:
     virtual ~FsMutationsTableTailer();    
 private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator>* mQueue;
+    Cpq* mQueue;
 };
 
 #endif /* MUTATIONSTABLETAILER_H */

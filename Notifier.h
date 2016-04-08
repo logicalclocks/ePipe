@@ -14,19 +14,34 @@
 #define NOTIFIER_H
 
 #include "FsMutationsTableTailer.h"
+#include "ConcurrentUnorderedSet.h"
+
+typedef ConcurrentUnorderedSet<FsMutationRow,FsMutationRowHash,FsMutationRowEqual> Cus;
 
 class Notifier {
 public:
-    Notifier(const char* connection_string, const char* database_name);
+    Notifier(const char* connection_string, const char* database_name, 
+            const int time_before_issuing_ndb_reqs, const int batch_size);
     void start();
     virtual ~Notifier();
 private:
-    Ndb_cluster_connection *mClusterConnection;
     const char* mDatabaseName;
+    const int mTimeBeforeIssuingNDBReqs;
+    const int mBatchSize;
+    
+    Ndb_cluster_connection *mClusterConnection;
     
     FsMutationsTableTailer* mFsMutationsTable;
+    Cus* mAddOperations;    
+    Cus* mDeleteOperations;    
     
-    void runFsMutationsTableTailer();
+    bool mTimerStarted;
+    boost::thread mTimerThread;
+    
+    void start_timer_if_possible();
+    void timer_thread();
+    void timer_expired();
+    
     
     Ndb_cluster_connection* connect_to_cluster(const char *connection_string);
     Ndb* create_ndb_connection();

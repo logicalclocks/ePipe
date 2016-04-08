@@ -30,8 +30,8 @@ int main(int argc, char** argv) {
     }
     const char *connection_string = argv[1];
     const char *database_name = argv[2];
-    
-    Notifier *notifer = new Notifier(connection_string, database_name);
+   
+    Notifier *notifer = new Notifier(connection_string, database_name, 1000, 5);
     notifer->start();
     
     return EXIT_SUCCESS;

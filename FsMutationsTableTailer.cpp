@@ -27,14 +27,14 @@
 
 using namespace Utils;
 
-const char *MUTATION_TABLE_NAME= "hdfs_metadata_log2";
+const char *MUTATION_TABLE_NAME= "hdfs_metadata_log";
 const int NO_MUTATION_TABLE_COLUMNS= 6;
 const char *MUTATION_TABLE_COLUMNS[NO_MUTATION_TABLE_COLUMNS]=
     {"dataset_id",
      "inode_id",
+     "timestamp",
      "inode_pid",
      "inode_name",
-     "logical_time",
      "operation"
     };
 
@@ -42,16 +42,16 @@ const NdbDictionary::Event::TableEvent WATCH_EVENT_TYPE = NdbDictionary::Event::
 
 FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
         NO_MUTATION_TABLE_COLUMNS, WATCH_EVENT_TYPE) {
-    mQueue = new ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator>();
+    mQueue = new Cpq();
 }
 
 void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
     FsMutationRow row;
     row.mDatasetId = value[0]->int32_value();
     row.mInodeId =  value[1]->int32_value();
-    row.mParentId = value[2]->int8_value();
-    row.mInodeName = get_string(value[3]);
-    row.mLogicalTime = value[4]->int32_value();
+    row.mTimestamp = value[2]->int64_value();
+    row.mParentId = value[3]->int8_value();
+    row.mInodeName = get_string(value[4]);
     row.mOperation = value[5]->int8_value();
     
     mQueue->push(row);

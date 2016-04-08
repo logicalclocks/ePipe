@@ -24,35 +24,67 @@
 
 #include "Notifier.h"
 
-Notifier::Notifier(const char* connection_string, const char* database_name) : mDatabaseName(database_name) {
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+Notifier::Notifier(const char* connection_string, const char* database_name,
+        const int time_before_issuing_ndb_reqs, const int batch_size)
+: mDatabaseName(database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size) {
     mClusterConnection = connect_to_cluster(connection_string);
     printf("Connection Established.\n\n");
+    mTimerStarted = false;
+    mAddOperations = new Cus();
+    mDeleteOperations = new Cus();
 }
 
 void Notifier::start() {
     Ndb* ndb1 = create_ndb_connection();
     mFsMutationsTable = new FsMutationsTableTailer(ndb1);
     mFsMutationsTable->start();
+
     while (true) {
+        start_timer_if_possible();
         FsMutationRow row = mFsMutationsTable->consume();
+        
+        if (row.mOperation == DELETE) {
+            mDeleteOperations->add(row);
+        } else if (row.mOperation == ADD) {
+            mAddOperations->add(row);
+        } else {
+            printf("Unknown Operation code %i", row.mOperation);
+        }
+
         printf("-------------------------\n");
         printf("DatasetId = (%i) \n", row.mDatasetId);
         printf("InodeId = (%i) \n", row.mInodeId);
         printf("ParentId = (%i) \n", row.mParentId);
         printf("InodeName = (%s) \n", row.mInodeName.c_str());
-        printf("LogicalTime = (%i) \n", row.mLogicalTime);
+        printf("LogicalTime = (%li) \n", row.mTimestamp);
         printf("Operation = (%i) \n", row.mOperation);
         printf("-------------------------\n");
+        
+    }
+    
+}
+
+void Notifier::start_timer_if_possible() {
+    if (!mTimerStarted) {
+        mTimerThread = boost::thread(&Notifier::timer_thread, this);
+        mTimerStarted = true;
     }
 }
 
-void Notifier::runFsMutationsTableTailer() {
-   
+void Notifier::timer_thread() {
+    boost::asio::io_service io;
+    boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(mTimeBeforeIssuingNDBReqs));
+    timer.async_wait(boost::bind(&Notifier::timer_expired, this));
+    io.run();
+    mTimerStarted = false;
 }
 
-Notifier::~Notifier() {
-    delete mClusterConnection;
-    ndb_end(2);
+void Notifier::timer_expired() {
+
 }
 
 Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_string) {
@@ -85,4 +117,7 @@ Ndb* Notifier::create_ndb_connection() {
     return ndb;
 }
 
-
+Notifier::~Notifier() {
+    delete mClusterConnection;
+    ndb_end(2);
+}
