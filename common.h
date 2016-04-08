@@ -33,6 +33,10 @@
 #include <ostream>
 #include <string>
 #include <NdbApi.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/trivial.hpp>
+#include <boost/log/support/date_time.hpp>
+#include <boost/log/expressions.hpp>
 
 using namespace std;
 
@@ -44,13 +48,16 @@ using namespace std;
 #define WAIT_UNTIL_READY 30
 #define POLL_EVENTS_TIMEOUT 1000
 
+#define LOG(severity) \
+    BOOST_LOG_TRIVIAL(severity) << "(" << __FILE__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") "
 
+#define LOG_DEBUG() LOG(debug)
+#define LOG_INFO() LOG(info)
+#define LOG_ERROR() LOG(error)
+#define LOG_FATAL() LOG(fatal)
 
-#define APIERROR(error) \
-  { std::cout << "Error in " << __FILE__ << ", line:" << __LINE__ << ", code:" \
-              << error.code << ", msg: " << error.message << "." << std::endl; \
-    exit(-1); }
-
+#define LOG_NDB_API_ERROR(error) \
+        LOG_FATAL() << "code:" << error.code << ", msg: " << error.message << "."
 
 #endif /* COMMON_H */
 

@@ -111,7 +111,7 @@ Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_stri
 Ndb* Notifier::create_ndb_connection() {
     Ndb* ndb = new Ndb(mClusterConnection, mDatabaseName);
     if (ndb->init() == -1) {
-        APIERROR(ndb->getNdbError());
+        LOG_NDB_API_ERROR(ndb->getNdbError());
     }
 
     return ndb;

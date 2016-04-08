@@ -53,17 +53,17 @@ void TableTailer::run() {
     try {
         waitForEvents();
     } catch (boost::thread_interrupted&) {
-        cout << "Thread is stopped" << endl;
+        LOG_ERROR() << "Thread is stopped";
         return;
     }
 }
 
 void TableTailer::createListenerEvent() {
     NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
-    if (!myDict) APIERROR(mNdbConnection->getNdbError());
+    if (!myDict) LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
 
     const NdbDictionary::Table *table = myDict->getTable(mEventTableName);
-    if (!table) APIERROR(myDict->getNdbError());
+    if (!table) LOG_NDB_API_ERROR(myDict->getNdbError());
 
     NdbDictionary::Event myEvent(mEventName, *table);
     myEvent.addTableEvent(mWatchEventType);
@@ -75,28 +75,28 @@ void TableTailer::createListenerEvent() {
         myEvent.print();
     else if (myDict->getNdbError().classification ==
             NdbError::SchemaObjectExists) {
-        printf("Event creation failed, event exists\n");
-        printf("dropping Event...\n");
-        if (myDict->dropEvent(mEventName)) APIERROR(myDict->getNdbError());
+        LOG_ERROR() << "Event creation failed, event exists";
+        LOG_ERROR() << "dropping Event...";
+        if (myDict->dropEvent(mEventName)) LOG_NDB_API_ERROR(myDict->getNdbError());
         // try again
         // Add event to database
-        if (myDict->createEvent(myEvent)) APIERROR(myDict->getNdbError());
+        if (myDict->createEvent(myEvent)) LOG_NDB_API_ERROR(myDict->getNdbError());
     } else
-        APIERROR(myDict->getNdbError());
+        LOG_NDB_API_ERROR(myDict->getNdbError());
 }
 
 void TableTailer::removeListenerEvent() {
     NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
-    if (!myDict) APIERROR(mNdbConnection->getNdbError());
+    if (!myDict) LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
     // remove event from database
-    if (myDict->dropEvent(mEventName)) APIERROR(myDict->getNdbError());
+    if (myDict->dropEvent(mEventName)) LOG_NDB_API_ERROR(myDict->getNdbError());
 }
 
 void TableTailer::waitForEvents() {
     NdbEventOperation* op;
-    printf("create EventOperation for %s \n", mEventName);
+    LOG_INFO() << "create EventOperation for [" << mEventName << "]";
     if ((op = mNdbConnection->createEventOperation(mEventName)) == NULL)
-        APIERROR(mNdbConnection->getNdbError());
+        LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
 
     NdbRecAttr * recAttr[mNoEventColumns];
     NdbRecAttr * recAttrPre[mNoEventColumns];
@@ -107,11 +107,10 @@ void TableTailer::waitForEvents() {
         recAttrPre[i] = op->getPreValue(mEventColumnNames[i]);
     }
 
-    // set up the callbacks
-    printf("execute\n");
+    LOG_INFO() << "Execute";
     // This starts changes to "start flowing"
     if (op->execute())
-        APIERROR(op->getNdbError());
+        LOG_NDB_API_ERROR(op->getNdbError());
     while (true) {
         int r = mNdbConnection->pollEvents(POLL_EVENTS_TIMEOUT);
         if (r > 0) {
@@ -138,7 +137,7 @@ void TableTailer::waitForEvents() {
 bool TableTailer::correctResult(NdbRecAttr* values[]){
     for(int col=0; col<mNoEventColumns; col++){
         if(values[col]->isNULL() != 0){
-            printf("Error at %s \n", mEventColumnNames[col]);
+            LOG_ERROR() << "Error at column " << mEventColumnNames[col];
             return false;
         }
     }

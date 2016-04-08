@@ -53,13 +53,14 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
     row.mParentId = value[3]->int8_value();
     row.mInodeName = get_string(value[4]);
     row.mOperation = value[5]->int8_value();
-    
+    LOG_DEBUG() << " push inode [" << row.mInodeId << "] to queue";
     mQueue->push(row);
 }
 
 FsMutationRow FsMutationsTableTailer::consume(){
     FsMutationRow row;
     mQueue->wait_and_pop(row);
+    LOG_DEBUG() << " pop inode [" << row.mInodeId << "] from queue";
     return row;
 }
 

@@ -51,6 +51,7 @@
             <pElem>/usr/local/mysql/include/storage/ndb/ndbapi</pElem>
             <pElem>/usr/local/mysql/include/storage/ndb/mgmapi</pElem>
           </incDir>
+          <commandLine>-DBOOST_LOG_DYN_LINK</commandLine>
         </ccTool>
         <linkerTool>
           <linkerAddLib>
@@ -63,6 +64,9 @@
             <linkerLibLibItem>boost_thread</linkerLibLibItem>
             <linkerLibLibItem>pthread</linkerLibLibItem>
             <linkerLibLibItem>cppnetlib-uri</linkerLibLibItem>
+            <linkerLibLibItem>boost_log</linkerLibLibItem>
+            <linkerLibLibItem>boost_log_setup</linkerLibLibItem>
+            <linkerLibLibItem>boost_date_time</linkerLibLibItem>
           </linkerLibItems>
         </linkerTool>
       </compileType>
@@ -140,6 +144,7 @@
             <pElem>/usr/local/mysql/include/storage/ndb/ndbapi</pElem>
             <pElem>/usr/local/mysql/include/storage/ndb/mgmapi</pElem>
           </incDir>
+          <commandLine>-DBOOST_LOG_DYN_LINK</commandLine>
         </ccTool>
         <fortranCompilerTool>
           <developmentMode>5</developmentMode>

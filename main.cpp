@@ -23,6 +23,29 @@
  */
 #include "Notifier.h"
 
+void init_logging(int level) {
+    switch (level) {
+        case 0:
+            boost::log::core::get()->set_filter
+                    (
+                    boost::log::trivial::severity >= boost::log::trivial::debug
+                    );
+            break;
+        case 1:
+            boost::log::core::get()->set_filter
+                    (
+                    boost::log::trivial::severity >= boost::log::trivial::info
+                    );
+            break;
+        case 2:
+            boost::log::core::get()->set_filter
+                    (
+                    boost::log::trivial::severity >= boost::log::trivial::error
+                    );
+            break;
+    }
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cout << "Arguments are <connect_string cluster> <database_name>.\n";
@@ -30,9 +53,11 @@ int main(int argc, char** argv) {
     }
     const char *connection_string = argv[1];
     const char *database_name = argv[2];
-   
+    
+    init_logging(0);
+    
     Notifier *notifer = new Notifier(connection_string, database_name, 1000, 5);
     notifer->start();
-    
+
     return EXIT_SUCCESS;
 }

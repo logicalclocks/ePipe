@@ -45,8 +45,8 @@ OBJECTFILES= \
 CFLAGS=
 
 # CC Compiler Flags
-CCFLAGS=
-CXXFLAGS=
+CCFLAGS=-DBOOST_LOG_DYN_LINK
+CXXFLAGS=-DBOOST_LOG_DYN_LINK
 
 # Fortran Compiler Flags
 FFLAGS=
@@ -55,7 +55,7 @@ FFLAGS=
 ASFLAGS=
 
 # Link Libraries and Options
-LDLIBSOPTIONS=-L/usr/local/mysql/lib -lndbclient -lboost_system -lcppnetlib-client-connections -lboost_thread -lpthread -lcppnetlib-uri
+LDLIBSOPTIONS=-L/usr/local/mysql/lib -lndbclient -lboost_system -lcppnetlib-client-connections -lboost_thread -lpthread -lcppnetlib-uri -lboost_log -lboost_log_setup -lboost_date_time
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
