@@ -37,6 +37,44 @@ namespace Utils {
         return buf.c_str();
     }
 
+    static const char* get_ndb_varchar(string str, NdbDictionary::Column::ArrayType array_type) {
+        char* data;
+        int len = str.length();
+
+        switch (array_type) {
+            case NdbDictionary::Column::ArrayTypeFixed:
+                /*
+                 No prefix length is stored in aRef. Data starts from aRef's first byte
+                 data might be padded with blank or null bytes to fill the whole column
+                 */
+                data = new char[len];
+                strcpy(data, str.c_str());
+                break;
+            case NdbDictionary::Column::ArrayTypeShortVar:
+                /*
+                 First byte of aRef has the length of data stored
+                 Data starts from second byte of aRef
+                 */
+                data = new char[len + 1];
+                data[0] = (char) len;
+                strcpy(data + 1, str.c_str());
+                break;
+            case NdbDictionary::Column::ArrayTypeMediumVar:
+                /*
+                 First two bytes of aRef has the length of data stored
+                 Data starts from third byte of aRef
+                 */
+                data = new char[len + 2];
+                int m = len / 256;
+                int l = len - (m * 256);
+                data[0] = (char) l;
+                data[1] = (char) m;
+                strcpy(data + 2, str.c_str());
+                break;
+        }
+        return data;
+    }
+    
     /*
      * Based on The example file ndbapi_array_simple.cpp found in 
      * the MySQL Cluster source distribution's storage/ndb/ndbapi-examples directory
