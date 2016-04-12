@@ -50,6 +50,7 @@ using namespace std;
 #define LOG(severity) \
     BOOST_LOG_TRIVIAL(severity) << "(" << __FILE__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") "
 
+#define LOG_TRACE() LOG(trace)
 #define LOG_DEBUG() LOG(debug)
 #define LOG_INFO() LOG(info)
 #define LOG_ERROR() LOG(error)

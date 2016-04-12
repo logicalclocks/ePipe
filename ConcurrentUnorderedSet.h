@@ -37,6 +37,7 @@ public:
     Data remove();
     Data unsynchronized_remove();
     int size();
+    int unsynchronized_size();
     virtual ~ConcurrentUnorderedSet();
 private:
     mutable boost::mutex mLock;
@@ -78,6 +79,11 @@ Data ConcurrentUnorderedSet<Data, DataHash, DataEqual>::unsynchronized_remove() 
 template<typename Data, typename DataHash, typename DataEqual>
 int ConcurrentUnorderedSet<Data, DataHash, DataEqual>::size() {
     boost::mutex::scoped_lock lock(mLock);
+    return unsynchronized_size();
+}
+
+template<typename Data, typename DataHash, typename DataEqual>
+int ConcurrentUnorderedSet<Data, DataHash, DataEqual>::unsynchronized_size() {
     return mSet.size();
 }
 

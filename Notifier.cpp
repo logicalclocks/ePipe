@@ -41,20 +41,21 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
 }
 
 void Notifier::start() {
-    setup_ndb_reader();
     mFsMutationsTable->start();
+    mNdbDataReader->start();
+    
     start_timer();      
     while (true) {
         FsMutationRow row = mFsMutationsTable->consume();
 
-        LOG_DEBUG() << "-------------------------";
-        LOG_DEBUG() << "DatasetId = " << row.mDatasetId;
-        LOG_DEBUG() << "InodeId = " << row.mInodeId;
-        LOG_DEBUG() << "ParentId = " << row.mParentId;
-        LOG_DEBUG() << "InodeName = " << row.mInodeName;
-        LOG_DEBUG() << "Timestamp = " << row.mTimestamp;
-        LOG_DEBUG() << "Operation = " << row.mOperation;
-        LOG_DEBUG() << "-------------------------";
+        LOG_TRACE() << "-------------------------";
+        LOG_TRACE() << "DatasetId = " << row.mDatasetId;
+        LOG_TRACE() << "InodeId = " << row.mInodeId;
+        LOG_TRACE() << "ParentId = " << row.mParentId;
+        LOG_TRACE() << "InodeName = " << row.mInodeName;
+        LOG_TRACE() << "Timestamp = " << row.mTimestamp;
+        LOG_TRACE() << "Operation = " << row.mOperation;
+        LOG_TRACE() << "-------------------------";
         
         if (row.mOperation == DELETE) {
             mLock.lock();
@@ -82,7 +83,7 @@ void Notifier::setup_tailer() {
 }
 
 void Notifier::setup_ndb_reader() {
-    const Ndb* connections[mNumNdbReaders];
+    Ndb** connections = new Ndb*[mNumNdbReaders];
     for(int i=0; i< mNumNdbReaders; i++){
         connections[i] = create_ndb_connection();
     }
@@ -104,7 +105,7 @@ void Notifier::timer_thread() {
 }
 
 void Notifier::timer_expired() {
-    LOG_DEBUG() << "time expired before reaching the batch size";
+    LOG_TRACE() << "time expired before reaching the batch size";
     mTimerProcessing=true;
     process_batch();
     mTimerProcessing=false;
