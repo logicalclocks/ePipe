@@ -4,9 +4,12 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/Batcher.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/ConcurrentPriorityQueue.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/ConcurrentQueue.h</itemPath>
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/FsMutationsBatcher.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.h</itemPath>
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/MetadataTableTailer.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/NdbDataReader.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/Notifier.h</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/TableTailer.h</itemPath>
@@ -20,7 +23,10 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/Batcher.cpp</itemPath>
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/FsMutationsBatcher.cpp</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp</itemPath>
+      <itemPath>/home/maism/src/hopsfs-elastic-notifier/MetadataTableTailer.cpp</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/NdbDataReader.cpp</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/Notifier.cpp</itemPath>
       <itemPath>/home/maism/src/hopsfs-elastic-notifier/TableTailer.cpp</itemPath>
@@ -74,6 +80,16 @@
           </linkerLibItems>
         </linkerTool>
       </compileType>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/Batcher.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/Batcher.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentPriorityQueue.h"
             ex="false"
             tool="3"
@@ -84,12 +100,32 @@
             tool="3"
             flavor2="0">
       </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsBatcher.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsBatcher.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp"
             ex="false"
             tool="1"
             flavor2="0">
       </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/MetadataTableTailer.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/MetadataTableTailer.h"
             ex="false"
             tool="3"
             flavor2="0">
@@ -184,6 +220,16 @@
           </linkerLibItems>
         </linkerTool>
       </compileType>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/Batcher.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/Batcher.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/ConcurrentPriorityQueue.h"
             ex="false"
             tool="3"
@@ -194,12 +240,32 @@
             tool="3"
             flavor2="0">
       </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsBatcher.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsBatcher.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp"
             ex="false"
             tool="1"
             flavor2="0">
       </item>
       <item path="/home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/MetadataTableTailer.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="/home/maism/src/hopsfs-elastic-notifier/MetadataTableTailer.h"
             ex="false"
             tool="3"
             flavor2="0">

@@ -26,7 +26,6 @@
 #define CONCURRENTUNORDEREDSET_H
 #include "common.h"
 #include <boost/unordered_set.hpp>
-#include <boost/thread/pthread/mutex.hpp>
 
 template<typename Data, typename DataHash, typename DataEqual>
 class ConcurrentUnorderedSet {

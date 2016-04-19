@@ -34,7 +34,9 @@ namespace Utils {
     static const char* concat(const char* a, const char* b) {
         std::string buf(a);
         buf.append(b);
-        return buf.c_str();
+        char* data = new char[buf.length()];
+        strcpy(data, buf.c_str());
+        return data;
     }
 
     static const char* get_ndb_varchar(string str, NdbDictionary::Column::ArrayType array_type) {

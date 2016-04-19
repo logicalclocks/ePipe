@@ -37,6 +37,9 @@
 #include <boost/log/trivial.hpp>
 #include <boost/log/support/date_time.hpp>
 #include <boost/log/expressions.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/thread/pthread/mutex.hpp>
+#include <boost/thread/pthread/condition_variable_fwd.hpp>
 
 using namespace std;
 

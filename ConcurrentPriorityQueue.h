@@ -26,8 +26,6 @@
 #define CONCURRENTPRIORITYQUEUE_H
 #include "common.h"
 #include <boost/heap/priority_queue.hpp>
-#include <boost/thread/pthread/mutex.hpp>
-#include <boost/thread/pthread/condition_variable_fwd.hpp>
 
 template<typename Data, typename DataCompartor>
 class ConcurrentPriorityQueue{

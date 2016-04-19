@@ -24,107 +24,33 @@
 
 #include "Notifier.h"
 
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-
 Notifier::Notifier(const char* connection_string, const char* database_name,
         const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, const int num_ndb_readers)
 : mDatabaseName(database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
         mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers) {
     mClusterConnection = connect_to_cluster(connection_string);
-    mAddOperations = new Cus();
-    mDeleteOperations = new Cus();
-    mTimerProcessing=false;
-    setup_ndb_reader();
-    setup_tailer();
+    setup();
 }
 
 void Notifier::start() {
-    mFsMutationsTable->start();
     mNdbDataReader->start();
+    mFsMutationsTableTailer->start();
+    mFsMutationsBatcher->start();
     
-    start_timer();      
-    while (true) {
-        FsMutationRow row = mFsMutationsTable->consume();
-
-        LOG_TRACE() << "-------------------------";
-        LOG_TRACE() << "DatasetId = " << row.mDatasetId;
-        LOG_TRACE() << "InodeId = " << row.mInodeId;
-        LOG_TRACE() << "ParentId = " << row.mParentId;
-        LOG_TRACE() << "InodeName = " << row.mInodeName;
-        LOG_TRACE() << "Timestamp = " << row.mTimestamp;
-        LOG_TRACE() << "Operation = " << row.mOperation;
-        LOG_TRACE() << "-------------------------";
-        
-        if (row.mOperation == DELETE) {
-            mLock.lock();
-            mDeleteOperations->unsynchronized_add(row);
-            mLock.unlock();
-        } else if (row.mOperation == ADD) {
-            mLock.lock();
-            mAddOperations->unsynchronized_add(row);
-            mLock.unlock();
-        } else {
-
-            LOG_ERROR() << "Unknown Operation code " << row.mOperation;
-        }
-        
-        if(mAddOperations->size() == mBatchSize && !mTimerProcessing){
-            process_batch();
-        }
-    }
-
+    mFsMutationsBatcher->waitToFinish();
 }
 
-void Notifier::setup_tailer() {
-    Ndb* conn = create_ndb_connection();
-    mFsMutationsTable = new FsMutationsTableTailer(conn, mPollMaxTimeToWait);
-}
-
-void Notifier::setup_ndb_reader() {
+void Notifier::setup() {
+    Ndb* tailer_connection = create_ndb_connection();
+    mFsMutationsTableTailer = new FsMutationsTableTailer(tailer_connection, mPollMaxTimeToWait);
+    
     Ndb** connections = new Ndb*[mNumNdbReaders];
     for(int i=0; i< mNumNdbReaders; i++){
         connections[i] = create_ndb_connection();
     }
     mNdbDataReader = new NdbDataReader(connections, mNumNdbReaders);
-}
-
-void Notifier::start_timer() {
-   LOG_DEBUG() << "start timer";
-   mTimerThread = boost::thread(&Notifier::timer_thread, this);
-}
-
-void Notifier::timer_thread() {
-    while (true) {
-        boost::asio::io_service io;
-        boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(mTimeBeforeIssuingNDBReqs));
-        timer.async_wait(boost::bind(&Notifier::timer_expired, this));
-        io.run();
-    }
-}
-
-void Notifier::timer_expired() {
-    LOG_TRACE() << "time expired before reaching the batch size";
-    mTimerProcessing=true;
-    process_batch();
-    mTimerProcessing=false;
-}
-
-void Notifier::process_batch() {
-    if (mDeleteOperations->size() > 0 || mAddOperations->size() > 0) {
-        LOG_DEBUG() << "process batch";
-        
-        mLock.lock();
-        Cus_Cus added_deleted_batch;
-        added_deleted_batch.deleted = mDeleteOperations;
-        mDeleteOperations = new Cus();
-        added_deleted_batch.added = mAddOperations;
-        mAddOperations = new Cus();
-        mLock.unlock();
-        
-        mNdbDataReader->process_batch(added_deleted_batch);
-    }
+    
+    mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mNdbDataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
 }
 
 Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_string) {
@@ -161,7 +87,5 @@ Ndb* Notifier::create_ndb_connection() {
 
 Notifier::~Notifier() {
     delete mClusterConnection;
-    delete mDeleteOperations;
-    delete mAddOperations;
     ndb_end(2);
 }

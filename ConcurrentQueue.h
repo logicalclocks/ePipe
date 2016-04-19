@@ -25,8 +25,6 @@
 #ifndef CONCURRENTQUEUE_H
 #define CONCURRENTQUEUE_H
 #include "common.h"
-#include <boost/thread/pthread/mutex.hpp>
-#include <boost/thread/pthread/condition_variable_fwd.hpp>
 #include "queue"
 
 template<typename Data>

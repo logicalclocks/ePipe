@@ -35,7 +35,10 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
+	${OBJECTDIR}/_ext/a0c56a08/Batcher.o \
+	${OBJECTDIR}/_ext/a0c56a08/FsMutationsBatcher.o \
 	${OBJECTDIR}/_ext/a0c56a08/FsMutationsTableTailer.o \
+	${OBJECTDIR}/_ext/a0c56a08/MetadataTableTailer.o \
 	${OBJECTDIR}/_ext/a0c56a08/NdbDataReader.o \
 	${OBJECTDIR}/_ext/a0c56a08/Notifier.o \
 	${OBJECTDIR}/_ext/a0c56a08/TableTailer.o \
@@ -66,10 +69,25 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/hopsfs-elastic-notifier: ${OBJECTFILE
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/hopsfs-elastic-notifier ${OBJECTFILES} ${LDLIBSOPTIONS}
 
+${OBJECTDIR}/_ext/a0c56a08/Batcher.o: /home/maism/src/hopsfs-elastic-notifier/Batcher.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/a0c56a08
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -I/usr/local/mysql/include -I/usr/local/mysql/include/storage/ndb -I/usr/local/mysql/include/storage/ndb/ndbapi -I/usr/local/mysql/include/storage/ndb/mgmapi -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/a0c56a08/Batcher.o /home/maism/src/hopsfs-elastic-notifier/Batcher.cpp
+
+${OBJECTDIR}/_ext/a0c56a08/FsMutationsBatcher.o: /home/maism/src/hopsfs-elastic-notifier/FsMutationsBatcher.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/a0c56a08
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -I/usr/local/mysql/include -I/usr/local/mysql/include/storage/ndb -I/usr/local/mysql/include/storage/ndb/ndbapi -I/usr/local/mysql/include/storage/ndb/mgmapi -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/a0c56a08/FsMutationsBatcher.o /home/maism/src/hopsfs-elastic-notifier/FsMutationsBatcher.cpp
+
 ${OBJECTDIR}/_ext/a0c56a08/FsMutationsTableTailer.o: /home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp 
 	${MKDIR} -p ${OBJECTDIR}/_ext/a0c56a08
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -I/usr/local/mysql/include -I/usr/local/mysql/include/storage/ndb -I/usr/local/mysql/include/storage/ndb/ndbapi -I/usr/local/mysql/include/storage/ndb/mgmapi -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/a0c56a08/FsMutationsTableTailer.o /home/maism/src/hopsfs-elastic-notifier/FsMutationsTableTailer.cpp
+
+${OBJECTDIR}/_ext/a0c56a08/MetadataTableTailer.o: /home/maism/src/hopsfs-elastic-notifier/MetadataTableTailer.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/a0c56a08
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -I/usr/local/mysql/include -I/usr/local/mysql/include/storage/ndb -I/usr/local/mysql/include/storage/ndb/ndbapi -I/usr/local/mysql/include/storage/ndb/mgmapi -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/a0c56a08/MetadataTableTailer.o /home/maism/src/hopsfs-elastic-notifier/MetadataTableTailer.cpp
 
 ${OBJECTDIR}/_ext/a0c56a08/NdbDataReader.o: /home/maism/src/hopsfs-elastic-notifier/NdbDataReader.cpp 
 	${MKDIR} -p ${OBJECTDIR}/_ext/a0c56a08

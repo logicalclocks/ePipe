@@ -26,19 +26,18 @@
 #define TABLETAILER_H
 
 #include "common.h"
-#include <boost/thread/thread.hpp>
 
 class TableTailer {
 public:
     TableTailer(Ndb* ndb, const char *eventTableName,
-            const char **eventColumnNames, const int noEventColumnNames, 
-            const NdbDictionary::Event::TableEvent watchEventType, const int poll_maxTimeToWait);
+            const char **eventColumnNames, const int noEventColumnNames, const bool *eventColumnIsBlob,
+            const NdbDictionary::Event::TableEvent* watchEventTypes, const int numOfEventsTypesToWatch, const int poll_maxTimeToWait);
     void start();
     void waitToFinish();
     virtual ~TableTailer();
 
 protected:
-    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) = 0;
+    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[], NdbBlob* preBlobValue[], NdbBlob* blobValue[]) = 0;
 
 private:
     void createListenerEvent();
@@ -51,10 +50,12 @@ private:
     boost::thread mThread;
     
     Ndb* mNdbConnection;
-    const NdbDictionary::Event::TableEvent mWatchEventType;
+    const NdbDictionary::Event::TableEvent* mWatchEventTypes;
+    const int mNumOfEventsTypesToWatch;
     const char* mEventName;
     const char* mEventTableName;
     const char** mEventColumnNames;
+    const bool* mEventColumnIsBlob;
     const int mNoEventColumns;
     const int mPollMaxTimeToWait;
 };

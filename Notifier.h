@@ -13,8 +13,8 @@
 #ifndef NOTIFIER_H
 #define NOTIFIER_H
 
-#include "FsMutationsTableTailer.h"
 #include "NdbDataReader.h"
+#include "FsMutationsBatcher.h"
 
 class Notifier {
 public:
@@ -23,34 +23,24 @@ public:
             const int poll_maxTimeToWait, const int num_ndb_readers);
     void start();
     virtual ~Notifier();
+    
 private:
     const char* mDatabaseName;
+    Ndb_cluster_connection *mClusterConnection;
+    
     const int mTimeBeforeIssuingNDBReqs;
     const int mBatchSize;
     const int mPollMaxTimeToWait;
     const int mNumNdbReaders;
     
-    Ndb_cluster_connection *mClusterConnection;
-    
-    FsMutationsTableTailer* mFsMutationsTable;
+    FsMutationsTableTailer* mFsMutationsTableTailer;
     NdbDataReader* mNdbDataReader;
+    FsMutationsBatcher* mFsMutationsBatcher;
     
-    Cus* mAddOperations;    
-    Cus* mDeleteOperations;    
-    boost::mutex mLock;
-
-    bool mTimerProcessing;
-    boost::thread mTimerThread;
-    
-    void setup_tailer();
-    void setup_ndb_reader();
-    void start_timer();
-    void timer_thread();
-    void timer_expired();
-    void process_batch();
-    
-    Ndb_cluster_connection* connect_to_cluster(const char *connection_string);
     Ndb* create_ndb_connection();
+    Ndb_cluster_connection* connect_to_cluster(const char *connection_string);
+    
+    void setup();
 };
 
 #endif /* NOTIFIER_H */
