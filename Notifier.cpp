@@ -24,9 +24,9 @@
 
 #include "Notifier.h"
 
-Notifier::Notifier(const char* connection_string, const char* database_name,
+Notifier::Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
         const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, const int num_ndb_readers)
-: mDatabaseName(database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
+: mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
         mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers) {
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
@@ -34,23 +34,31 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
 
 void Notifier::start() {
     mNdbDataReader->start();
+    
     mFsMutationsTableTailer->start();
+    mMetadataTableTailer->start();
+    
     mFsMutationsBatcher->start();
     
     mFsMutationsBatcher->waitToFinish();
 }
 
 void Notifier::setup() {
-    Ndb* tailer_connection = create_ndb_connection();
-    mFsMutationsTableTailer = new FsMutationsTableTailer(tailer_connection, mPollMaxTimeToWait);
+    Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
+    mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait);
     
-    Ndb** connections = new Ndb*[mNumNdbReaders];
+    Ndb** mutations_connections = new Ndb*[mNumNdbReaders];
     for(int i=0; i< mNumNdbReaders; i++){
-        connections[i] = create_ndb_connection();
+        mutations_connections[i] = create_ndb_connection(mDatabaseName);
     }
-    mNdbDataReader = new NdbDataReader(connections, mNumNdbReaders);
+    mNdbDataReader = new NdbDataReader(mutations_connections, mNumNdbReaders);
     
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mNdbDataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
+    
+    
+    Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+    mMetadataTableTailer = new MetadataTableTailer(metadata_tailer_connection, mPollMaxTimeToWait);
+    
 }
 
 Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_string) {
@@ -75,8 +83,8 @@ Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_stri
     return c;
 }
 
-Ndb* Notifier::create_ndb_connection() {
-    Ndb* ndb = new Ndb(mClusterConnection, mDatabaseName);
+Ndb* Notifier::create_ndb_connection(const char* database) {
+    Ndb* ndb = new Ndb(mClusterConnection, database);
     if (ndb->init() == -1) {
 
         LOG_NDB_API_ERROR(ndb->getNdbError());

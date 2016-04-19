@@ -15,10 +15,11 @@
 
 #include "NdbDataReader.h"
 #include "FsMutationsBatcher.h"
+#include "MetadataTableTailer.h"
 
 class Notifier {
 public:
-    Notifier(const char* connection_string, const char* database_name, 
+    Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
             const int time_before_issuing_ndb_reqs, const int batch_size, 
             const int poll_maxTimeToWait, const int num_ndb_readers);
     void start();
@@ -26,6 +27,8 @@ public:
     
 private:
     const char* mDatabaseName;
+    const char* mMetaDatabaseName;
+    
     Ndb_cluster_connection *mClusterConnection;
     
     const int mTimeBeforeIssuingNDBReqs;
@@ -37,7 +40,9 @@ private:
     NdbDataReader* mNdbDataReader;
     FsMutationsBatcher* mFsMutationsBatcher;
     
-    Ndb* create_ndb_connection();
+    MetadataTableTailer* mMetadataTableTailer;
+    
+    Ndb* create_ndb_connection(const char* database);
     Ndb_cluster_connection* connect_to_cluster(const char *connection_string);
     
     void setup();

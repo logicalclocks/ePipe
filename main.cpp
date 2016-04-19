@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
             ("help", "produce help message")
             ("connection", po::value<string>(), "connection string/ ndb host")
             ("database", po::value<string>(), "database name")
+            ("meta_database", po::value<string>(), "database name for metadata")
             ("poll_maxTimeToWait", po::value<int>(), "max time to wait in miliseconds while waiting for events in pollEvents")
             ("wait_time", po::value<int>(), "time to wait in miliseconds before issuing the ndb request or the batch size reached")
             ("ndb_batch", po::value<int>(), "batch size for reading from ndb")
@@ -70,6 +71,7 @@ int main(int argc, char** argv) {
 
     string connection_string;
     string database_name;
+    string meta_database_name;
     int wait_time = 1000;
     int ndb_batch = 5;
     int poll_maxTimeToWait = 1000;
@@ -93,6 +95,10 @@ int main(int argc, char** argv) {
         database_name = vm["database"].as<string>();
     }
 
+    if (vm.count("meta_database")) {
+        meta_database_name = vm["meta_database"].as<string>();
+    }
+    
     if (vm.count("log")) {
         log_level = vm["log"].as<int>();
     }
@@ -115,7 +121,7 @@ int main(int argc, char** argv) {
     
     init_logging(log_level);
     
-    Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), 
+    Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), meta_database_name.c_str(),
             wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers);
     notifer->start();
 

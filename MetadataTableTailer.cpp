@@ -25,26 +25,26 @@
 #include "MetadataTableTailer.h"
 
 const char *METADATA_TABLE_NAME= "meta_data";
-const int NO_METADATA_TABLE_COLUMNS= 4;
+const int NO_METADATA_TABLE_COLUMNS= 3;
 const char *METADATA_TABLE_COLUMNS[NO_METADATA_TABLE_COLUMNS]=
     {"id",
      "fieldid",
-     "tupleid",
-     "data"
+     "tupleid"
     };
-
-const bool METADATA_TABLE_COLUMN_IS_BLOB[NO_METADATA_TABLE_COLUMNS] = {false, false, false, true};
 
 const int METADATA_NUM_EVENT_TYPES_TO_WATCH = 1; 
 const NdbDictionary::Event::TableEvent METADATA_EVENT_TYPES_TO_WATCH[METADATA_NUM_EVENT_TYPES_TO_WATCH] = { NdbDictionary::Event::TE_INSERT } ;
 
 MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait) : TableTailer(ndb, METADATA_TABLE_NAME, METADATA_TABLE_COLUMNS, 
-        NO_METADATA_TABLE_COLUMNS, METADATA_TABLE_COLUMN_IS_BLOB, METADATA_EVENT_TYPES_TO_WATCH,METADATA_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait) {
+        NO_METADATA_TABLE_COLUMNS, METADATA_EVENT_TYPES_TO_WATCH,METADATA_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait) {
 
 }
 
-void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[], NdbBlob* preBlobValue[], NdbBlob* blobValue[]){
-    
+void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
+    LOG_INFO() << " Metadata change";
+    LOG_INFO() << "Id= " << value[0]->int32_value();
+    LOG_INFO() << "FieldId= " << value[1]->int32_value();
+    LOG_INFO() << "TupleId= " << value[2]->int32_value();
 }
 
 MetadataTableTailer::~MetadataTableTailer() {

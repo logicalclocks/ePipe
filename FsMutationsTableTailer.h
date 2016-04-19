@@ -86,7 +86,7 @@ public:
     FsMutationRow consume();
     virtual ~FsMutationsTableTailer();    
 private:
-    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[], NdbBlob* preBlobValue[], NdbBlob* blobValue[]);
+    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     Cpq* mQueue;
 };
 

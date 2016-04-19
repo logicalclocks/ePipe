@@ -38,17 +38,15 @@ const char *MUTATION_TABLE_COLUMNS[NO_MUTATION_TABLE_COLUMNS]=
      "operation"
     };
 
-const bool MUTATION_TABLE_COLUMN_IS_BLOB[NO_MUTATION_TABLE_COLUMNS] = {false, false, false, false, false, false};
-
 const int MUTATION_NUM_EVENT_TYPES_TO_WATCH = 1; 
 const NdbDictionary::Event::TableEvent MUTATION_EVENT_TYPES_TO_WATCH[MUTATION_NUM_EVENT_TYPES_TO_WATCH] = { NdbDictionary::Event::TE_INSERT } ;
 
 FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
-        NO_MUTATION_TABLE_COLUMNS, MUTATION_TABLE_COLUMN_IS_BLOB, MUTATION_EVENT_TYPES_TO_WATCH, MUTATION_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait) {
+        NO_MUTATION_TABLE_COLUMNS, MUTATION_EVENT_TYPES_TO_WATCH, MUTATION_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait) {
     mQueue = new Cpq();
 }
 
-void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[], NdbBlob* preBlobValue[], NdbBlob* blobValue[]){
+void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
     FsMutationRow row;
     row.mDatasetId = value[0]->int32_value();
     row.mInodeId =  value[1]->int32_value();

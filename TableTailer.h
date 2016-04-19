@@ -29,15 +29,14 @@
 
 class TableTailer {
 public:
-    TableTailer(Ndb* ndb, const char *eventTableName,
-            const char **eventColumnNames, const int noEventColumnNames, const bool *eventColumnIsBlob,
+    TableTailer(Ndb* ndb, const char *eventTableName, const char **eventColumnNames, const int noEventColumnNames,
             const NdbDictionary::Event::TableEvent* watchEventTypes, const int numOfEventsTypesToWatch, const int poll_maxTimeToWait);
     void start();
     void waitToFinish();
     virtual ~TableTailer();
 
 protected:
-    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[], NdbBlob* preBlobValue[], NdbBlob* blobValue[]) = 0;
+    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) = 0;
 
 private:
     void createListenerEvent();
@@ -55,7 +54,6 @@ private:
     const char* mEventName;
     const char* mEventTableName;
     const char** mEventColumnNames;
-    const bool* mEventColumnIsBlob;
     const int mNoEventColumns;
     const int mPollMaxTimeToWait;
 };
