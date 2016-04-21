@@ -25,9 +25,9 @@
 #ifndef NOTIFIER_H
 #define NOTIFIER_H
 
-#include "NdbDataReader.h"
+#include "FsMutationsDataReader.h"
 #include "FsMutationsBatcher.h"
-#include "MetadataTableTailer.h"
+#include "MetadataBatcher.h"
 
 class Notifier {
 public:
@@ -49,7 +49,7 @@ private:
     const int mNumNdbReaders;
     
     FsMutationsTableTailer* mFsMutationsTableTailer;
-    NdbDataReader* mNdbDataReader;
+    FsMutationsDataReader* mFsMutationsDataReader;
     FsMutationsBatcher* mFsMutationsBatcher;
     
     MetadataTableTailer* mMetadataTableTailer;

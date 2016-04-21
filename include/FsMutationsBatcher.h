@@ -29,17 +29,17 @@
 
 #include "Batcher.h"
 #include "FsMutationsTableTailer.h"
-#include "NdbDataReader.h"
+#include "FsMutationsDataReader.h"
 
 class FsMutationsBatcher : public Batcher{
 public:
-    FsMutationsBatcher(FsMutationsTableTailer* table_tailer, NdbDataReader* data_reader, const int time_before_issuing_ndb_reqs, const int batch_size);
+    FsMutationsBatcher(FsMutationsTableTailer* table_tailer, FsMutationsDataReader* data_reader, const int time_before_issuing_ndb_reqs, const int batch_size);
     virtual ~FsMutationsBatcher();
 
 private:
     
     FsMutationsTableTailer* mTableTailer;
-    NdbDataReader* mNdbDataReader;
+    FsMutationsDataReader* mNdbDataReader;
     
     Cus* mAddOperations;    
     Cus* mDeleteOperations;    

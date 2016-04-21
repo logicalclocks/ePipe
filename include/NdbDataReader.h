@@ -30,12 +30,17 @@
 #include "ConcurrentQueue.h"
 #include "vector"
 
+template<typename Data>
 class NdbDataReader {
 public:
     NdbDataReader(Ndb** connections, const int num_readers);
     void start();
-    void process_batch(Cus_Cus added_deleted_batch);
+    void processBatch(Data data_batch);
     virtual ~NdbDataReader();
+
+protected:
+    virtual void readData(Ndb* connection, Data data_batch) = 0;
+    
 private:
     Ndb** mNdbConnections;
     const int mNumReaders;
@@ -43,11 +48,55 @@ private:
     bool mStarted;
     std::vector<boost::thread* > mThreads;
     
-    ConcurrentQueue<Cus_Cus>* mBatchedQueue;
+    ConcurrentQueue<Data>* mBatchedQueue;
     
     void readerThread(int connectionId);
-    void readData(Ndb* connection, Cus* added);
 };
+
+
+template<typename Data>
+NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers) : mNdbConnections(connections), mNumReaders(num_readers){
+    mStarted = false;
+    mBatchedQueue = new ConcurrentQueue<Cus_Cus>();
+}
+
+template<typename Data>
+void NdbDataReader<Data>::start() {
+    if (mStarted) {
+        return;
+    }
+    
+    for(int i=0; i< mNumReaders; i++){
+        boost::thread* th = new boost::thread(&NdbDataReader::readerThread, this, i);
+        LOG_DEBUG() << " Reader Thread [" << th->get_id() << "] created"; 
+        mThreads.push_back(th);
+    }
+    mStarted = true;
+}
+
+template<typename Data>
+void NdbDataReader<Data>::readerThread(int connIndex) {
+    while(true){
+        Data curr;
+        mBatchedQueue->wait_and_pop(curr);
+        LOG_DEBUG() << " Process Batch ";
+        readData(mNdbConnections[connIndex], curr);
+    }
+}
+
+template<typename Data>
+void NdbDataReader<Data>::processBatch(Data data_batch) {
+    mBatchedQueue->push(data_batch);
+}
+
+template<typename Data>
+NdbDataReader<Data>::~NdbDataReader() {
+    for(int i=0; i< mNumReaders; i++){
+        delete mNdbConnections[i];
+    }
+    delete[] mNdbConnections;
+    delete mBatchedQueue;
+}
 
 #endif /* NDBDATAREADER_H */
 

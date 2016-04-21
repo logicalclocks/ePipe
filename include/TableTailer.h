@@ -25,7 +25,7 @@
 #ifndef TABLETAILER_H
 #define TABLETAILER_H
 
-#include "common.h"
+#include "Utils.h"
 
 class TableTailer {
 public:

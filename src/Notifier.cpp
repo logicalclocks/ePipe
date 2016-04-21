@@ -33,7 +33,7 @@ Notifier::Notifier(const char* connection_string, const char* database_name, con
 }
 
 void Notifier::start() {
-    mNdbDataReader->start();
+    mFsMutationsDataReader->start();
     
     mFsMutationsTableTailer->start();
     mMetadataTableTailer->start();
@@ -51,9 +51,9 @@ void Notifier::setup() {
     for(int i=0; i< mNumNdbReaders; i++){
         mutations_connections[i] = create_ndb_connection(mDatabaseName);
     }
-    mNdbDataReader = new NdbDataReader(mutations_connections, mNumNdbReaders);
+    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders);
     
-    mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mNdbDataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
+    mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
     
     
     Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);

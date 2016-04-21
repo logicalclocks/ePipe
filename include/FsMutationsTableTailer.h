@@ -80,7 +80,7 @@ struct Cus_Cus{
     Cus* deleted;
 };
 
-class FsMutationsTableTailer : public TableTailer{
+class FsMutationsTableTailer : public TableTailer {
 public:
     FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait);
     FsMutationRow consume();

@@ -17,49 +17,26 @@
  */
 
 /* 
- * File:   NdbDataReader.cpp
+ * File:   FsMutationsDataReader.cpp
  * Author: Mahmoud Ismail<maism@kth.se>
  * 
  */
 
-#include "NdbDataReader.h"
-#include "Utils.h"
+#include "FsMutationsDataReader.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 #include <boost/network.hpp>
 
 using namespace boost::network;
-using namespace boost::network::http; 
+using namespace boost::network::http;
 
-NdbDataReader::NdbDataReader(Ndb** connections, const int num_readers) : mNdbConnections(connections), mNumReaders(num_readers){
-    mStarted = false;
-    mBatchedQueue = new ConcurrentQueue<Cus_Cus>();
-}
-
-void NdbDataReader::start() {
-    if (mStarted) {
-        return;
-    }
+FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers) : NdbDataReader<Cus_Cus>(connections, num_readers){
     
-    for(int i=0; i< mNumReaders; i++){
-        boost::thread* th = new boost::thread(&NdbDataReader::readerThread, this, i);
-        LOG_DEBUG() << " Reader Thread [" << th->get_id() << "] created"; 
-        mThreads.push_back(th);
-    }
-    mStarted = true;
 }
 
-void NdbDataReader::readerThread(int connIndex) {
-    while(true){
-        Cus_Cus curr;
-        mBatchedQueue->wait_and_pop(curr);
-        LOG_DEBUG() << " Process Batch Add [" << curr.added->unsynchronized_size() << "] Delete [" << curr.deleted->unsynchronized_size() << "] ";
-        readData(mNdbConnections[connIndex], curr.added);
-    }
-}
-
-void NdbDataReader::readData(Ndb* connection, Cus* added) {
-
+void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
+    Cus* added = data_batch.added;
+    
     const NdbDictionary::Dictionary* database = connection->getDictionary();
     if (!database) LOG_NDB_API_ERROR(connection->getNdbError());
 
@@ -206,14 +183,6 @@ void NdbDataReader::readData(Ndb* connection, Cus* added) {
     LOG_INFO() << body_;
 }
 
-void NdbDataReader::process_batch(Cus_Cus added_deleted_batch) {
-    mBatchedQueue->push(added_deleted_batch);
+FsMutationsDataReader::~FsMutationsDataReader() {
+    
 }
-
-NdbDataReader::~NdbDataReader() {
-    for(int i=0; i< mNumReaders; i++){
-        delete mNdbConnections[i];
-    }
-    delete mBatchedQueue;
-}
-

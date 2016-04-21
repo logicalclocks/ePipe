@@ -16,35 +16,25 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+
 /* 
- * File:   MetadataTableTailer.h
+ * File:   MetadataBatcher.h
  * Author: Mahmoud Ismail<maism@kth.se>
  *
  */
 
-#ifndef METADATATABLETAILER_H
-#define METADATATABLETAILER_H
+#ifndef METADATABATCHER_H
+#define METADATABATCHER_H
 
-#include "TableTailer.h"
-#include "ConcurrentQueue.h"
+#include "MetadataTableTailer.h"
 
-struct MetadataRow {
-     int mId;
-     int mFieldId;
-     int mTupleId;
-     string mMetadata;
-};
-
-
-class MetadataTableTailer : public TableTailer {
+class MetadataBatcher {
 public:
-    MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait);
-    MetadataRow consume();
-    virtual ~MetadataTableTailer();
+    MetadataBatcher();
+    virtual ~MetadataBatcher();
 private:
-    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    ConcurrentQueue<MetadataRow>* mQueue;
+
 };
 
-#endif /* METADATATABLETAILER_H */
+#endif /* METADATABATCHER_H */
 

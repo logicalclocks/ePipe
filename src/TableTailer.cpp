@@ -149,5 +149,11 @@ bool TableTailer::correctResult(NdbRecAttr* values[]){
 
 TableTailer::~TableTailer() {
     delete mNdbConnection;
+    delete mEventTableName;
+    for(int i=0; i<mNoEventColumns; i++){
+        delete mEventColumnNames[i];
+    }
+    delete [] mEventColumnNames;
+    delete mEventName;
 }
 

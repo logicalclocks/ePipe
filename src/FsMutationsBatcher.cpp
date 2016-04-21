@@ -24,7 +24,7 @@
 
 #include "FsMutationsBatcher.h"
 
-FsMutationsBatcher::FsMutationsBatcher(FsMutationsTableTailer* table_tailer, NdbDataReader* data_reader, 
+FsMutationsBatcher::FsMutationsBatcher(FsMutationsTableTailer* table_tailer, FsMutationsDataReader* data_reader, 
         const int time_before_issuing_ndb_reqs, const int batch_size) : Batcher(time_before_issuing_ndb_reqs, batch_size) {
     
     mTableTailer = table_tailer;
@@ -79,7 +79,7 @@ void FsMutationsBatcher::processBatch() {
         mAddOperations = new Cus();
         mLock.unlock();
         
-        mNdbDataReader->process_batch(added_deleted_batch);
+        mNdbDataReader->processBatch(added_deleted_batch);
     }
 }
 

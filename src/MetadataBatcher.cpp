@@ -17,34 +17,17 @@
  */
 
 /* 
- * File:   MetadataTableTailer.h
+ * File:   MetadataBatcher.cpp
  * Author: Mahmoud Ismail<maism@kth.se>
- *
+ * 
  */
 
-#ifndef METADATATABLETAILER_H
-#define METADATATABLETAILER_H
+#include "MetadataBatcher.h"
 
-#include "TableTailer.h"
-#include "ConcurrentQueue.h"
-
-struct MetadataRow {
-     int mId;
-     int mFieldId;
-     int mTupleId;
-     string mMetadata;
-};
+MetadataBatcher::MetadataBatcher() {
+}
 
 
-class MetadataTableTailer : public TableTailer {
-public:
-    MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait);
-    MetadataRow consume();
-    virtual ~MetadataTableTailer();
-private:
-    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    ConcurrentQueue<MetadataRow>* mQueue;
-};
-
-#endif /* METADATATABLETAILER_H */
+MetadataBatcher::~MetadataBatcher() {
+}
 
