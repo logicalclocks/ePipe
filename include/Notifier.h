@@ -53,6 +53,8 @@ private:
     FsMutationsBatcher* mFsMutationsBatcher;
     
     MetadataTableTailer* mMetadataTableTailer;
+    MetadataReader* mMetadataReader;
+    MetadataBatcher* mMetadataBatcher;
     
     Ndb* create_ndb_connection(const char* database);
     Ndb_cluster_connection* connect_to_cluster(const char *connection_string);

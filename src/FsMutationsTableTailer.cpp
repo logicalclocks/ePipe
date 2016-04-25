@@ -53,8 +53,8 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
     row.mTimestamp = value[2]->int64_value();
     row.mParentId = value[3]->int8_value();
     row.mInodeName = get_string(value[4]);
-    row.mOperation = value[5]->int8_value();
-    LOG_TRACE() << " push inode [" << row.mInodeId << "] to queue";
+    row.mOperation = static_cast<Operation>(value[5]->int8_value());
+    LOG_TRACE() << " push inode [" << row.mInodeId << "] to queue, Op [" << row.mOperation << "]";
     mQueue->push(row);
 }
 

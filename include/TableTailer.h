@@ -27,6 +27,11 @@
 
 #include "Utils.h"
 
+enum Operation{
+    ADD = 0,
+    DELETE = 1
+};
+
 class TableTailer {
 public:
     TableTailer(Ndb* ndb, const char *eventTableName, const char **eventColumnNames, const int noEventColumnNames,
@@ -43,7 +48,7 @@ private:
     void removeListenerEvent();
     void waitForEvents();
     void run();
-    bool correctResult(NdbRecAttr* values[]);
+    bool correctResult(NdbDictionary::Event::TableEvent event, NdbRecAttr* values[]);
     
     bool mStarted;
     boost::thread mThread;

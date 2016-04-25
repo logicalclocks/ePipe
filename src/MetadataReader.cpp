@@ -17,23 +17,22 @@
  */
 
 /* 
- * File:   FsMutationsDataReader.h
+ * File:   MetadataReader.cpp
  * Author: Mahmoud Ismail<maism@kth.se>
- *
+ * 
  */
 
-#ifndef FSMUTATIONSDATAREADER_H
-#define FSMUTATIONSDATAREADER_H
+#include "MetadataReader.h"
 
-#include "NdbDataReader.h"
+MetadataReader::MetadataReader(Ndb** connections, const int num_readers) : NdbDataReader(connections, num_readers) {
+    
+}
 
-class FsMutationsDataReader : public NdbDataReader<Cus_Cus>{
-public:
-    FsMutationsDataReader(Ndb** connections, const int num_readers);
-    virtual ~FsMutationsDataReader();
-private:
-    virtual void readData(Ndb* connection, Cus_Cus data_batch);
-};
+void MetadataReader::readData(Ndb* connection, Mq_Mq data_batch) {
 
-#endif /* FSMUTATIONSDATAREADER_H */
+}
+
+
+MetadataReader::~MetadataReader() {
+}
 

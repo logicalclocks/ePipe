@@ -26,15 +26,31 @@
 #define METADATATABLETAILER_H
 
 #include "TableTailer.h"
-#include "ConcurrentQueue.h"
+#include "ConcurrentPriorityQueue.h"
 
 struct MetadataRow {
      int mId;
      int mFieldId;
      int mTupleId;
      string mMetadata;
+     Operation mOperation;
 };
 
+struct MetadataRowComparator
+{
+    bool operator()(const MetadataRow &r1, const MetadataRow &r2) const
+    {
+        return r1.mId > r2.mId;
+    }
+};
+
+typedef ConcurrentPriorityQueue<MetadataRow, MetadataRowComparator> Cmq;
+typedef queue<MetadataRow> Mq;
+
+struct Mq_Mq {
+    Mq* added;
+    Mq* deleted;
+};
 
 class MetadataTableTailer : public TableTailer {
 public:
@@ -43,7 +59,7 @@ public:
     virtual ~MetadataTableTailer();
 private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    ConcurrentQueue<MetadataRow>* mQueue;
+    Cmq* mQueue;
 };
 
 #endif /* METADATATABLETAILER_H */

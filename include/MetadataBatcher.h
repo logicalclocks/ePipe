@@ -27,13 +27,23 @@
 #define METADATABATCHER_H
 
 #include "MetadataTableTailer.h"
+#include "Batcher.h"
+#include "MetadataReader.h"
 
-class MetadataBatcher {
+class MetadataBatcher : public Batcher{
 public:
-    MetadataBatcher();
+    MetadataBatcher(MetadataTableTailer* table_tailer, MetadataReader* data_reader, const int time_before_issuing_ndb_reqs, const int batch_size);
     virtual ~MetadataBatcher();
 private:
-
+    MetadataTableTailer* mTableTailer;
+    MetadataReader* mNdbDataReader;
+    
+    Mq* mAddOperations;    
+    Mq* mDeleteOperations;    
+    boost::mutex mLock;
+    
+    virtual void run();
+    virtual void processBatch();
 };
 
 #endif /* METADATABATCHER_H */

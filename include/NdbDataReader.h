@@ -57,7 +57,7 @@ private:
 template<typename Data>
 NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers) : mNdbConnections(connections), mNumReaders(num_readers){
     mStarted = false;
-    mBatchedQueue = new ConcurrentQueue<Cus_Cus>();
+    mBatchedQueue = new ConcurrentQueue<Data>();
 }
 
 template<typename Data>

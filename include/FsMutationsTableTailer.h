@@ -35,7 +35,7 @@ struct FsMutationRow {
      int mInodeId;
      string mInodeName;
      long mTimestamp;
-     char mOperation;
+     Operation mOperation;
 };
 
 struct FsMutationRowEqual {
@@ -57,11 +57,6 @@ struct FsMutationRowHash {
         
         return seed;
     }
-};
-
-enum Operation{
-    ADD = 0,
-    DELETE = 1
 };
 
 struct FsMutationRowComparator

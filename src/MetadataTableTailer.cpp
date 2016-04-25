@@ -33,11 +33,16 @@ const char *METADATA_TABLE_COLUMNS[NO_METADATA_TABLE_COLUMNS]=
      "data"
     };
 
-const int METADATA_NUM_EVENT_TYPES_TO_WATCH = 1; 
-const NdbDictionary::Event::TableEvent METADATA_EVENT_TYPES_TO_WATCH[METADATA_NUM_EVENT_TYPES_TO_WATCH] = { NdbDictionary::Event::TE_INSERT } ;
+const int METADATA_NUM_EVENT_TYPES_TO_WATCH = 3; 
+const NdbDictionary::Event::TableEvent METADATA_EVENT_TYPES_TO_WATCH[METADATA_NUM_EVENT_TYPES_TO_WATCH] = 
+    { NdbDictionary::Event::TE_INSERT, 
+      NdbDictionary::Event::TE_UPDATE, 
+      NdbDictionary::Event::TE_DELETE
+    };
 
 MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait) : TableTailer(ndb, METADATA_TABLE_NAME, METADATA_TABLE_COLUMNS, 
         NO_METADATA_TABLE_COLUMNS, METADATA_EVENT_TYPES_TO_WATCH,METADATA_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait) {
+    mQueue = new Cmq();
 
 }
 
@@ -47,14 +52,19 @@ void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType
     row.mFieldId = value[1]->int32_value();
     row.mTupleId = value[2]->int32_value();
     row.mMetadata = Utils::get_string(value[3]);
-    LOG_TRACE() << " push metadata [" << row.mTupleId << "," << row.mFieldId << "] to queue";
+    row.mOperation = ADD;
+    if(eventType == NdbDictionary::Event::TE_DELETE){
+        row.mOperation = DELETE;
+    }
+    
+    LOG_TRACE() << " push metadata [" << row.mId  << "," << row.mTupleId << "," << row.mFieldId << "] to queue, Op [" << row.mOperation << "]";
     mQueue->push(row);
 }
 
 MetadataRow MetadataTableTailer::consume() {
     MetadataRow res;
     mQueue->wait_and_pop(res);
-    LOG_TRACE() << " pop metadata [" << res.mTupleId << "," << res.mFieldId << "] to queue";
+    LOG_TRACE() << " pop metadata [" << res.mId  << "," << res.mTupleId << "," << res.mFieldId << "] to queue, Op [" << res.mOperation << "]";
     return res;
 }
 

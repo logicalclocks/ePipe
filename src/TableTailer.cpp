@@ -70,7 +70,6 @@ void TableTailer::createListenerEvent() {
     for(int i=0; i< mNumOfEventsTypesToWatch; i++){
         myEvent.addTableEvent(mWatchEventTypes[i]);
     }
-    
     myEvent.addEventColumns(mNoEventColumns, mEventColumnNames);
     //myEvent.mergeEvents(merge_events);
 
@@ -118,12 +117,13 @@ void TableTailer::waitForEvents() {
         int r = mNdbConnection->pollEvents(mPollMaxTimeToWait);
         if (r > 0) {
             while ((op = mNdbConnection->nextEvent())) {
-                switch (op->getEventType()) {
+                NdbDictionary::Event::TableEvent event = op->getEventType();
+                switch (event) {
                     case NdbDictionary::Event::TE_INSERT:
                     case NdbDictionary::Event::TE_DELETE:
                     case NdbDictionary::Event::TE_UPDATE:
-                        if(correctResult(recAttr)){
-                            handleEvent(op->getEventType(), recAttrPre, recAttr);
+                        if(correctResult(event, recAttr)){
+                            handleEvent(event, recAttrPre, recAttr);
                         }
                         break;
                     default:
@@ -137,10 +137,10 @@ void TableTailer::waitForEvents() {
 
 }
 
-bool TableTailer::correctResult(NdbRecAttr* values[]){
+bool TableTailer::correctResult(NdbDictionary::Event::TableEvent event, NdbRecAttr* values[]){
     for(int col=0; col<mNoEventColumns; col++){
-        if(values[col]->isNULL() != 0){
-            LOG_ERROR() << "Error at column " << mEventColumnNames[col];
+        if(values[col]->isNULL() != 0 && event != NdbDictionary::Event::TE_DELETE ){
+            LOG_ERROR() << "Error at column " << mEventColumnNames[col] << " " << values[col]->isNULL() << " IsDelete " << event << " || " << NdbDictionary::Event::TE_DELETE;
             return false;
         }
     }

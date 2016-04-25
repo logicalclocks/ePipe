@@ -34,13 +34,16 @@ Notifier::Notifier(const char* connection_string, const char* database_name, con
 
 void Notifier::start() {
     mFsMutationsDataReader->start();
+    mMetadataReader->start();
     
     mFsMutationsTableTailer->start();
     mMetadataTableTailer->start();
     
     mFsMutationsBatcher->start();
+    mMetadataBatcher->start();
     
     mFsMutationsBatcher->waitToFinish();
+    mMetadataBatcher->waitToFinish();
 }
 
 void Notifier::setup() {
@@ -51,14 +54,21 @@ void Notifier::setup() {
     for(int i=0; i< mNumNdbReaders; i++){
         mutations_connections[i] = create_ndb_connection(mDatabaseName);
     }
-    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders);
     
+    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders);
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
     
     
     Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
     mMetadataTableTailer = new MetadataTableTailer(metadata_tailer_connection, mPollMaxTimeToWait);
     
+    Ndb** metadata_connections = new Ndb*[mNumNdbReaders];
+    for(int i=0; i< mNumNdbReaders; i++){
+        metadata_connections[i] = create_ndb_connection(mMetaDatabaseName);
+    }
+     
+    mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders);
+    mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
 }
 
 Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_string) {
@@ -95,5 +105,12 @@ Ndb* Notifier::create_ndb_connection(const char* database) {
 
 Notifier::~Notifier() {
     delete mClusterConnection;
+    delete mFsMutationsTableTailer;
+    delete mFsMutationsDataReader;
+    delete mFsMutationsBatcher;
+    delete mMetadataTableTailer;
+    delete mMetadataReader;
+    delete mMetadataBatcher;
+    
     ndb_end(2);
 }
