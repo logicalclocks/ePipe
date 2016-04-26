@@ -29,22 +29,27 @@
 #include "FsMutationsTableTailer.h"
 #include "ConcurrentQueue.h"
 #include "vector"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include <boost/network.hpp>
 
 template<typename Data>
 class NdbDataReader {
 public:
-    NdbDataReader(Ndb** connections, const int num_readers);
+    NdbDataReader(Ndb** connections, const int num_readers, string elastic_addr);
     void start();
     void processBatch(Data data_batch);
     virtual ~NdbDataReader();
 
 protected:
     virtual void readData(Ndb* connection, Data data_batch) = 0;
+    string mElasticBulkUrl;
     
 private:
     Ndb** mNdbConnections;
     const int mNumReaders;
-
+    const string mElasticAddr;
+    
     bool mStarted;
     std::vector<boost::thread* > mThreads;
     
@@ -55,8 +60,10 @@ private:
 
 
 template<typename Data>
-NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers) : mNdbConnections(connections), mNumReaders(num_readers){
+NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers, 
+        string elastic_ip) : mNdbConnections(connections), mNumReaders(num_readers), mElasticAddr(elastic_ip){
     mStarted = false;
+    mElasticBulkUrl = "http://" + mElasticAddr + "/_bulk";
     mBatchedQueue = new ConcurrentQueue<Data>();
 }
 

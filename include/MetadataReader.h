@@ -30,7 +30,7 @@
 
 class MetadataReader : public NdbDataReader<Mq_Mq>{
 public:
-    MetadataReader(Ndb** connections, const int num_readers);
+    MetadataReader(Ndb** connections, const int num_readers, string elastic_ip);
     virtual ~MetadataReader();
 private:
     virtual void readData(Ndb* connection, Mq_Mq data_batch);

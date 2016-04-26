@@ -23,15 +23,12 @@
  */
 
 #include "FsMutationsDataReader.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-#include <boost/network.hpp>
 
 using namespace boost::network;
 using namespace boost::network::http;
 
-FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers) : NdbDataReader<Cus_Cus>(connections, num_readers){
-    
+FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, std::string elastic_ip) : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip){
+
 }
 
 void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
@@ -165,8 +162,7 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
 
     connection->closeTransaction(ts);
     
-    
-    client::request request_("http://localhost:9200/_bulk");
+    client::request request_(mElasticBulkUrl);
     request_ << header("Connection", "close");
     request_ << header("Content-Type", "application/json");
     
@@ -180,7 +176,7 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
     client::response response_ = client_.post(request_);
     std::string body_ = body(response_);
 
-    LOG_INFO() << body_;
+    LOG_INFO() << " RESP " << body_;
 }
 
 FsMutationsDataReader::~FsMutationsDataReader() {

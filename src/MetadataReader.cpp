@@ -24,8 +24,8 @@
 
 #include "MetadataReader.h"
 
-MetadataReader::MetadataReader(Ndb** connections, const int num_readers) : NdbDataReader(connections, num_readers) {
-    
+MetadataReader::MetadataReader(Ndb** connections, const int num_readers,  std::string elastic_ip) : NdbDataReader(connections, num_readers, elastic_ip) {
+
 }
 
 void MetadataReader::readData(Ndb* connection, Mq_Mq data_batch) {

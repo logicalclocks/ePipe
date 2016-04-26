@@ -66,6 +66,7 @@ int main(int argc, char** argv) {
             ("wait_time", po::value<int>(), "time to wait in miliseconds before issuing the ndb request or the batch size reached")
             ("ndb_batch", po::value<int>(), "batch size for reading from ndb")
             ("num_ndb_readers", po::value<int>(), "num of ndb reader threads")
+            ("elastic_addr", po::value<string>(), "ip and port of the elasticsearch server")
             ("log", po::value<int>(), "log level trace=0, debug=1, info=1, error=2")
             ;
 
@@ -76,6 +77,7 @@ int main(int argc, char** argv) {
     int ndb_batch = 5;
     int poll_maxTimeToWait = 1000;
     int num_ndb_readers = 5;
+    string elastic_addr = "localhost:9200";
     int log_level = 1;
 
     po::variables_map vm;
@@ -119,10 +121,14 @@ int main(int argc, char** argv) {
         num_ndb_readers = vm["num_ndb_readers"].as<int>();
     }
     
+    if(vm.count("elastic_addr")){
+        elastic_addr = vm["elastic_addr"].as<string>();
+    }
+    
     init_logging(log_level);
     
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), meta_database_name.c_str(),
-            wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers);
+            wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers, elastic_addr);
     notifer->start();
 
     return EXIT_SUCCESS;

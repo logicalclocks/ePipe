@@ -29,7 +29,7 @@
 
 class FsMutationsDataReader : public NdbDataReader<Cus_Cus>{
 public:
-    FsMutationsDataReader(Ndb** connections, const int num_readers);
+    FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip);
     virtual ~FsMutationsDataReader();
 private:
     virtual void readData(Ndb* connection, Cus_Cus data_batch);

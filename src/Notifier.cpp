@@ -25,9 +25,9 @@
 #include "Notifier.h"
 
 Notifier::Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
-        const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, const int num_ndb_readers)
+        const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, const int num_ndb_readers, const string elastic_ip)
 : mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
-        mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers) {
+        mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers), mElasticAddr(elastic_ip) {
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
 }
@@ -55,7 +55,7 @@ void Notifier::setup() {
         mutations_connections[i] = create_ndb_connection(mDatabaseName);
     }
     
-    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders);
+    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders, mElasticAddr);
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
     
     
@@ -67,7 +67,7 @@ void Notifier::setup() {
         metadata_connections[i] = create_ndb_connection(mMetaDatabaseName);
     }
      
-    mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders);
+    mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr);
     mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
 }
 
