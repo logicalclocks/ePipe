@@ -33,6 +33,8 @@
 #include "rapidjson/stringbuffer.h"
 #include <boost/network.hpp>
 
+typedef boost::network::http::client httpclient;
+
 template<typename Data>
 class NdbDataReader {
 public:
@@ -43,12 +45,13 @@ public:
 
 protected:
     virtual void readData(Ndb* connection, Data data_batch) = 0;
-    string mElasticBulkUrl;
+    string bulkUpdateElasticSearch(string json);
     
 private:
     Ndb** mNdbConnections;
     const int mNumReaders;
     const string mElasticAddr;
+    string mElasticBulkUrl;
     
     bool mStarted;
     std::vector<boost::thread* > mThreads;
@@ -65,6 +68,25 @@ NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers,
     mStarted = false;
     mElasticBulkUrl = "http://" + mElasticAddr + "/_bulk";
     mBatchedQueue = new ConcurrentQueue<Data>();
+}
+
+template<typename Data>
+string NdbDataReader<Data>::bulkUpdateElasticSearch(string json){
+    
+    httpclient::request request_(mElasticBulkUrl);
+    request_ << boost::network::header("Connection", "close");
+    request_ << boost::network::header("Content-Type", "application/json");
+    
+    char body_str_len[8];
+    sprintf(body_str_len, "%lu", json.length());
+
+    request_ << boost::network::header("Content-Length", body_str_len);
+    request_ << boost::network::body(json);
+    
+    httpclient client_;
+    httpclient::response response_ = client_.post(request_);
+    std::string body_ = boost::network::http::body(response_);
+    return body_;
 }
 
 template<typename Data>
@@ -87,7 +109,11 @@ void NdbDataReader<Data>::readerThread(int connIndex) {
         Data curr;
         mBatchedQueue->wait_and_pop(curr);
         LOG_DEBUG() << " Process Batch ";
+        boost::posix_time::ptime t1 = boost::posix_time::microsec_clock::local_time();
         readData(mNdbConnections[connIndex], curr);
+        boost::posix_time::ptime t2 = boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::time_duration elaspsed = t2 - t1;
+        LOG_DEBUG() << " Process Batch took " << elaspsed.total_milliseconds() << " msec ";
     }
 }
 

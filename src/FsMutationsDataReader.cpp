@@ -24,10 +24,12 @@
 
 #include "FsMutationsDataReader.h"
 
-using namespace boost::network;
-using namespace boost::network::http;
+const int NUM_INODES_COLS = 4;
+const char* INODES_COLS_TO_READ[] = {"id", "size", "user_id", "group_id"};
+const int USER_ID_COL=2;
+const int GROUP_ID_COL=3;
 
-FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, std::string elastic_ip) : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip){
+FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip) : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip){
 
 }
 
@@ -45,9 +47,6 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
     
     NdbDictionary::Column::ArrayType name_array_type = inodes_table->getColumn("name")->getArrayType();
     
-    const int num_inodes_columns = 2;
-    const char* inodes_columns_to_read[] = {"id", "size"};
-
     int batch_size = added->unsynchronized_size();
     
     std::vector<FsMutationRow> pending;
@@ -70,8 +69,8 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
         op->equal("parent_id", row.mParentId);
         op->equal("name", Utils::get_ndb_varchar(row.mInodeName, name_array_type));
         
-        for(int c=0; c<num_inodes_columns; c++){
-            NdbRecAttr* col = op->getValue(inodes_columns_to_read[c]);
+        for(int c=0; c<NUM_INODES_COLS; c++){
+            NdbRecAttr* col = op->getValue(INODES_COLS_TO_READ[c]);
             if (col == NULL) LOG_NDB_API_ERROR(ts->getNdbError());
             cols[i].push_back(col);
         }
@@ -81,24 +80,76 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
         i++;
     }                    
     
-    if(ts->execute(NdbTransaction::Commit) == -1){
+    if(ts->execute(NdbTransaction::NoCommit) == -1){
         LOG_NDB_API_ERROR(ts->getNdbError());
     }
 
+    //TODO: Check users and groups cache
+        
+    const NdbDictionary::Table* users_table = database->getTable("hdfs_users");
+    if (!users_table) LOG_NDB_API_ERROR(database->getNdbError());
+    
+    const NdbDictionary::Table* groups_table = database->getTable("hdfs_groups");
+    if (!users_table) LOG_NDB_API_ERROR(database->getNdbError());
+    
+    boost::unordered_set<int> user_ids;
+    boost::unordered_set<int> group_ids;
+    boost::unordered_map<int, NdbRecAttr*> users;
+    boost::unordered_map<int, NdbRecAttr*> groups;
 
+    for(int i=0; i< batch_size; i++){
+        user_ids.insert(cols[i][USER_ID_COL]->int32_value());
+        group_ids.insert(cols[i][GROUP_ID_COL]->int32_value());
+    }
+    
+    for(boost::unordered_set<int>::iterator it = user_ids.begin(); 
+            it != user_ids.end(); ++it){
+         NdbOperation* user_op = ts->getNdbOperation(users_table);
+        user_op->readTuple(NdbOperation::LM_CommittedRead);
+        int user_id = *it;
+        user_op->equal("id", user_id);
+        NdbRecAttr* user_name = user_op->getValue("name");
+        if (user_name == NULL) LOG_NDB_API_ERROR(ts->getNdbError());
+        users[user_id] = user_name;
+    }
+    
+     for(boost::unordered_set<int>::iterator it = group_ids.begin(); 
+            it != group_ids.end(); ++it){
+         NdbOperation* group_op = ts->getNdbOperation(groups_table);
+        group_op->readTuple(NdbOperation::LM_CommittedRead);
+        int group_id = *it;
+        group_op->equal("id", group_id);
+        NdbRecAttr* group_name = group_op->getValue("name");
+        if (group_name == NULL) LOG_NDB_API_ERROR(ts->getNdbError());
+        groups[group_id] = group_name;
+    }
+    
+    if(ts->execute(NdbTransaction::Commit) == -1){
+        LOG_NDB_API_ERROR(ts->getNdbError());
+    }
+    
+    //TODO: update current cache
+    
+    std::string data = createJSON(pending, cols, users, groups);
+        
+    LOG_INFO() << " Out :: " << endl << data << endl;
+
+    connection->closeTransaction(ts);
+    
+    string resp = bulkUpdateElasticSearch(data);
+    
+    LOG_INFO() << " RESP " << resp;
+}
+
+string FsMutationsDataReader::createJSON(std::vector<FsMutationRow> pending, std::vector<NdbRecAttr*> inodes[],
+        boost::unordered_map<int, NdbRecAttr*> users, boost::unordered_map<int, NdbRecAttr*> groups) {
+    
     std::stringstream out;
-
-    for (int i = 0; i < batch_size; i++) {
-        if (pending[i].mInodeId != cols[i][0]->int32_value()) {
+    for (unsigned int i = 0; i < pending.size(); i++) {
+        if (pending[i].mInodeId != inodes[i][0]->int32_value()) {
             LOG_INFO() << " Data for " << pending[i].mParentId << ", " << pending[i].mInodeName << " not found";
             break;
         }
-
-        for (int c = 0; c < num_inodes_columns; c++) {
-            NdbRecAttr* col = cols[i][c];
-            LOG_INFO() << "Got values for INode " << col->getColumn()->getName() << " = " << col->int64_value();
-        }
-
 
         rapidjson::StringBuffer sbOp;
         rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -109,13 +160,19 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
         opWriter.StartObject();
 
         opWriter.String("_index");
-        opWriter.String("test");
+        opWriter.String("projects");
         
         opWriter.String("_type");
-        opWriter.String("inodes");
+        opWriter.String("inode");
+        
+        opWriter.String("_parent");
+        opWriter.Int(3);
+        
+        opWriter.String("_routing");
+        opWriter.Int(2);
         
         opWriter.String("_id");
-        opWriter.Int(cols[i][0]->int32_value());
+        opWriter.Int(inodes[i][0]->int32_value());
 
         opWriter.EndObject();
         
@@ -143,7 +200,7 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
         docWriter.Int64(pending[i].mTimestamp);
         
         docWriter.String("size");
-        docWriter.Int64(cols[i][1]->int64_value());
+        docWriter.Int64(inodes[i][1]->int64_value());
         
         docWriter.EndObject();
         
@@ -156,27 +213,7 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
                 
     }
 
-    std::string data = out.str();
-        
-    LOG_INFO() << " Out :: " << endl << data << endl;
-
-    connection->closeTransaction(ts);
-    
-    client::request request_(mElasticBulkUrl);
-    request_ << header("Connection", "close");
-    request_ << header("Content-Type", "application/json");
-    
-    char body_str_len[8];
-    sprintf(body_str_len, "%lu", data.length());
-
-    request_ << header("Content-Length", body_str_len);
-    request_ << body(data);
-    
-    client client_;
-    client::response response_ = client_.post(request_);
-    std::string body_ = body(response_);
-
-    LOG_INFO() << " RESP " << body_;
+    return out.str();
 }
 
 FsMutationsDataReader::~FsMutationsDataReader() {

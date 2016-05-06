@@ -33,6 +33,8 @@ public:
     virtual ~FsMutationsDataReader();
 private:
     virtual void readData(Ndb* connection, Cus_Cus data_batch);
+    string createJSON(std::vector<FsMutationRow> pending, std::vector<NdbRecAttr*> inodes[], boost::unordered_map<int, NdbRecAttr*> users,
+    boost::unordered_map<int, NdbRecAttr*> groups);
 };
 
 #endif /* FSMUTATIONSDATAREADER_H */
