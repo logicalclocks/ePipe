@@ -26,15 +26,26 @@
 #define FSMUTATIONSDATAREADER_H
 
 #include "NdbDataReader.h"
+#include "Cache.h"
+
+typedef boost::unordered_map<int, NdbRecAttr*> UGMap;
+typedef boost::unordered_set<int> UGSet;
+typedef vector<NdbRecAttr*> Row;
 
 class FsMutationsDataReader : public NdbDataReader<Cus_Cus>{
 public:
     FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip);
     virtual ~FsMutationsDataReader();
 private:
+    Cache<int, string> mUsersCache;
+    Cache<int, string> mGroupsCache;
+    
     virtual void readData(Ndb* connection, Cus_Cus data_batch);
-    string createJSON(std::vector<FsMutationRow> pending, std::vector<NdbRecAttr*> inodes[], boost::unordered_map<int, NdbRecAttr*> users,
-    boost::unordered_map<int, NdbRecAttr*> groups);
+    
+    void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Cus* added, Row* inodes, FsMutationRow* pending);
+    void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Row* inodes, int batchSize);
+    UGMap getUsersOrGroupsFromDB(const NdbDictionary::Table* table, NdbTransaction* transaction, UGSet ids);
+    string createJSON(FsMutationRow* pending, Row* inodes, int batch_size);
 };
 
 #endif /* FSMUTATIONSDATAREADER_H */

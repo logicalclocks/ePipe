@@ -35,6 +35,8 @@
 
 typedef boost::network::http::client httpclient;
 
+using namespace Utils;
+
 template<typename Data>
 class NdbDataReader {
 public:
@@ -46,7 +48,7 @@ public:
 protected:
     virtual void readData(Ndb* connection, Data data_batch) = 0;
     string bulkUpdateElasticSearch(string json);
-    
+        
 private:
     Ndb** mNdbConnections;
     const int mNumReaders;

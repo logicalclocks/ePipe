@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     string connection_string;
     string database_name;
     string meta_database_name;
-    int wait_time = 1000;
+    int wait_time = 10000;
     int ndb_batch = 5;
     int poll_maxTimeToWait = 1000;
     int num_ndb_readers = 5;

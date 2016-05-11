@@ -36,101 +36,20 @@ FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_re
 void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
     Cus* added = data_batch.added;
     
-    const NdbDictionary::Dictionary* database = connection->getDictionary();
-    if (!database) LOG_NDB_API_ERROR(connection->getNdbError());
+    const NdbDictionary::Dictionary* database = getDatabase(connection);
 
-    const NdbDictionary::Table* inodes_table = database->getTable("hdfs_inodes");
-    if (!inodes_table) LOG_NDB_API_ERROR(database->getNdbError());
-
-    NdbTransaction* ts = connection->startTransaction();
-    if (ts == NULL) LOG_NDB_API_ERROR(connection->getNdbError());
+    NdbTransaction* ts = startNdbTransaction(connection);
     
-    NdbDictionary::Column::ArrayType name_array_type = inodes_table->getColumn("name")->getArrayType();
     
     int batch_size = added->unsynchronized_size();
+    FsMutationRow pending[batch_size];
+    Row inodes[batch_size];
     
-    std::vector<FsMutationRow> pending;
-    std::vector<NdbRecAttr*> cols[batch_size];
-    
-    int i = 0;
-    while (i < batch_size) {
-        boost::optional<FsMutationRow> res = added->unsynchronized_remove();
-        if(!res){
-            break;
-        }
+    readINodes(database, ts, added, inodes, pending);
         
-        FsMutationRow row = *res;
+    getUsersAndGroups(database, ts, inodes, batch_size);
         
-        NdbOperation* op = ts->getNdbOperation(inodes_table);
-        if (op == NULL) LOG_NDB_API_ERROR(ts->getNdbError());
-        
-        op->readTuple(NdbOperation::LM_CommittedRead);
-        
-        op->equal("parent_id", row.mParentId);
-        op->equal("name", Utils::get_ndb_varchar(row.mInodeName, name_array_type));
-        
-        for(int c=0; c<NUM_INODES_COLS; c++){
-            NdbRecAttr* col = op->getValue(INODES_COLS_TO_READ[c]);
-            if (col == NULL) LOG_NDB_API_ERROR(ts->getNdbError());
-            cols[i].push_back(col);
-        }
-        
-        LOG_TRACE() << " Read INode row for [" << row.mParentId << " , "  << row.mInodeName << "]";  
-        pending.push_back(row);
-        i++;
-    }                    
-    
-    if(ts->execute(NdbTransaction::NoCommit) == -1){
-        LOG_NDB_API_ERROR(ts->getNdbError());
-    }
-
-    //TODO: Check users and groups cache
-        
-    const NdbDictionary::Table* users_table = database->getTable("hdfs_users");
-    if (!users_table) LOG_NDB_API_ERROR(database->getNdbError());
-    
-    const NdbDictionary::Table* groups_table = database->getTable("hdfs_groups");
-    if (!users_table) LOG_NDB_API_ERROR(database->getNdbError());
-    
-    boost::unordered_set<int> user_ids;
-    boost::unordered_set<int> group_ids;
-    boost::unordered_map<int, NdbRecAttr*> users;
-    boost::unordered_map<int, NdbRecAttr*> groups;
-
-    for(int i=0; i< batch_size; i++){
-        user_ids.insert(cols[i][USER_ID_COL]->int32_value());
-        group_ids.insert(cols[i][GROUP_ID_COL]->int32_value());
-    }
-    
-    for(boost::unordered_set<int>::iterator it = user_ids.begin(); 
-            it != user_ids.end(); ++it){
-         NdbOperation* user_op = ts->getNdbOperation(users_table);
-        user_op->readTuple(NdbOperation::LM_CommittedRead);
-        int user_id = *it;
-        user_op->equal("id", user_id);
-        NdbRecAttr* user_name = user_op->getValue("name");
-        if (user_name == NULL) LOG_NDB_API_ERROR(ts->getNdbError());
-        users[user_id] = user_name;
-    }
-    
-     for(boost::unordered_set<int>::iterator it = group_ids.begin(); 
-            it != group_ids.end(); ++it){
-         NdbOperation* group_op = ts->getNdbOperation(groups_table);
-        group_op->readTuple(NdbOperation::LM_CommittedRead);
-        int group_id = *it;
-        group_op->equal("id", group_id);
-        NdbRecAttr* group_name = group_op->getValue("name");
-        if (group_name == NULL) LOG_NDB_API_ERROR(ts->getNdbError());
-        groups[group_id] = group_name;
-    }
-    
-    if(ts->execute(NdbTransaction::Commit) == -1){
-        LOG_NDB_API_ERROR(ts->getNdbError());
-    }
-    
-    //TODO: update current cache
-    
-    std::string data = createJSON(pending, cols, users, groups);
+    string data = createJSON(pending, inodes, batch_size);
         
     LOG_INFO() << " Out :: " << endl << data << endl;
 
@@ -141,16 +60,112 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
     LOG_INFO() << " RESP " << resp;
 }
 
-string FsMutationsDataReader::createJSON(std::vector<FsMutationRow> pending, std::vector<NdbRecAttr*> inodes[],
-        boost::unordered_map<int, NdbRecAttr*> users, boost::unordered_map<int, NdbRecAttr*> groups) {
+void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, Cus* added, Row* inodes, FsMutationRow* pending) {
+    
+    const NdbDictionary::Table* inodes_table = getTable(database, "hdfs_inodes");    
+    NdbDictionary::Column::ArrayType name_array_type = inodes_table->getColumn("name")->getArrayType();
+    
+    int batch_size = added->unsynchronized_size();
+        
+    for (int i =0; i < batch_size; i++) {
+        boost::optional<FsMutationRow> res = added->unsynchronized_remove();
+        if(!res){
+            break;
+        }
+        
+        FsMutationRow row = *res;
+        
+        NdbOperation* op = getNdbOperation(transaction, inodes_table);
+        
+        op->readTuple(NdbOperation::LM_CommittedRead);
+        
+        op->equal("parent_id", row.mParentId);
+        op->equal("name", Utils::get_ndb_varchar(row.mInodeName, name_array_type));
+        
+        for(int c=0; c<NUM_INODES_COLS; c++){
+            NdbRecAttr* col = getNdbOperationValue(op, INODES_COLS_TO_READ[c]);
+            inodes[i].push_back(col);
+        }
+        
+        LOG_TRACE() << " Read INode row for [" << row.mParentId << " , "  << row.mInodeName << "]";  
+        pending[i] = row;
+    }
+    
+    executeTransaction(transaction, NdbTransaction::NoCommit);
+}
+
+void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, 
+        Row* inodes, int batchSize) {   
+    UGSet user_ids;
+    UGSet group_ids;
+    
+    for(int i=0; i< batchSize; i++){
+        int userId = inodes[i][USER_ID_COL]->int32_value();
+        int groupId = inodes[i][GROUP_ID_COL]->int32_value();
+        
+        if(!mUsersCache.contains(userId)){
+            user_ids.insert(userId);
+        }
+        
+        if(!mGroupsCache.contains(groupId)){
+            group_ids.insert(groupId);
+        }
+    }
+    
+    if(user_ids.empty() && group_ids.empty()){
+        LOG_DEBUG() << "All required users and groups are already in the cache";
+        return;
+    }
+    
+    const NdbDictionary::Table* users_table = getTable(database, "hdfs_users");
+    const NdbDictionary::Table* groups_table = getTable(database, "hdfs_groups");
+    
+    UGMap users = getUsersOrGroupsFromDB(users_table, transaction, user_ids);
+    UGMap groups = getUsersOrGroupsFromDB(groups_table, transaction, group_ids);
+    
+    executeTransaction(transaction, NdbTransaction::NoCommit);
+    
+    for(UGMap::iterator it = users.begin(); it != users.end(); ++it){
+        string userName = get_string(it->second);
+        LOG_DEBUG() << "ADD User [" << it->first << ", " << userName << "] to the Cache";
+        mUsersCache.put(it->first, userName);
+    }
+    
+     for(UGMap::iterator it = groups.begin(); it != groups.end(); ++it){
+        string groupName = get_string(it->second);
+        LOG_DEBUG() << "ADD Group [" << it->first << ", " << groupName << "] to the Cache";
+        mGroupsCache.put(it->first, groupName);
+    }
+}
+
+
+UGMap FsMutationsDataReader::getUsersOrGroupsFromDB(const NdbDictionary::Table* table, NdbTransaction* transaction, 
+        UGSet ids) {
+    UGMap res;
+    for(UGSet::iterator it = ids.begin(); it != ids.end(); ++it){
+        NdbOperation* op = getNdbOperation(transaction, table);
+        op->readTuple(NdbOperation::LM_CommittedRead);
+        int id = *it;
+        op->equal("id", id);
+        NdbRecAttr* name = getNdbOperationValue(op, "name");
+        res[id] = name;
+    }
+    return res;
+}
+
+string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, int batch_size) {
     
     std::stringstream out;
-    for (unsigned int i = 0; i < pending.size(); i++) {
+    for (int i = 0; i < batch_size; i++) {
         if (pending[i].mInodeId != inodes[i][0]->int32_value()) {
             LOG_INFO() << " Data for " << pending[i].mParentId << ", " << pending[i].mInodeName << " not found";
             break;
         }
-
+        
+        int userId = inodes[i][USER_ID_COL]->int32_value();
+        int groupId = inodes[i][GROUP_ID_COL]->int32_value();
+        
         rapidjson::StringBuffer sbOp;
         rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -165,11 +180,12 @@ string FsMutationsDataReader::createJSON(std::vector<FsMutationRow> pending, std
         opWriter.String("_type");
         opWriter.String("inode");
         
-        opWriter.String("_parent");
-        opWriter.Int(3);
+        // set project (rounting) and dataset (parent) ids 
+       // opWriter.String("_parent");
+       // opWriter.Int(3);
         
-        opWriter.String("_routing");
-        opWriter.Int(2);
+       // opWriter.String("_routing");
+       // opWriter.Int(2);
         
         opWriter.String("_id");
         opWriter.Int(inodes[i][0]->int32_value());
@@ -201,6 +217,12 @@ string FsMutationsDataReader::createJSON(std::vector<FsMutationRow> pending, std
         
         docWriter.String("size");
         docWriter.Int64(inodes[i][1]->int64_value());
+        
+        docWriter.String("user");
+        docWriter.String(mUsersCache.get(userId).c_str());
+        
+        docWriter.String("group");
+        docWriter.String(mGroupsCache.get(groupId).c_str());
         
         docWriter.EndObject();
         

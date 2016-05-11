@@ -31,6 +31,42 @@
 
 namespace Utils {
 
+    inline static const NdbDictionary::Dictionary* getDatabase(Ndb* connection) {
+        const NdbDictionary::Dictionary* database = connection->getDictionary();
+        if (!database) LOG_NDB_API_ERROR(connection->getNdbError());
+        return database;
+    }
+
+    inline static const NdbDictionary::Table* getTable(const NdbDictionary::Dictionary* database, const char* table_name) {
+        const NdbDictionary::Table* table = database->getTable(table_name);
+        if (!table) LOG_NDB_API_ERROR(database->getNdbError());
+        return table;
+    }
+
+    inline static NdbOperation* getNdbOperation(NdbTransaction* transaction, const NdbDictionary::Table* table) {
+        NdbOperation* op = transaction->getNdbOperation(table);
+        if (!op) LOG_NDB_API_ERROR(transaction->getNdbError());
+        return op;
+    }
+
+    inline static NdbRecAttr* getNdbOperationValue(NdbOperation* op, const char* column_name) {
+        NdbRecAttr* col = op->getValue(column_name);
+        if (!col) LOG_NDB_API_ERROR(op->getNdbError());
+        return col;
+    }
+
+    inline static NdbTransaction* startNdbTransaction(Ndb* connection) {
+        NdbTransaction* ts = connection->startTransaction();
+        if (!ts) LOG_NDB_API_ERROR(connection->getNdbError());
+        return ts;
+    }
+    
+    inline static void executeTransaction(NdbTransaction* transaction, NdbTransaction::ExecType exec_type){
+        if(transaction->execute(NdbTransaction::NoCommit) == -1){
+            LOG_NDB_API_ERROR(transaction->getNdbError());
+        }
+    }
+    
     inline static const char* concat(const char* a, const char* b) {
         std::string buf(a);
         buf.append(b);
