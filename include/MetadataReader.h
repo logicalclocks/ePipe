@@ -33,7 +33,7 @@ public:
     MetadataReader(Ndb** connections, const int num_readers, string elastic_ip);
     virtual ~MetadataReader();
 private:
-    virtual void readData(Ndb* connection, Mq_Mq data_batch);
+    virtual ReadTimes readData(Ndb* connection, Mq_Mq data_batch);
 
 };
 

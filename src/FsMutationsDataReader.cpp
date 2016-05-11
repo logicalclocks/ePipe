@@ -33,13 +33,14 @@ FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_re
 
 }
 
-void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
+ReadTimes FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
     Cus* added = data_batch.added;
     
+    ptime t1 = getCurrentTime();
+
     const NdbDictionary::Dictionary* database = getDatabase(connection);
 
     NdbTransaction* ts = startNdbTransaction(connection);
-    
     
     int batch_size = added->unsynchronized_size();
     FsMutationRow pending[batch_size];
@@ -48,16 +49,29 @@ void FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
     readINodes(database, ts, added, inodes, pending);
         
     getUsersAndGroups(database, ts, inodes, batch_size);
-        
+    
+    ptime t2 = getCurrentTime();
+
     string data = createJSON(pending, inodes, batch_size);
-        
+    
+    ptime t3 = getCurrentTime();
+    
     LOG_INFO() << " Out :: " << endl << data << endl;
 
     connection->closeTransaction(ts);
     
     string resp = bulkUpdateElasticSearch(data);
     
+    ptime t4 = getCurrentTime();
+    
     LOG_INFO() << " RESP " << resp;
+    
+    ReadTimes rt;
+    rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);
+    rt.mJSONCreationTime = getTimeDiffInMilliseconds(t2, t3);
+    rt.mElasticSearchTime = getTimeDiffInMilliseconds(t3, t4);
+    
+    return rt;
 }
 
 void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database, 

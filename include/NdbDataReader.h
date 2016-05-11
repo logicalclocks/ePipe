@@ -37,6 +37,12 @@ typedef boost::network::http::client httpclient;
 
 using namespace Utils;
 
+struct ReadTimes{
+    float mNdbReadTime;
+    float mJSONCreationTime;
+    float mElasticSearchTime;
+};
+
 template<typename Data>
 class NdbDataReader {
 public:
@@ -46,7 +52,7 @@ public:
     virtual ~NdbDataReader();
 
 protected:
-    virtual void readData(Ndb* connection, Data data_batch) = 0;
+    virtual ReadTimes readData(Ndb* connection, Data data_batch) = 0;
     string bulkUpdateElasticSearch(string json);
         
 private:
@@ -111,11 +117,9 @@ void NdbDataReader<Data>::readerThread(int connIndex) {
         Data curr;
         mBatchedQueue->wait_and_pop(curr);
         LOG_DEBUG() << " Process Batch ";
-        boost::posix_time::ptime t1 = boost::posix_time::microsec_clock::local_time();
-        readData(mNdbConnections[connIndex], curr);
-        boost::posix_time::ptime t2 = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration elaspsed = t2 - t1;
-        LOG_DEBUG() << " Process Batch took " << elaspsed.total_milliseconds() << " msec ";
+        ReadTimes rt = readData(mNdbConnections[connIndex], curr);
+        LOG_DEBUG() << " Process Batch time taken [ Ndb = " << rt.mNdbReadTime 
+                << " msec, JSON = " << rt.mJSONCreationTime << " msec, ES = " << rt.mElasticSearchTime << " msec ]";
     }
 }
 

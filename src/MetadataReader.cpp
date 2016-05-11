@@ -31,7 +31,7 @@ MetadataReader::MetadataReader(Ndb** connections, const int num_readers,  std::s
 
 }
 
-void MetadataReader::readData(Ndb* connection, Mq_Mq data_batch) {
+ReadTimes MetadataReader::readData(Ndb* connection, Mq_Mq data_batch) {
     Mq* added = data_batch.added;
     
     const NdbDictionary::Dictionary* database = connection->getDictionary();

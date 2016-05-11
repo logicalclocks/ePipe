@@ -29,6 +29,8 @@
 #include<cstdlib>
 #include<cstring>
 
+typedef boost::posix_time::ptime ptime;
+
 namespace Utils {
 
     inline static const NdbDictionary::Dictionary* getDatabase(Ndb* connection) {
@@ -65,6 +67,15 @@ namespace Utils {
         if(transaction->execute(NdbTransaction::NoCommit) == -1){
             LOG_NDB_API_ERROR(transaction->getNdbError());
         }
+    }
+    
+    inline static ptime getCurrentTime(){
+        return boost::posix_time::microsec_clock::local_time();
+    }
+    
+    inline static float getTimeDiffInMilliseconds(ptime start, ptime end){
+        boost::posix_time::time_duration diff = end - start;
+        return diff.total_microseconds() / 1000.0;
     }
     
     inline static const char* concat(const char* a, const char* b) {

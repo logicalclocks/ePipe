@@ -40,7 +40,7 @@ private:
     Cache<int, string> mUsersCache;
     Cache<int, string> mGroupsCache;
     
-    virtual void readData(Ndb* connection, Cus_Cus data_batch);
+    virtual ReadTimes readData(Ndb* connection, Cus_Cus data_batch);
     
     void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Cus* added, Row* inodes, FsMutationRow* pending);
     void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Row* inodes, int batchSize);
