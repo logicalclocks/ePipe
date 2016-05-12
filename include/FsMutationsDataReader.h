@@ -25,12 +25,8 @@
 #ifndef FSMUTATIONSDATAREADER_H
 #define FSMUTATIONSDATAREADER_H
 
+#include "FsMutationsTableTailer.h"
 #include "NdbDataReader.h"
-#include "Cache.h"
-
-typedef boost::unordered_map<int, NdbRecAttr*> UGMap;
-typedef boost::unordered_set<int> UGSet;
-typedef vector<NdbRecAttr*> Row;
 
 class FsMutationsDataReader : public NdbDataReader<Cus_Cus>{
 public:
@@ -44,7 +40,9 @@ private:
     
     void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Cus* added, Row* inodes, FsMutationRow* pending);
     void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Row* inodes, int batchSize);
-    UGMap getUsersOrGroupsFromDB(const NdbDictionary::Table* table, NdbTransaction* transaction, UGSet ids);
+    UIRowMap getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
+    UIRowMap getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
+    
     string createJSON(FsMutationRow* pending, Row* inodes, int batch_size);
 };
 

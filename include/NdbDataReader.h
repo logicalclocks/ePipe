@@ -26,14 +26,17 @@
 #ifndef NDBDATAREADER_H
 #define NDBDATAREADER_H
 
-#include "FsMutationsTableTailer.h"
 #include "ConcurrentQueue.h"
 #include "vector"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 #include <boost/network.hpp>
+#include "Cache.h"
 
 typedef boost::network::http::client httpclient;
+typedef boost::unordered_set<int> UISet;
+typedef vector<NdbRecAttr*> Row;
+typedef boost::unordered_map<int, Row> UIRowMap;
 
 using namespace Utils;
 
@@ -54,6 +57,8 @@ public:
 protected:
     virtual ReadTimes readData(Ndb* connection, Data data_batch) = 0;
     string bulkUpdateElasticSearch(string json);
+    UIRowMap readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, const char* table_name, 
+            UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index);
         
 private:
     Ndb** mNdbConnections;
@@ -79,22 +84,47 @@ NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers,
 }
 
 template<typename Data>
-string NdbDataReader<Data>::bulkUpdateElasticSearch(string json){
-    
-    httpclient::request request_(mElasticBulkUrl);
-    request_ << boost::network::header("Connection", "close");
-    request_ << boost::network::header("Content-Type", "application/json");
-    
-    char body_str_len[8];
-    sprintf(body_str_len, "%lu", json.length());
+string NdbDataReader<Data>::bulkUpdateElasticSearch(string json) {
+    try {
+        httpclient::request request_(mElasticBulkUrl);
+        request_ << boost::network::header("Connection", "close");
+        request_ << boost::network::header("Content-Type", "application/json");
 
-    request_ << boost::network::header("Content-Length", body_str_len);
-    request_ << boost::network::body(json);
+        char body_str_len[8];
+        sprintf(body_str_len, "%lu", json.length());
+
+        request_ << boost::network::header("Content-Length", body_str_len);
+        request_ << boost::network::body(json);
+
+        httpclient client_;
+        httpclient::response response_ = client_.post(request_);
+        std::string body_ = boost::network::http::body(response_);
+        return body_;
+    } catch (std::exception &e) {
+        LOG_ERROR() << e.what();
+    }
+    return NULL;
+}
+
+template<typename Data>
+UIRowMap NdbDataReader<Data>::readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, 
+        const char* table_name,  UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index) {
     
-    httpclient client_;
-    httpclient::response response_ = client_.post(request_);
-    std::string body_ = boost::network::http::body(response_);
-    return body_;
+    UIRowMap res;
+    const NdbDictionary::Table* table = getTable(database, table_name);
+    
+    for(UISet::iterator it = ids.begin(); it != ids.end(); ++it){
+        NdbOperation* op = getNdbOperation(transaction, table);
+        op->readTuple(NdbOperation::LM_CommittedRead);
+        op->equal(columns_to_read[column_pk_index], *it);
+        
+        for(int c=0; c<columns_count; c++){
+            NdbRecAttr* col =getNdbOperationValue(op, columns_to_read[c]);
+            res[*it].push_back(col);
+        }
+        LOG_TRACE() << " Read " << table_name << " row for [" << *it<< "]"; 
+    }
+    return res;
 }
 
 template<typename Data>

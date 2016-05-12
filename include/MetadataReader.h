@@ -28,13 +28,34 @@
 #include "MetadataTableTailer.h"
 #include "NdbDataReader.h"
 
+struct Field{
+    string mName;
+    bool mSearchable;
+    int mTableId;
+};
+
+struct Table{
+   string mName;
+   int mTemplateId;
+};
+
 class MetadataReader : public NdbDataReader<Mq_Mq>{
 public:
     MetadataReader(Ndb** connections, const int num_readers, string elastic_ip);
     virtual ~MetadataReader();
 private:
     virtual ReadTimes readData(Ndb* connection, Mq_Mq data_batch);
-
+    
+    UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Mq* added);
+    UISet readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids);
+    UISet readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
+    void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
+    
+    string createJSON(UIRowMap tuples, Mq* added);
+    
+    Cache<int, Field> mFieldsCache;
+    Cache<int, Table> mTablesCache;
+    Cache<int, string> mTemplatesCache;
 };
 
 #endif /* METADATAREADER_H */

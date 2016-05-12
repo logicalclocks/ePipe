@@ -25,7 +25,6 @@
 #ifndef CONCURRENTUNORDEREDSET_H
 #define CONCURRENTUNORDEREDSET_H
 #include "common.h"
-#include <boost/unordered_set.hpp>
 #include <boost/optional.hpp>
 
 template<typename Data, typename DataHash, typename DataEqual>

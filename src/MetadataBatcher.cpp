@@ -47,11 +47,11 @@ void MetadataBatcher::run() {
         
         if (row.mOperation == DELETE) {
             mLock.lock();
-            mDeleteOperations->push(row);
+            mDeleteOperations->push_back(row);
             mLock.unlock();
         } else if (row.mOperation == ADD) {
             mLock.lock();
-            mAddOperations->push(row);
+            mAddOperations->push_back(row);
             mLock.unlock();
         } else {
 

@@ -40,6 +40,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/pthread/mutex.hpp>
 #include <boost/thread/pthread/condition_variable_fwd.hpp>
+#include <boost/unordered/unordered_set.hpp>
 
 using namespace std;
 

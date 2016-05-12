@@ -26,8 +26,15 @@
 
 const int NUM_INODES_COLS = 4;
 const char* INODES_COLS_TO_READ[] = {"id", "size", "user_id", "group_id"};
-const int USER_ID_COL=2;
-const int GROUP_ID_COL=3;
+const int INODE_ID_COL = 0;
+const int INODE_SIZE_COL = 1;
+const int INODE_USER_ID_COL=2;
+const int INODE_GROUP_ID_COL=3;
+
+const int NUM_UG_COLS = 2;
+const char* UG_COLS_TO_READ[] = {"id", "name"};
+const int UG_ID_COL = 0;
+const int UG_NAME_COL = 1;
 
 FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip) : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip){
 
@@ -111,12 +118,12 @@ void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database
 
 void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, 
         Row* inodes, int batchSize) {   
-    UGSet user_ids;
-    UGSet group_ids;
+    UISet user_ids;
+    UISet group_ids;
     
     for(int i=0; i< batchSize; i++){
-        int userId = inodes[i][USER_ID_COL]->int32_value();
-        int groupId = inodes[i][GROUP_ID_COL]->int32_value();
+        int userId = inodes[i][INODE_USER_ID_COL]->int32_value();
+        int groupId = inodes[i][INODE_GROUP_ID_COL]->int32_value();
         
         if(!mUsersCache.contains(userId)){
             user_ids.insert(userId);
@@ -132,53 +139,51 @@ void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* d
         return;
     }
     
-    const NdbDictionary::Table* users_table = getTable(database, "hdfs_users");
-    const NdbDictionary::Table* groups_table = getTable(database, "hdfs_groups");
-    
-    UGMap users = getUsersOrGroupsFromDB(users_table, transaction, user_ids);
-    UGMap groups = getUsersOrGroupsFromDB(groups_table, transaction, group_ids);
+    UIRowMap users = getUsersFromDB(database, transaction, user_ids);
+    UIRowMap groups = getGroupsFromDB(database, transaction, group_ids);
     
     executeTransaction(transaction, NdbTransaction::NoCommit);
     
-    for(UGMap::iterator it = users.begin(); it != users.end(); ++it){
-        string userName = get_string(it->second);
+    for(UIRowMap::iterator it = users.begin(); it != users.end(); ++it){
+        if(it->first != it->second[UG_ID_COL]->int32_value()){
+            LOG_DEBUG() << "User " << it->first << " doesn't exist";
+            continue;
+        }
+        string userName = get_string(it->second[UG_NAME_COL]);
         LOG_DEBUG() << "ADD User [" << it->first << ", " << userName << "] to the Cache";
         mUsersCache.put(it->first, userName);
     }
     
-     for(UGMap::iterator it = groups.begin(); it != groups.end(); ++it){
-        string groupName = get_string(it->second);
+     for(UIRowMap::iterator it = groups.begin(); it != groups.end(); ++it){
+          if(it->first != it->second[UG_ID_COL]->int32_value()){
+            LOG_DEBUG() << "Group " << it->first << " doesn't exist";
+            continue;
+        }
+        string groupName = get_string(it->second[UG_NAME_COL]);
         LOG_DEBUG() << "ADD Group [" << it->first << ", " << groupName << "] to the Cache";
         mGroupsCache.put(it->first, groupName);
     }
 }
 
+UIRowMap FsMutationsDataReader::getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids) {
+   return readTableWithIntPK(database, transaction, "hdfs_users", ids, UG_COLS_TO_READ, NUM_UG_COLS, UG_ID_COL);
+}
 
-UGMap FsMutationsDataReader::getUsersOrGroupsFromDB(const NdbDictionary::Table* table, NdbTransaction* transaction, 
-        UGSet ids) {
-    UGMap res;
-    for(UGSet::iterator it = ids.begin(); it != ids.end(); ++it){
-        NdbOperation* op = getNdbOperation(transaction, table);
-        op->readTuple(NdbOperation::LM_CommittedRead);
-        int id = *it;
-        op->equal("id", id);
-        NdbRecAttr* name = getNdbOperationValue(op, "name");
-        res[id] = name;
-    }
-    return res;
+UIRowMap FsMutationsDataReader::getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids) {
+   return readTableWithIntPK(database, transaction, "hdfs_groups", ids, UG_COLS_TO_READ, NUM_UG_COLS, UG_ID_COL);
 }
 
 string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, int batch_size) {
     
-    std::stringstream out;
+    stringstream out;
     for (int i = 0; i < batch_size; i++) {
-        if (pending[i].mInodeId != inodes[i][0]->int32_value()) {
+        if (pending[i].mInodeId != inodes[i][INODE_ID_COL]->int32_value()) {
             LOG_INFO() << " Data for " << pending[i].mParentId << ", " << pending[i].mInodeName << " not found";
             break;
         }
         
-        int userId = inodes[i][USER_ID_COL]->int32_value();
-        int groupId = inodes[i][GROUP_ID_COL]->int32_value();
+        int userId = inodes[i][INODE_USER_ID_COL]->int32_value();
+        int groupId = inodes[i][INODE_GROUP_ID_COL]->int32_value();
         
         rapidjson::StringBuffer sbOp;
         rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -202,7 +207,7 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
        // opWriter.Int(2);
         
         opWriter.String("_id");
-        opWriter.Int(inodes[i][0]->int32_value());
+        opWriter.Int(inodes[i][INODE_ID_COL]->int32_value());
 
         opWriter.EndObject();
         
@@ -230,7 +235,7 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
         docWriter.Int64(pending[i].mTimestamp);
         
         docWriter.String("size");
-        docWriter.Int64(inodes[i][1]->int64_value());
+        docWriter.Int64(inodes[i][INODE_SIZE_COL]->int64_value());
         
         docWriter.String("user");
         docWriter.String(mUsersCache.get(userId).c_str());

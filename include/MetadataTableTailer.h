@@ -45,7 +45,7 @@ struct MetadataRowComparator
 };
 
 typedef ConcurrentPriorityQueue<MetadataRow, MetadataRowComparator> Cmq;
-typedef queue<MetadataRow> Mq;
+typedef vector<MetadataRow> Mq;
 
 struct Mq_Mq {
     Mq* added;
