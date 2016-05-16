@@ -43,11 +43,19 @@ struct Field{
     FieldType mType;
 };
 
+struct Tuple{
+    int mTupleId;
+    Field mField;
+};
+
 struct Table{
    string mName;
    int mTemplateId;
 };
-typedef boost::unordered_map<int, vector<int> > UIntToVector;
+typedef boost::unordered_map<string, vector<Tuple> > UTableToTuples;
+typedef boost::unordered_map<string, UTableToTuples> UTemplateToTables;
+typedef boost::unordered_map<int, UTemplateToTables> UInodesToTemplates;
+
 typedef boost::unordered_map<int, MetadataRow> UTupleIdToMetadataRow;
 
 class MetadataReader : public NdbDataReader<Mq_Mq>{
@@ -63,8 +71,8 @@ private:
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
     string createJSON(UIRowMap tuples, Mq* added);
-    string getCompactFieldName(string fieldName, string tableName, string templateName);
-    
+    UInodesToTemplates getInodesToTemplates(UIRowMap tuples, UTupleIdToMetadataRow tupleToRow);
+        
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;
     Cache<int, string> mTemplatesCache;

@@ -48,12 +48,11 @@ const int TEMPLATE_NAME_COL = 1;
 
 
 const char* META_TUPLE_TO_FILE = "meta_tuple_to_file";
-const int NUM_TUPLES_COLS = 4;
-const char* TUPLES_COLS_TO_READ[] = {"tupleid", "inodeid", "inode_pid", "inode_name"};
+const int NUM_TUPLES_COLS = 2;
+const char* TUPLES_COLS_TO_READ[] = {"tupleid", "inodeid"};
 const int TUPLE_ID_COL = 0;
 const int TUPLE_INODE_ID_COL = 1;
-const int TUPLE_INODE_PID_COL = 2;
-const int TUPLE_INODE_NAME_COL = 3;
+
 
 MetadataReader::MetadataReader(Ndb** connections, const int num_readers,  std::string elastic_ip) : NdbDataReader(connections, num_readers, elastic_ip) {
 
@@ -213,26 +212,19 @@ void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, Nd
 
 string MetadataReader::createJSON(UIRowMap tuples, Mq* added) {
     
-    UIntToVector inodesToTuples;
-    for(UIRowMap::iterator it = tuples.begin(); it != tuples.end(); ++it){
-        int inodeId = it->second[TUPLE_INODE_ID_COL]->int32_value();
-        if(inodesToTuples.find(inodeId) == inodesToTuples.end()){
-            inodesToTuples[inodeId] = vector<int>();
-        }
-        inodesToTuples[inodeId].push_back(it->first);
-    }
-    
     UTupleIdToMetadataRow tupleToRow;
     for(Mq::iterator it = added->begin(); it != added->end(); ++it){
         MetadataRow row = *it;
         tupleToRow[row.mTupleId] = row;
     }
-    
+
+     UInodesToTemplates inodesToTemplates = getInodesToTemplates(tuples, tupleToRow);
+     
     stringstream out;
    
-    for(UIntToVector::iterator it= inodesToTuples.begin(); it != inodesToTuples.end(); ++it){
+    for(UInodesToTemplates::iterator it=inodesToTemplates.begin(); it != inodesToTemplates.end(); ++it){
         int inodeId = it->first;
-        vector<int> tuples = it->second;
+        UTemplateToTables templatesToTables = it->second;
         
         // INode Operation
         rapidjson::StringBuffer sbOp;
@@ -261,7 +253,6 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* added) {
 
         opWriter.EndObject();
         
-        int numOfTuples = 0;
         
         rapidjson::StringBuffer sbDoc;
         rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -270,85 +261,79 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* added) {
         docWriter.String("doc");
         docWriter.StartObject();
 
-        docWriter.String("xatrr");
-        docWriter.StartArray();
+        docWriter.String("xattr");
+        docWriter.StartObject();
         
-        for (vector<int>::iterator tit = tuples.begin(); tit != tuples.end(); ++tit) {
-            int tupleId = *tit;
-            MetadataRow row = tupleToRow[tupleId];
-            if (tupleId != row.mTupleId) {
-                LOG_INFO() << " Data for " << row.mTupleId << ", " << row.mFieldId << " not found";
-                continue;
-            }
-
-            if (!mFieldsCache.contains(row.mFieldId))
-                continue;
-
-            Field field = mFieldsCache.get(row.mFieldId);
-
-            if (!mTablesCache.contains(field.mTableId))
-                continue;
-
-            Table table = mTablesCache.get(field.mTableId);
-
-            if (!mTemplatesCache.contains(table.mTemplateId))
-                continue;
+        for(UTemplateToTables::iterator templateIt = templatesToTables.begin(); templateIt != templatesToTables.end(); ++templateIt){
+            string templateName = templateIt->first;
+            UTableToTuples tablesToTuples = templateIt->second;
             
-            numOfTuples++;
-            
-            string templateName = mTemplatesCache.get(table.mTemplateId);
-            
-            string fieldName = getCompactFieldName(field.mName, table.mName, templateName);
-            
+            docWriter.String(templateName.c_str());
             docWriter.StartObject();
-            
-            docWriter.String("name");
-            docWriter.String(fieldName.c_str());
 
-            switch (field.mType) {
-                case BOOL:
-                {
-                    bool boolVal = row.mMetadata == "true" || row.mMetadata == "1";
-                    docWriter.String("boolValue");
-                    docWriter.Bool(boolVal);
-                    break;
-                }
-                case INT:
-                {
-                    try {
-                        int intVal = boost::lexical_cast<int>(row.mMetadata);
-                        docWriter.String("intValue");
-                        docWriter.Int(intVal);
-                    } catch (boost::bad_lexical_cast &e) {
-                        LOG_ERROR() <<  "Error while casting [" << row.mMetadata << "] to int" << e.what();
+            for (UTableToTuples::iterator tableIt = tablesToTuples.begin(); tableIt != tablesToTuples.end(); ++tableIt) {
+                string tableName = tableIt->first;
+                vector<Tuple> tupleFields = tableIt->second;
+
+                docWriter.String(tableName.c_str());
+                docWriter.StartObject();
+
+                for (vector<Tuple>::iterator tupleIt = tupleFields.begin(); tupleIt != tupleFields.end(); ++tupleIt) {
+                    Tuple tuple = *tupleIt;
+                    string metadata = tupleToRow[tuple.mTupleId].mMetadata;
+                    
+                    if(!tuple.mField.mSearchable)
+                        continue;
+                    
+                    docWriter.String(tuple.mField.mName.c_str());
+
+                    switch (tuple.mField.mType) {
+                        case BOOL:
+                        {
+                            bool boolVal = metadata == "true" || metadata == "1";
+                            docWriter.Bool(boolVal);
+                            break;
+                        }
+                        case INT:
+                        {
+                            try {
+                                int intVal = boost::lexical_cast<int>(metadata);
+                                docWriter.Int(intVal);
+                            } catch (boost::bad_lexical_cast &e) {
+                                LOG_ERROR() << "Error while casting [" << metadata << "] to int" << e.what();
+                            }
+
+                            break;
+                        }
+                        case DOUBLE:
+                        {
+                            try {
+                                double doubleVal = boost::lexical_cast<double>(metadata);
+                                docWriter.Double(doubleVal);
+                            } catch (boost::bad_lexical_cast &e) {
+                                LOG_ERROR() << "Error while casting [" << metadata << "] to double" << e.what();
+                            }
+
+                            break;
+                        }
+                        case TEXT:
+                        {
+                            docWriter.String(metadata.c_str());
+                            break;
+                        }
                     }
 
-                    break;
                 }
-                case DOUBLE:
-                {
-                    try {
-                        double doubleVal = boost::lexical_cast<double>(row.mMetadata);
-                        docWriter.String("doubleValue");
-                        docWriter.Double(doubleVal);
-                    } catch (boost::bad_lexical_cast &e) {
-                        LOG_ERROR() << "Error while casting [" << row.mMetadata << "] to double" << e.what();
-                    }
 
-                    break;
-                }
-                case TEXT:
-                {
-                    docWriter.String("textValue");
-                    docWriter.String(row.mMetadata.c_str());
-                    break;
-                }
+                docWriter.EndObject();
             }
-            
+
             docWriter.EndObject();
+
         }
         
-        docWriter.EndArray();
+                
+        docWriter.EndObject();
         docWriter.EndObject();
 
         docWriter.String("doc_as_upsert");
@@ -356,18 +341,70 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* added) {
 
         docWriter.EndObject();
         
-        if(numOfTuples > 0){
-            out << sbOp.GetString() << endl << sbDoc.GetString() << endl;
-        }
+        out << sbOp.GetString() << endl << sbDoc.GetString() << endl;
     }
-    
+ 
     return out.str();
 }
 
-string MetadataReader::getCompactFieldName(string fieldName, string tableName, string templateName) {
-    string str = templateName + "." + tableName + "." + fieldName;
-    return str;
+UInodesToTemplates MetadataReader::getInodesToTemplates(UIRowMap tuples, UTupleIdToMetadataRow tupleToRow) {
+    
+    UInodesToTemplates inodesToTemplates;
+    
+    for(UIRowMap::iterator it = tuples.begin(); it != tuples.end(); ++it){
+        int tupleId = it->first;
+        int inodeId = it->second[TUPLE_INODE_ID_COL]->int32_value();
+        MetadataRow row = tupleToRow[tupleId];
+        
+        if (tupleId != row.mTupleId) {
+            LOG_ERROR() << " Data for " << row.mTupleId << ", " << row.mFieldId << " not found";
+            continue;
+        }
+        if (!mFieldsCache.contains(row.mFieldId)){
+            LOG_ERROR() << " Field " << row.mFieldId << " is not in the cache";
+            continue;
+        }
+
+        Field field = mFieldsCache.get(row.mFieldId);
+
+        if (!mTablesCache.contains(field.mTableId)){
+            LOG_ERROR() << " Table " << field.mTableId << " is not in the cache";
+            continue;
+        }
+            
+
+        Table table = mTablesCache.get(field.mTableId);
+
+        if (!mTemplatesCache.contains(table.mTemplateId)){
+            LOG_ERROR() << " Template " << table.mTemplateId << " is not in the cache";
+            continue;
+        }
+        
+        string templateName = mTemplatesCache.get(table.mTemplateId);
+        
+        
+        if(inodesToTemplates.find(inodeId) == inodesToTemplates.end()){
+            inodesToTemplates[inodeId] = UTemplateToTables();
+        }
+        
+        if(inodesToTemplates[inodeId].find(templateName) == inodesToTemplates[inodeId].end()){
+            inodesToTemplates[inodeId][templateName] = UTableToTuples();
+        }
+        
+        if(inodesToTemplates[inodeId][templateName].find(table.mName) == inodesToTemplates[inodeId][templateName].end()){
+            inodesToTemplates[inodeId][templateName][table.mName] = vector<Tuple>();
+        }
+        
+        Tuple tuple;
+        tuple.mTupleId = tupleId;
+        tuple.mField = field;
+        
+        inodesToTemplates[inodeId][templateName][table.mName].push_back(tuple);
+    }
+    
+    return inodesToTemplates;
 }
+
 
 MetadataReader::~MetadataReader() {
 }
