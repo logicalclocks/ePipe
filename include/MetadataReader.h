@@ -27,17 +27,28 @@
 
 #include "MetadataTableTailer.h"
 #include "NdbDataReader.h"
+#include <boost/lexical_cast.hpp>
+
+enum FieldType{
+    BOOL = 0,
+    INT = 1,
+    DOUBLE = 2,
+    TEXT = 3
+};
 
 struct Field{
     string mName;
     bool mSearchable;
     int mTableId;
+    FieldType mType;
 };
 
 struct Table{
    string mName;
    int mTemplateId;
 };
+typedef boost::unordered_map<int, vector<int> > UIntToVector;
+typedef boost::unordered_map<int, MetadataRow> UTupleIdToMetadataRow;
 
 class MetadataReader : public NdbDataReader<Mq_Mq>{
 public:
@@ -52,6 +63,7 @@ private:
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
     string createJSON(UIRowMap tuples, Mq* added);
+    string getCompactFieldName(string fieldName, string tableName, string templateName);
     
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;

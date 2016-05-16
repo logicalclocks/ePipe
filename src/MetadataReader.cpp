@@ -62,17 +62,35 @@ MetadataReader::MetadataReader(Ndb** connections, const int num_readers,  std::s
 ReadTimes MetadataReader::readData(Ndb* connection, Mq_Mq data_batch) {
     Mq* added = data_batch.added;
     
+    ptime t1 = getCurrentTime();
+    
     const NdbDictionary::Dictionary* database = getDatabase(connection);
     NdbTransaction* ts = startNdbTransaction(connection);
     
     UIRowMap tuples = readMetadataColumns(database, ts, added);
     
+    ptime t2 = getCurrentTime();
+    
     string data = createJSON(tuples, added);
+    
+    ptime t3 = getCurrentTime();
     
     LOG_INFO() << " Out :: " << endl << data << endl;
     
     connection->closeTransaction(ts);
    
+    string resp = bulkUpdateElasticSearch(data);
+    
+    ptime t4 = getCurrentTime();
+    
+    LOG_INFO() << " RESP " << resp;
+    
+    ReadTimes rt;
+    rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);
+    rt.mJSONCreationTime = getTimeDiffInMilliseconds(t2, t3);
+    rt.mElasticSearchTime = getTimeDiffInMilliseconds(t3, t4);
+    
+    return rt;
 }
 
 UIRowMap MetadataReader::readMetadataColumns(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Mq* added) { 
@@ -80,7 +98,7 @@ UIRowMap MetadataReader::readMetadataColumns(const NdbDictionary::Dictionary* da
     UISet fields_ids;
     UISet tuple_ids;
     
-    for(int i=0; i<added->size(); i++){
+    for(unsigned int i=0; i<added->size(); i++){
         //TODO: check in the cache
         fields_ids.insert(added->at(i).mFieldId);
         tuple_ids.insert(added->at(i).mTupleId);
@@ -123,9 +141,9 @@ UISet MetadataReader::readFields(const NdbDictionary::Dictionary* database, NdbT
         
         Field field;
         field.mName = get_string(it->second[FIELD_NAME_COL]);
-        field.mSearchable = it->second[FIELD_SEARCHABLE_COL]->u_char_value() == 1;
+        field.mSearchable = it->second[FIELD_SEARCHABLE_COL]->int8_value() == 1;
         field.mTableId = it->second[FIELD_TABLE_ID_COL]->int32_value();
-        
+        field.mType = (FieldType) it->second[FIELD_TYPE_COL]->short_value();
         mFieldsCache.put(it->first, field);
         
         //TODO: check in the cache
@@ -142,7 +160,7 @@ UISet MetadataReader::readTables(const NdbDictionary::Dictionary* database, NdbT
     UISet templates_to_read;
     
     if(tables_ids.empty())
-        templates_to_read;
+        return templates_to_read;
         
     UIRowMap tables = readTableWithIntPK(database, transaction, META_TABLES, 
             tables_ids,TABLES_COLS_TO_READ, NUM_TABLES_COLS, TABLE_ID_COL);
@@ -195,32 +213,160 @@ void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, Nd
 
 string MetadataReader::createJSON(UIRowMap tuples, Mq* added) {
     
+    UIntToVector inodesToTuples;
+    for(UIRowMap::iterator it = tuples.begin(); it != tuples.end(); ++it){
+        int inodeId = it->second[TUPLE_INODE_ID_COL]->int32_value();
+        if(inodesToTuples.find(inodeId) == inodesToTuples.end()){
+            inodesToTuples[inodeId] = vector<int>();
+        }
+        inodesToTuples[inodeId].push_back(it->first);
+    }
+    
+    UTupleIdToMetadataRow tupleToRow;
+    for(Mq::iterator it = added->begin(); it != added->end(); ++it){
+        MetadataRow row = *it;
+        tupleToRow[row.mTupleId] = row;
+    }
+    
     stringstream out;
    
-    for(Mq::iterator it= added->begin(); it != added->end(); ++it){
-        MetadataRow row = *it;
-        Row tuple = tuples[row.mTupleId];
-        if(tuple[TUPLE_ID_COL]->int32_value() != row.mTupleId){
-             LOG_INFO() << " Data for " << row.mTupleId << ", " << row.mFieldId << " not found";
-             continue;
+    for(UIntToVector::iterator it= inodesToTuples.begin(); it != inodesToTuples.end(); ++it){
+        int inodeId = it->first;
+        vector<int> tuples = it->second;
+        
+        // INode Operation
+        rapidjson::StringBuffer sbOp;
+        rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+        
+        opWriter.StartObject();
+        
+        opWriter.String("update");
+        opWriter.StartObject();
+
+        opWriter.String("_index");
+        opWriter.String("projects");
+        
+        opWriter.String("_type");
+        opWriter.String("inode");
+        
+        // set project (rounting) and dataset (parent) ids 
+       // opWriter.String("_parent");
+       // opWriter.Int(3);
+        
+       // opWriter.String("_routing");
+       // opWriter.Int(2);
+        
+        opWriter.String("_id");
+        opWriter.Int(inodeId);
+
+        opWriter.EndObject();
+        
+        int numOfTuples = 0;
+        
+        rapidjson::StringBuffer sbDoc;
+        rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
+
+        docWriter.StartObject();
+        docWriter.String("doc");
+        docWriter.StartObject();
+
+        docWriter.String("xatrr");
+        docWriter.StartArray();
+        
+        for (vector<int>::iterator tit = tuples.begin(); tit != tuples.end(); ++tit) {
+            int tupleId = *tit;
+            MetadataRow row = tupleToRow[tupleId];
+            if (tupleId != row.mTupleId) {
+                LOG_INFO() << " Data for " << row.mTupleId << ", " << row.mFieldId << " not found";
+                continue;
+            }
+
+            if (!mFieldsCache.contains(row.mFieldId))
+                continue;
+
+            Field field = mFieldsCache.get(row.mFieldId);
+
+            if (!mTablesCache.contains(field.mTableId))
+                continue;
+
+            Table table = mTablesCache.get(field.mTableId);
+
+            if (!mTemplatesCache.contains(table.mTemplateId))
+                continue;
+            
+            numOfTuples++;
+            
+            string templateName = mTemplatesCache.get(table.mTemplateId);
+            
+            string fieldName = getCompactFieldName(field.mName, table.mName, templateName);
+            
+            docWriter.StartObject();
+            
+            docWriter.String("name");
+            docWriter.String(fieldName.c_str());
+
+            switch (field.mType) {
+                case BOOL:
+                {
+                    bool boolVal = row.mMetadata == "true" || row.mMetadata == "1";
+                    docWriter.String("boolValue");
+                    docWriter.Bool(boolVal);
+                    break;
+                }
+                case INT:
+                {
+                    try {
+                        int intVal = boost::lexical_cast<int>(row.mMetadata);
+                        docWriter.String("intValue");
+                        docWriter.Int(intVal);
+                    } catch (boost::bad_lexical_cast &e) {
+                        LOG_ERROR() <<  "Error while casting [" << row.mMetadata << "] to int" << e.what();
+                    }
+
+                    break;
+                }
+                case DOUBLE:
+                {
+                    try {
+                        double doubleVal = boost::lexical_cast<double>(row.mMetadata);
+                        docWriter.String("doubleValue");
+                        docWriter.Double(doubleVal);
+                    } catch (boost::bad_lexical_cast &e) {
+                        LOG_ERROR() << "Error while casting [" << row.mMetadata << "] to double" << e.what();
+                    }
+
+                    break;
+                }
+                case TEXT:
+                {
+                    docWriter.String("textValue");
+                    docWriter.String(row.mMetadata.c_str());
+                    break;
+                }
+            }
+            
+            docWriter.EndObject();
         }
         
-        if(!mFieldsCache.contains(row.mFieldId))
-            continue;
-            
-        Field field = mFieldsCache.get(row.mFieldId);
+        docWriter.EndArray();
+        docWriter.EndObject();
+
+        docWriter.String("doc_as_upsert");
+        docWriter.Bool(true);
+
+        docWriter.EndObject();
         
-        if(!mTablesCache.contains(field.mTableId))
-            continue;
-        
-        Table table = mTablesCache.get(field.mTableId);
-        
-        if(!mTemplatesCache.contains(table.mTemplateId))
-            continue;
-        
-        string templateName = mTemplatesCache.get(table.mTemplateId);
-        
+        if(numOfTuples > 0){
+            out << sbOp.GetString() << endl << sbDoc.GetString() << endl;
+        }
     }
+    
+    return out.str();
+}
+
+string MetadataReader::getCompactFieldName(string fieldName, string tableName, string templateName) {
+    string str = templateName + "." + tableName + "." + fieldName;
+    return str;
 }
 
 MetadataReader::~MetadataReader() {
