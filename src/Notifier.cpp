@@ -42,6 +42,8 @@ void Notifier::start() {
     mFsMutationsBatcher->start();
     mMetadataBatcher->start();
     
+    mProjectTableTailer->start();
+    
     mFsMutationsBatcher->waitToFinish();
     mMetadataBatcher->waitToFinish();
 }
@@ -69,6 +71,9 @@ void Notifier::setup() {
      
     mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr);
     mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
+    
+    Ndb* project_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+    mProjectTableTailer = new ProjectTableTailer(project_tailer_connection, mPollMaxTimeToWait, mElasticAddr);
 }
 
 Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_string) {

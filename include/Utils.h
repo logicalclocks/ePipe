@@ -80,6 +80,17 @@ namespace Utils {
         return diff.total_microseconds() / 1000.0;
     }
 
+    inline static string getElasticSearchBulkUrl(string elasticUrl){
+        string bulkUrl = "http://" + elasticUrl + "/_bulk";
+        return bulkUrl;
+    }
+    
+    inline static string getElasticSearchUpdateDoc(string elasticUrl, string index, string type, int doc){
+        stringstream out;
+        out << "http://" << elasticUrl << "/" << index << "/" << type << "/" << doc << "/_update";
+        return out.str();
+    }
+    
     inline static string elasticSearchPOST(string elasticUrl, string json) {
         try {
             httpclient::request request_(elasticUrl);

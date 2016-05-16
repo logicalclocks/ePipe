@@ -27,9 +27,6 @@
 #define NDBDATAREADER_H
 
 #include "ConcurrentQueue.h"
-#include "vector"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
 #include "Cache.h"
 #include "Utils.h"
 
@@ -78,7 +75,7 @@ template<typename Data>
 NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers, 
         string elastic_ip) : mNdbConnections(connections), mNumReaders(num_readers), mElasticAddr(elastic_ip){
     mStarted = false;
-    mElasticBulkUrl = "http://" + mElasticAddr + "/_bulk";
+    mElasticBulkUrl = getElasticSearchBulkUrl(mElasticAddr);
     mBatchedQueue = new ConcurrentQueue<Data>();
 }
 
