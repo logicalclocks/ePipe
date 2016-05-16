@@ -30,10 +30,9 @@
 #include "vector"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
-#include <boost/network.hpp>
 #include "Cache.h"
+#include "Utils.h"
 
-typedef boost::network::http::client httpclient;
 typedef boost::unordered_set<int> UISet;
 typedef vector<NdbRecAttr*> Row;
 typedef boost::unordered_map<int, Row> UIRowMap;
@@ -85,25 +84,7 @@ NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers,
 
 template<typename Data>
 string NdbDataReader<Data>::bulkUpdateElasticSearch(string json) {
-    try {
-        httpclient::request request_(mElasticBulkUrl);
-        request_ << boost::network::header("Connection", "close");
-        request_ << boost::network::header("Content-Type", "application/json");
-
-        char body_str_len[8];
-        sprintf(body_str_len, "%lu", json.length());
-
-        request_ << boost::network::header("Content-Length", body_str_len);
-        request_ << boost::network::body(json);
-
-        httpclient client_;
-        httpclient::response response_ = client_.post(request_);
-        std::string body_ = boost::network::http::body(response_);
-        return body_;
-    } catch (std::exception &e) {
-        LOG_ERROR() << e.what();
-    }
-    return NULL;
+    return elasticSearchPOST(mElasticBulkUrl, json);
 }
 
 template<typename Data>

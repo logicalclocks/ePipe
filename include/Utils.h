@@ -28,8 +28,10 @@
 #include "common.h"
 #include<cstdlib>
 #include<cstring>
+#include <boost/network.hpp>
 
 typedef boost::posix_time::ptime ptime;
+typedef boost::network::http::client httpclient;
 
 namespace Utils {
 
@@ -76,6 +78,28 @@ namespace Utils {
     inline static float getTimeDiffInMilliseconds(ptime start, ptime end){
         boost::posix_time::time_duration diff = end - start;
         return diff.total_microseconds() / 1000.0;
+    }
+
+    inline static string elasticSearchPOST(string elasticUrl, string json) {
+        try {
+            httpclient::request request_(elasticUrl);
+            request_ << boost::network::header("Connection", "close");
+            request_ << boost::network::header("Content-Type", "application/json");
+
+            char body_str_len[8];
+            sprintf(body_str_len, "%lu", json.length());
+
+            request_ << boost::network::header("Content-Length", body_str_len);
+            request_ << boost::network::body(json);
+
+            httpclient client_;
+            httpclient::response response_ = client_.post(request_);
+            std::string body_ = boost::network::http::body(response_);
+            return body_;
+        } catch (std::exception &e) {
+            LOG_ERROR() << e.what();
+        }
+        return NULL;
     }
     
     inline static const char* concat(const char* a, const char* b) {
