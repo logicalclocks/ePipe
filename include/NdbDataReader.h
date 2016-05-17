@@ -42,18 +42,16 @@ struct ReadTimes{
     float mElasticSearchTime;
 };
 
-template<typename Data>
+template<typename Data, typename Conn>
 class NdbDataReader {
 public:
-    NdbDataReader(Ndb** connections, const int num_readers, string elastic_addr,
+    NdbDataReader(Conn* connections, const int num_readers, string elastic_addr,
             const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache);
     void start();
     void processBatch(Data data_batch);
     virtual ~NdbDataReader();
 
 private:
-    Ndb** mNdbConnections;
-    const int mNumReaders;
     const string mElasticAddr;
     string mElasticBulkUrl;
     
@@ -65,35 +63,38 @@ private:
     void readerThread(int connectionId);
     
 protected:
-    virtual ReadTimes readData(Ndb* connection, Data data_batch) = 0;
-    string bulkUpdateElasticSearch(string json);
-    UIRowMap readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, const char* table_name, 
-            UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index);
+    const int mNumReaders;
+    Conn* mNdbConnections;
     const bool mHopsworksEnalbed;
     const string mElasticIndex;
     const string mElasticInodeType;
     DatasetProjectCache* mDatasetProjectCache;
+    
+    virtual ReadTimes readData(Conn connection, Data data_batch) = 0;
+    string bulkUpdateElasticSearch(string json);
+    UIRowMap readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, const char* table_name, 
+            UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index);
 };
 
 
-template<typename Data>
-NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers, 
+template<typename Data, typename Conn>
+NdbDataReader<Data, Conn>::NdbDataReader(Conn* connections, const int num_readers, 
         string elastic_ip, const bool hopsworks, const string elastic_index, 
-        const string elastic_inode_type, DatasetProjectCache* cache) : mNdbConnections(connections), 
-        mNumReaders(num_readers), mElasticAddr(elastic_ip), mHopsworksEnalbed(hopsworks), 
+        const string elastic_inode_type, DatasetProjectCache* cache) :  mElasticAddr(elastic_ip), 
+        mNumReaders(num_readers), mNdbConnections(connections), mHopsworksEnalbed(hopsworks), 
         mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type), mDatasetProjectCache(cache){
     mStarted = false;
     mElasticBulkUrl = getElasticSearchBulkUrl(mElasticAddr);
     mBatchedQueue = new ConcurrentQueue<Data>();
 }
 
-template<typename Data>
-string NdbDataReader<Data>::bulkUpdateElasticSearch(string json) {
+template<typename Data, typename Conn>
+string NdbDataReader<Data, Conn>::bulkUpdateElasticSearch(string json) {
     return elasticSearchPOST(mElasticBulkUrl, json);
 }
 
-template<typename Data>
-UIRowMap NdbDataReader<Data>::readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, 
+template<typename Data, typename Conn>
+UIRowMap NdbDataReader<Data, Conn>::readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, 
         const char* table_name,  UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index) {
     
     UIRowMap res;
@@ -113,8 +114,8 @@ UIRowMap NdbDataReader<Data>::readTableWithIntPK(const NdbDictionary::Dictionary
     return res;
 }
 
-template<typename Data>
-void NdbDataReader<Data>::start() {
+template<typename Data, typename Conn>
+void NdbDataReader<Data, Conn>::start() {
     if (mStarted) {
         return;
     }
@@ -127,8 +128,8 @@ void NdbDataReader<Data>::start() {
     mStarted = true;
 }
 
-template<typename Data>
-void NdbDataReader<Data>::readerThread(int connIndex) {
+template<typename Data, typename Conn>
+void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
     while(true){
         Data curr;
         mBatchedQueue->wait_and_pop(curr);
@@ -139,16 +140,13 @@ void NdbDataReader<Data>::readerThread(int connIndex) {
     }
 }
 
-template<typename Data>
-void NdbDataReader<Data>::processBatch(Data data_batch) {
+template<typename Data, typename Conn>
+void NdbDataReader<Data, Conn>::processBatch(Data data_batch) {
     mBatchedQueue->push(data_batch);
 }
 
-template<typename Data>
-NdbDataReader<Data>::~NdbDataReader() {
-    for(int i=0; i< mNumReaders; i++){
-        delete mNdbConnections[i];
-    }
+template<typename Data, typename Conn>
+NdbDataReader<Data, Conn>::~NdbDataReader() {
     delete[] mNdbConnections;
     delete mBatchedQueue;
 }

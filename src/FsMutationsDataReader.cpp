@@ -38,7 +38,7 @@ const int UG_NAME_COL = 1;
 
 FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
         const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache) 
-    : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
+    : NdbDataReader<Cus_Cus, Ndb*>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
 
 }
 
@@ -72,6 +72,8 @@ ReadTimes FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
     string resp = bulkUpdateElasticSearch(data);
     
     ptime t4 = getCurrentTime();
+    
+    //TODO: remove the mutation records from the database
     
     LOG_INFO() << " RESP " << resp;
     
@@ -263,5 +265,7 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
 }
 
 FsMutationsDataReader::~FsMutationsDataReader() {
-    
+    for(int i=0; i< mNumReaders; i++){
+        delete mNdbConnections[i];
+    }
 }

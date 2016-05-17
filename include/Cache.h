@@ -26,6 +26,8 @@
 #define CACHE_H
 #include "common.h"
 
+//TODO: implement LRU, how to handle eviction?! since i'm using the cache to pass elements between functions
+
 template<typename Key, typename Value>
 class Cache {
 public:

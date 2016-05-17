@@ -28,7 +28,7 @@
 #include "FsMutationsTableTailer.h"
 #include "NdbDataReader.h"
 
-class FsMutationsDataReader : public NdbDataReader<Cus_Cus>{
+class FsMutationsDataReader : public NdbDataReader<Cus_Cus, Ndb*>{
 public:
     FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
             const bool hopsworks, const string elastic_index, const string elastic_inode_type,

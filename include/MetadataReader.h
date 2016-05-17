@@ -56,14 +56,19 @@ typedef boost::unordered_map<int, UTemplateToTables> UInodesToTemplates;
 typedef boost::unordered_map<int, MetadataEntry> UFieldIdToMetadataEntry;
 typedef boost::unordered_map<int, UFieldIdToMetadataEntry> UTupleIdToMetadataEntries;
 
-class MetadataReader : public NdbDataReader<Mq_Mq>{
+struct MConn{
+    Ndb* inodeConnection;
+    Ndb* metadataConnection;
+};
+
+class MetadataReader : public NdbDataReader<Mq_Mq, MConn>{
 public:
-    MetadataReader(Ndb** connections, const int num_readers, string elastic_ip, 
+    MetadataReader(MConn* connections, const int num_readers, string elastic_ip, 
             const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
             DatasetProjectCache* cache);
     virtual ~MetadataReader();
 private:
-    virtual ReadTimes readData(Ndb* connection, Mq_Mq data_batch);
+    virtual ReadTimes readData(MConn connection, Mq_Mq data_batch);
     
     UInodesToTemplates readMetadataColumns(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, Mq* added, UTupleIdToMetadataEntries &tupleToRows);
@@ -71,12 +76,17 @@ private:
     UISet readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
+    //Read from the inodes database
+    void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
+        NdbTransaction* inodesTransaction, UInodesToTemplates inodesToTemplates);
+    
     string createJSON(UInodesToTemplates inodesToTemplates, UTupleIdToMetadataEntries tupleToEntries);
     UInodesToTemplates getInodesToTemplates(UIRowMap tuples, UTupleIdToMetadataEntries tupleToEntries);
         
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;
     Cache<int, string> mTemplatesCache;
+    Cache<int, int> mInodesToDataset;
 };
 
 #endif /* METADATAREADER_H */

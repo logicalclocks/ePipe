@@ -74,9 +74,10 @@ void Notifier::setup() {
     Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
     mMetadataTableTailer = new MetadataTableTailer(metadata_tailer_connection, mPollMaxTimeToWait);
     
-    Ndb** metadata_connections = new Ndb*[mNumNdbReaders];
+    MConn* metadata_connections = new MConn[mNumNdbReaders];
     for(int i=0; i< mNumNdbReaders; i++){
-        metadata_connections[i] = create_ndb_connection(mMetaDatabaseName);
+        metadata_connections[i].inodeConnection =  create_ndb_connection(mDatabaseName);
+        metadata_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
     }
      
     mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr, 

@@ -53,23 +53,43 @@ const char* TUPLES_COLS_TO_READ[] = {"tupleid", "inodeid"};
 const int TUPLE_ID_COL = 0;
 const int TUPLE_INODE_ID_COL = 1;
 
+const char* INODE_DATASET_LOOKUP = "hdfs_inode_dataset_lookup";
+const int NUM_INODE_DATASET_COLS = 2;
+const char* INODE_DATASET_LOOKUP_COLS_TO_READ[] = {"inode_id", "dataset_id"};
+const int INODE_DATASET_LOOKUP_INODE_ID_COL = 0;
+const int INODE_DATASET_LOOKUO_DATASET_ID_COL = 1;
 
-MetadataReader::MetadataReader(Ndb** connections, const int num_readers,  string elastic_ip, 
+MetadataReader::MetadataReader(MConn* connections, const int num_readers,  string elastic_ip, 
         const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache) 
-        : NdbDataReader(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache) {
+        : NdbDataReader<Mq_Mq, MConn>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache) {
 
 }
 
-ReadTimes MetadataReader::readData(Ndb* connection, Mq_Mq data_batch) {
+ReadTimes MetadataReader::readData(MConn connection, Mq_Mq data_batch) {
     Mq* added = data_batch.added;
+    Ndb* metaConn = connection.metadataConnection;
     
     ptime t1 = getCurrentTime();
     
-    const NdbDictionary::Dictionary* database = getDatabase(connection);
-    NdbTransaction* ts = startNdbTransaction(connection);
+    const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConn);
+    NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
     UTupleIdToMetadataEntries tupleToEntries;
-    UInodesToTemplates inodesToTemplates = readMetadataColumns(database, ts, added, tupleToEntries);
+    UInodesToTemplates inodesToTemplates = readMetadataColumns(metaDatabase, metaTransaction, added, tupleToEntries);
+    
+    if(mHopsworksEnalbed){
+        //read inodes to datasets from inodes datatbase to enable
+        //parent/child relationship
+        Ndb* inodeConn = connection.inodeConnection;
+        
+        const NdbDictionary::Dictionary* inodeDatabase = getDatabase(inodeConn);
+        NdbTransaction* inodeTransaction = startNdbTransaction(inodeConn);
+        
+        readINodeToDatasetLookup(inodeDatabase, inodeTransaction, inodesToTemplates);
+        
+        executeTransaction(inodeTransaction, NdbTransaction::NoCommit);
+        inodeConn->closeTransaction(inodeTransaction);
+    }
     
     ptime t2 = getCurrentTime();
     
@@ -79,7 +99,7 @@ ReadTimes MetadataReader::readData(Ndb* connection, Mq_Mq data_batch) {
     
     LOG_INFO() << " Out :: " << endl << data << endl;
     
-    connection->closeTransaction(ts);
+    metaConn->closeTransaction(metaTransaction);
    
     string resp = bulkUpdateElasticSearch(data);
     
@@ -217,8 +237,36 @@ void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, Nd
         
         string templateName = get_string(it->second[TEMPLATE_NAME_COL]);
         
-        //TODO: check in the cache
         mTemplatesCache.put(it->first, templateName);
+    }
+}
+
+void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
+        NdbTransaction* inodesTransaction, UInodesToTemplates inodesToTemplates) {
+    
+    //read inodes to dataset ids
+    UISet inodes_ids;
+    for(UInodesToTemplates::iterator it=inodesToTemplates.begin(); it != inodesToTemplates.end(); ++it){
+        //TODO: check if is in the cache
+        inodes_ids.insert(it->first);
+    }
+    
+    UIRowMap inodesToDatasets = readTableWithIntPK(inodesDatabase, inodesTransaction,
+            INODE_DATASET_LOOKUP, inodes_ids, INODE_DATASET_LOOKUP_COLS_TO_READ,
+            NUM_INODE_DATASET_COLS, INODE_DATASET_LOOKUP_INODE_ID_COL);
+
+    executeTransaction(inodesTransaction, NdbTransaction::NoCommit);
+
+    for (UIRowMap::iterator it = inodesToDatasets.begin(); it != inodesToDatasets.end(); ++it) {
+        if (it->first != it->second[INODE_DATASET_LOOKUP_INODE_ID_COL]->int32_value()) {
+            //TODO: update elastic?!
+            LOG_DEBUG() << " TEMPLATE " << it->first << " doesn't exists";
+            continue;
+        }
+
+        int datasetId = it->second[INODE_DATASET_LOOKUO_DATASET_ID_COL]->int32_value();
+
+        mInodesToDataset.put(it->first, datasetId);
     }
 }
 
@@ -246,13 +294,18 @@ string MetadataReader::createJSON(UInodesToTemplates inodesToTemplates, UTupleId
         opWriter.String(mElasticInodeType.c_str());
 
         if(mHopsworksEnalbed){
-            // TODO:
-            // set project (rounting) and dataset (parent) ids 
-            // opWriter.String("_parent");
-            // opWriter.Int(3);
+            if(mInodesToDataset.contains(inodeId)){
+                int datasetId = mInodesToDataset.get(inodeId);
+                // set project (rounting) and dataset (parent) ids 
+                opWriter.String("_parent");
+                opWriter.Int(datasetId);
 
-            // opWriter.String("_routing");
-            // opWriter.Int(2);
+                opWriter.String("_routing");
+                opWriter.Int(mDatasetProjectCache->getProjectId(datasetId));
+                
+            }else{
+                LOG_ERROR() << "Something went wrong: DatasetId for InodeId[" << inodeId<< "] is not in the cache";
+            }
         }
 
         opWriter.String("_id");
@@ -367,7 +420,7 @@ UInodesToTemplates MetadataReader::getInodesToTemplates(UIRowMap tuples, UTupleI
     for (UIRowMap::iterator it = tuples.begin(); it != tuples.end(); ++it) {
         int tupleId = it->first;
         int inodeId = it->second[TUPLE_INODE_ID_COL]->int32_value();
-
+          
         UFieldIdToMetadataEntry fields = tupleToEntries[tupleId];
 
         for (UFieldIdToMetadataEntry::iterator fieldIt = fields.begin(); fieldIt != fields.end(); ++fieldIt) {
@@ -421,5 +474,9 @@ UInodesToTemplates MetadataReader::getInodesToTemplates(UIRowMap tuples, UTupleI
 
 
 MetadataReader::~MetadataReader() {
+    for(int i=0; i< mNumReaders; i++){
+        delete mNdbConnections[i].inodeConnection;
+        delete mNdbConnections[i].metadataConnection;
+    }
 }
 
