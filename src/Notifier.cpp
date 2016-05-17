@@ -25,9 +25,12 @@
 #include "Notifier.h"
 
 Notifier::Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
-        const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, const int num_ndb_readers, const string elastic_ip)
+        const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, 
+        const int num_ndb_readers, const string elastic_ip, const bool hopsworks, const string elastic_index, 
+        const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type)
 : mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
-        mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers), mElasticAddr(elastic_ip) {
+        mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
+        mElasticIndex(elastic_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), mElasticInodeType(elastic_inode_type){
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
 }
@@ -41,8 +44,10 @@ void Notifier::start() {
     
     mFsMutationsBatcher->start();
     mMetadataBatcher->start();
-    
-    mProjectTableTailer->start();
+
+    if (mHopsworksEnabled) {
+        mProjectTableTailer->start();
+    }
     
     mFsMutationsBatcher->waitToFinish();
     mMetadataBatcher->waitToFinish();
@@ -57,8 +62,10 @@ void Notifier::setup() {
         mutations_connections[i] = create_ndb_connection(mDatabaseName);
     }
     
-    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders, mElasticAddr);
-    mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
+    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders, 
+            mElasticAddr, mHopsworksEnabled, mElasticIndex, mElasticInodeType);
+    mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, 
+            mTimeBeforeIssuingNDBReqs, mBatchSize);
     
     
     Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
@@ -69,11 +76,16 @@ void Notifier::setup() {
         metadata_connections[i] = create_ndb_connection(mMetaDatabaseName);
     }
      
-    mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr);
+    mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr, 
+             mHopsworksEnabled, mElasticIndex, mElasticInodeType);
     mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
+
+    if (mHopsworksEnabled) {
+        Ndb* project_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+        mProjectTableTailer = new ProjectTableTailer(project_tailer_connection, mPollMaxTimeToWait,
+                mElasticAddr, mElasticIndex, mElastticProjectType);
+    }
     
-    Ndb* project_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-    mProjectTableTailer = new ProjectTableTailer(project_tailer_connection, mPollMaxTimeToWait, mElasticAddr);
 }
 
 Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_string) {

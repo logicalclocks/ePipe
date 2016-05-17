@@ -36,7 +36,9 @@ const char* UG_COLS_TO_READ[] = {"id", "name"};
 const int UG_ID_COL = 0;
 const int UG_NAME_COL = 1;
 
-FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip) : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip){
+FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
+        const bool hopsworks, const string elastic_index, const string elastic_inode_type ) 
+    : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type){
 
 }
 
@@ -194,18 +196,20 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
         opWriter.StartObject();
 
         opWriter.String("_index");
-        opWriter.String("projects");
+        opWriter.String(mElasticIndex.c_str());
         
         opWriter.String("_type");
-        opWriter.String("inode");
+        opWriter.String(mElasticInodeType.c_str());
         
-        // set project (rounting) and dataset (parent) ids 
-       // opWriter.String("_parent");
-       // opWriter.Int(3);
+        if(mHopsworksEnalbed){
+            // set project (rounting) and dataset (parent) ids 
+            // opWriter.String("_parent");
+            // opWriter.Int(3);
         
-       // opWriter.String("_routing");
-       // opWriter.Int(2);
-        
+            // opWriter.String("_routing");
+            // opWriter.Int(2);
+        }
+ 
         opWriter.String("_id");
         opWriter.Int(inodes[i][INODE_ID_COL]->int32_value());
 

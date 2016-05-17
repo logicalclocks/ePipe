@@ -45,17 +45,12 @@ struct ReadTimes{
 template<typename Data>
 class NdbDataReader {
 public:
-    NdbDataReader(Ndb** connections, const int num_readers, string elastic_addr);
+    NdbDataReader(Ndb** connections, const int num_readers, string elastic_addr,
+            const bool hopsworks, const string elastic_index, const string elastic_inode_type);
     void start();
     void processBatch(Data data_batch);
     virtual ~NdbDataReader();
 
-protected:
-    virtual ReadTimes readData(Ndb* connection, Data data_batch) = 0;
-    string bulkUpdateElasticSearch(string json);
-    UIRowMap readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, const char* table_name, 
-            UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index);
-        
 private:
     Ndb** mNdbConnections;
     const int mNumReaders;
@@ -68,12 +63,24 @@ private:
     ConcurrentQueue<Data>* mBatchedQueue;
     
     void readerThread(int connectionId);
+    
+protected:
+    virtual ReadTimes readData(Ndb* connection, Data data_batch) = 0;
+    string bulkUpdateElasticSearch(string json);
+    UIRowMap readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, const char* table_name, 
+            UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index);
+    const bool mHopsworksEnalbed;
+    const string mElasticIndex;
+    const string mElasticInodeType;
+    
 };
 
 
 template<typename Data>
 NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers, 
-        string elastic_ip) : mNdbConnections(connections), mNumReaders(num_readers), mElasticAddr(elastic_ip){
+        string elastic_ip, const bool hopsworks, const string elastic_index, 
+        const string elastic_inode_type) : mNdbConnections(connections), mNumReaders(num_readers), 
+        mElasticAddr(elastic_ip), mHopsworksEnalbed(hopsworks), mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type){
     mStarted = false;
     mElasticBulkUrl = getElasticSearchBulkUrl(mElasticAddr);
     mBatchedQueue = new ConcurrentQueue<Data>();

@@ -29,12 +29,14 @@
 
 class ProjectTableTailer : public TableTailer{
 public:
-    ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr);
+    ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
+            const string elastic_index, const string elastic_project_type);
     virtual ~ProjectTableTailer();
 private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     string mElasticAddr;
-        
+    const string mElasticIndex;
+    const string mElasticProjectType;
 };
 
 #endif /* PROJECTTABLETAILER_H */

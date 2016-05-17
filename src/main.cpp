@@ -67,6 +67,11 @@ int main(int argc, char** argv) {
             ("ndb_batch", po::value<int>(), "batch size for reading from ndb")
             ("num_ndb_readers", po::value<int>(), "num of ndb reader threads")
             ("elastic_addr", po::value<string>(), "ip and port of the elasticsearch server")
+            ("hopsworks", po::value<bool>(), "enable or disable hopsworks, which will use grandparents to index inodes and metadata")
+            ("index", po::value<string>(), "Elastic index to add the data to. Default: projects.")
+            ("project_type", po::value<string>(), "Elastic type for projects, only used when hopsworks is enabled. Default: proj")
+            ("dataset_type", po::value<string>(), "Elastic type for datasets, only used when hopsworks is enabled. Default: ds")
+            ("inode_type", po::value<string>(), "Elastic type for inodes. Default: inode")
             ("log", po::value<int>(), "log level trace=0, debug=1, info=1, error=2")
             ;
 
@@ -79,7 +84,12 @@ int main(int argc, char** argv) {
     int num_ndb_readers = 5;
     string elastic_addr = "localhost:9200";
     int log_level = 1;
-
+    bool hopsworks = true;
+    string elastic_index = "projects";
+    string elastic_project_type = "proj";
+    string elastic_dataset_type = "ds";
+    string elastic_inode_type = "inode";
+    
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
@@ -125,10 +135,33 @@ int main(int argc, char** argv) {
         elastic_addr = vm["elastic_addr"].as<string>();
     }
     
+    if(vm.count("hopsworks")){
+        hopsworks = vm["hopsworks"].as<bool>();
+    }
+    
+     if(vm.count("index")){
+        elastic_index = vm["index"].as<string>();
+    }
+    
+     if(vm.count("project_type")){
+        elastic_project_type = vm["project_type"].as<string>();
+    }
+    
+     if(vm.count("dataset_type")){
+        elastic_dataset_type = vm["dataset_type"].as<string>();
+    }
+    
+     if(vm.count("inode_type")){
+        elastic_inode_type = vm["inode_type"].as<string>();
+    }
+    
+    
+    
     init_logging(log_level);
     
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), meta_database_name.c_str(),
-            wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers, elastic_addr);
+            wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers, elastic_addr, hopsworks, elastic_index,
+            elastic_project_type, elastic_dataset_type, elastic_inode_type);
     notifer->start();
 
     return EXIT_SUCCESS;

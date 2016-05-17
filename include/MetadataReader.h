@@ -58,7 +58,8 @@ typedef boost::unordered_map<int, UFieldIdToMetadataEntry> UTupleIdToMetadataEnt
 
 class MetadataReader : public NdbDataReader<Mq_Mq>{
 public:
-    MetadataReader(Ndb** connections, const int num_readers, string elastic_ip);
+    MetadataReader(Ndb** connections, const int num_readers, string elastic_ip, 
+            const bool hopsworks, const string elastic_index, const string elastic_inode_type);
     virtual ~MetadataReader();
 private:
     virtual ReadTimes readData(Ndb* connection, Mq_Mq data_batch);

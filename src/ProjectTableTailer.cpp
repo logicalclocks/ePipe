@@ -42,9 +42,11 @@ const NdbDictionary::Event::TableEvent PROJECT_EVENT_TYPES_TO_WATCH[PROJECT_NUM_
       NdbDictionary::Event::TE_DELETE
     };
 
-ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr) 
+ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
+        const string elastic_index, const string elastic_project_type) 
     : TableTailer(ndb, PROJECT_TABLE_NAME, PROJECT_TABLE_COLUMNS, NO_PROJECT_TABLE_COLUMNS, 
-        PROJECT_EVENT_TYPES_TO_WATCH,PROJECT_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), mElasticAddr(elastic_addr){
+        PROJECT_EVENT_TYPES_TO_WATCH,PROJECT_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), 
+        mElasticAddr(elastic_addr), mElasticIndex(elastic_index), mElasticProjectType(elastic_project_type){
 }
 
 void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
@@ -78,7 +80,7 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.EndObject();
     
     string data = string(sbDoc.GetString());
-    string url = Utils::getElasticSearchUpdateDoc(mElasticAddr, "projects", "proj", id);
+    string url = Utils::getElasticSearchUpdateDoc(mElasticAddr, mElasticIndex, mElasticProjectType, id);
     LOG_INFO() << "Project ::  " << data;
     string resp = Utils::elasticSearchPOST(url, data);
     LOG_INFO() << "Resp :: " << resp;
