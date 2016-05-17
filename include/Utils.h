@@ -91,6 +91,12 @@ namespace Utils {
         return out.str();
     }
     
+    inline static string getElasticSearchUpdateDoc(string elasticUrl, string index, string type, int doc, int parent){
+        stringstream out;
+        out << getElasticSearchUpdateDoc(elasticUrl, index, type, doc) << "?parent=" << parent;
+        return out.str();
+    }
+    
     inline static string elasticSearchPOST(string elasticUrl, string json) {
         try {
             httpclient::request request_(elasticUrl);

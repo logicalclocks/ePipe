@@ -41,11 +41,14 @@
 #include <boost/thread/pthread/mutex.hpp>
 #include <boost/thread/pthread/condition_variable_fwd.hpp>
 #include <boost/unordered/unordered_set.hpp>
+#include <boost/unordered/unordered_map.hpp>
 #include "vector"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 
 using namespace std;
+
+typedef boost::unordered_set<int> UISet;
 
 //Constansts
 

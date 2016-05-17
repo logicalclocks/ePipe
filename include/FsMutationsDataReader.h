@@ -31,7 +31,8 @@
 class FsMutationsDataReader : public NdbDataReader<Cus_Cus>{
 public:
     FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
-            const bool hopsworks, const string elastic_index, const string elastic_inode_type);
+            const bool hopsworks, const string elastic_index, const string elastic_inode_type,
+            DatasetProjectCache* cache);
     virtual ~FsMutationsDataReader();
 private:
     Cache<int, string> mUsersCache;

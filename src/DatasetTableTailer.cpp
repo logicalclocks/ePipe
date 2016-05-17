@@ -17,40 +17,40 @@
  */
 
 /* 
- * File:   ProjectTableTailer.cpp
+ * File:   DatasetTableTailer.cpp
  * Author: Mahmoud Ismail<maism@kth.se>
  * 
  */
 
-#include "ProjectTableTailer.h"
-
-const char *PROJECT_TABLE_NAME= "project";
-const int NO_PROJECT_TABLE_COLUMNS= 6;
-const char *PROJECT_TABLE_COLUMNS[NO_PROJECT_TABLE_COLUMNS]=
+#include "DatasetTableTailer.h"
+const char *DATASET_TABLE_NAME= "dataset";
+const int NO_DATASET_TABLE_COLUMNS= 6;
+const char *DATASET_TABLE_COLUMNS[NO_DATASET_TABLE_COLUMNS]=
     {"inode_id",
      "inode_pid",
      "inode_name",
-     "projectname",
-     "username",
-     "description"
+     "projectId",
+     "description",
+     "public_ds"
     };
 
-const int PROJECT_NUM_EVENT_TYPES_TO_WATCH = 3; 
-const NdbDictionary::Event::TableEvent PROJECT_EVENT_TYPES_TO_WATCH[PROJECT_NUM_EVENT_TYPES_TO_WATCH] = 
+const int DATASET_NUM_EVENT_TYPES_TO_WATCH = 3; 
+const NdbDictionary::Event::TableEvent DATASET_EVENT_TYPES_TO_WATCH[DATASET_NUM_EVENT_TYPES_TO_WATCH] = 
     { NdbDictionary::Event::TE_INSERT, 
       NdbDictionary::Event::TE_UPDATE, 
       NdbDictionary::Event::TE_DELETE
     };
 
-ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
-        const string elastic_index, const string elastic_project_type, DatasetProjectCache* cache) 
-    : TableTailer(ndb, PROJECT_TABLE_NAME, PROJECT_TABLE_COLUMNS, NO_PROJECT_TABLE_COLUMNS, 
-        PROJECT_EVENT_TYPES_TO_WATCH,PROJECT_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), 
-        mElasticAddr(elastic_addr), mElasticIndex(elastic_index), mElasticProjectType(elastic_project_type),
+DatasetTableTailer::DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
+        const string elastic_index, const string elastic_dataset_type,DatasetProjectCache* cache) 
+    : TableTailer(ndb, DATASET_TABLE_NAME, DATASET_TABLE_COLUMNS, NO_DATASET_TABLE_COLUMNS, 
+        DATASET_EVENT_TYPES_TO_WATCH,DATASET_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), 
+        mElasticAddr(elastic_addr), mElasticIndex(elastic_index), mElasticDatasetType(elastic_dataset_type),
         mDatasetProjectCache(cache){
+    
 }
 
-void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
+void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
     
     if(eventType == NdbDictionary::Event::TE_DELETE){
         //TODO: handle deleted
@@ -58,6 +58,9 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     }
     
     int id = value[0]->int32_value();
+    int projectId = value[3]->int32_value();
+    
+    mDatasetProjectCache->addDatasetToProject(id, projectId);
     
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -72,14 +75,16 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.String("inode_name");
     docWriter.String(Utils::get_string(value[2]).c_str());
     
-    docWriter.String("project_name");
-    docWriter.String(Utils::get_string(value[3]).c_str());
-    
-    docWriter.String("user");
-    docWriter.String(Utils::get_string(value[4]).c_str());
+    docWriter.String("projectId");
+    docWriter.Int(projectId);
     
     docWriter.String("description");
-    docWriter.String(Utils::get_string(value[5]).c_str());
+    docWriter.String(Utils::get_string(value[4]).c_str());
+    
+    bool public_ds = value[5]->int8_value() == 1;
+    
+    docWriter.String("public_ds");
+    docWriter.Bool(public_ds);
     
     docWriter.EndObject();
     docWriter.String("doc_as_upsert");
@@ -87,12 +92,14 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.EndObject();
     
     string data = string(sbDoc.GetString());
-    string url = Utils::getElasticSearchUpdateDoc(mElasticAddr, mElasticIndex, mElasticProjectType, id);
-    LOG_INFO() << "Project ::  " << data;
+    
+    string url = Utils::getElasticSearchUpdateDoc(mElasticAddr, mElasticIndex, mElasticDatasetType, id, projectId);
+    LOG_INFO() << "Dataset ::  " << data;
     string resp = Utils::elasticSearchPOST(url, data);
     LOG_INFO() << "Resp :: " << resp;
 }
 
-ProjectTableTailer::~ProjectTableTailer() {
+
+DatasetTableTailer::~DatasetTableTailer() {
 }
 

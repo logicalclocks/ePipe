@@ -29,6 +29,7 @@
 #include "FsMutationsBatcher.h"
 #include "MetadataBatcher.h"
 #include "ProjectTableTailer.h"
+#include "DatasetTableTailer.h"
 
 class Notifier {
 public:
@@ -65,7 +66,9 @@ private:
     MetadataReader* mMetadataReader;
     MetadataBatcher* mMetadataBatcher;
     
+    DatasetProjectCache* mDatasetProjectCache;
     ProjectTableTailer* mProjectTableTailer;
+    DatasetTableTailer* mDatasetTableTailer;
     
     Ndb* create_ndb_connection(const char* database);
     Ndb_cluster_connection* connect_to_cluster(const char *connection_string);

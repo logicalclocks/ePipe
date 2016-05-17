@@ -29,8 +29,8 @@
 #include "ConcurrentQueue.h"
 #include "Cache.h"
 #include "Utils.h"
+#include "DatasetProjectCache.h"
 
-typedef boost::unordered_set<int> UISet;
 typedef vector<NdbRecAttr*> Row;
 typedef boost::unordered_map<int, Row> UIRowMap;
 
@@ -46,7 +46,7 @@ template<typename Data>
 class NdbDataReader {
 public:
     NdbDataReader(Ndb** connections, const int num_readers, string elastic_addr,
-            const bool hopsworks, const string elastic_index, const string elastic_inode_type);
+            const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache);
     void start();
     void processBatch(Data data_batch);
     virtual ~NdbDataReader();
@@ -72,15 +72,16 @@ protected:
     const bool mHopsworksEnalbed;
     const string mElasticIndex;
     const string mElasticInodeType;
-    
+    DatasetProjectCache* mDatasetProjectCache;
 };
 
 
 template<typename Data>
 NdbDataReader<Data>::NdbDataReader(Ndb** connections, const int num_readers, 
         string elastic_ip, const bool hopsworks, const string elastic_index, 
-        const string elastic_inode_type) : mNdbConnections(connections), mNumReaders(num_readers), 
-        mElasticAddr(elastic_ip), mHopsworksEnalbed(hopsworks), mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type){
+        const string elastic_inode_type, DatasetProjectCache* cache) : mNdbConnections(connections), 
+        mNumReaders(num_readers), mElasticAddr(elastic_ip), mHopsworksEnalbed(hopsworks), 
+        mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type), mDatasetProjectCache(cache){
     mStarted = false;
     mElasticBulkUrl = getElasticSearchBulkUrl(mElasticAddr);
     mBatchedQueue = new ConcurrentQueue<Data>();

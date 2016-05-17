@@ -25,7 +25,6 @@
 #ifndef CACHE_H
 #define CACHE_H
 #include "common.h"
-#include <boost/optional.hpp>
 
 template<typename Key, typename Value>
 class Cache {
@@ -33,6 +32,7 @@ public:
     Cache();
     void put(Key key, Value value);
     Value get(Key key);
+    Value remove(Key key);
     bool contains(Key key);
     virtual ~Cache();
 private:
@@ -60,6 +60,14 @@ template<typename Key, typename Value>
 Value Cache<Key,Value>::get(Key key){
     boost::mutex::scoped_lock lock(mLock);
     return cache[key];
+}
+
+template<typename Key, typename Value>
+Value Cache<Key,Value>::remove(Key key){
+    boost::mutex::scoped_lock lock(mLock);
+    Value val = cache[key];
+    cache.erase(key);
+    return val;
 }
 
 template<typename Key, typename Value>

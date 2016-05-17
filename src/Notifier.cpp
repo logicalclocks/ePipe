@@ -47,6 +47,7 @@ void Notifier::start() {
 
     if (mHopsworksEnabled) {
         mProjectTableTailer->start();
+        mDatasetTableTailer->start();
     }
     
     mFsMutationsBatcher->waitToFinish();
@@ -62,8 +63,10 @@ void Notifier::setup() {
         mutations_connections[i] = create_ndb_connection(mDatabaseName);
     }
     
+    mDatasetProjectCache = new DatasetProjectCache();
+    
     mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders, 
-            mElasticAddr, mHopsworksEnabled, mElasticIndex, mElasticInodeType);
+            mElasticAddr, mHopsworksEnabled, mElasticIndex, mElasticInodeType, mDatasetProjectCache);
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, 
             mTimeBeforeIssuingNDBReqs, mBatchSize);
     
@@ -77,13 +80,17 @@ void Notifier::setup() {
     }
      
     mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr, 
-             mHopsworksEnabled, mElasticIndex, mElasticInodeType);
+             mHopsworksEnabled, mElasticIndex, mElasticInodeType, mDatasetProjectCache);
     mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
 
     if (mHopsworksEnabled) {
         Ndb* project_tailer_connection = create_ndb_connection(mMetaDatabaseName);
         mProjectTableTailer = new ProjectTableTailer(project_tailer_connection, mPollMaxTimeToWait,
-                mElasticAddr, mElasticIndex, mElastticProjectType);
+                mElasticAddr, mElasticIndex, mElastticProjectType, mDatasetProjectCache);
+        
+        Ndb* dataset_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+        mDatasetTableTailer = new DatasetTableTailer(dataset_tailer_connection, mPollMaxTimeToWait,
+                mElasticAddr, mElasticIndex, mElasticDatasetType, mDatasetProjectCache);
     }
     
 }

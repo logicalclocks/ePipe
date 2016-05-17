@@ -37,8 +37,8 @@ const int UG_ID_COL = 0;
 const int UG_NAME_COL = 1;
 
 FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
-        const bool hopsworks, const string elastic_index, const string elastic_inode_type ) 
-    : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type){
+        const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache) 
+    : NdbDataReader<Cus_Cus>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
 
 }
 
@@ -181,11 +181,12 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
     for (int i = 0; i < batch_size; i++) {
         if (pending[i].mInodeId != inodes[i][INODE_ID_COL]->int32_value()) {
             LOG_INFO() << " Data for " << pending[i].mParentId << ", " << pending[i].mInodeName << " not found";
-            break;
+            continue;
         }
         
         int userId = inodes[i][INODE_USER_ID_COL]->int32_value();
         int groupId = inodes[i][INODE_GROUP_ID_COL]->int32_value();
+        int datasetId = pending[i].mDatasetId;
         
         rapidjson::StringBuffer sbOp;
         rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -203,11 +204,11 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
         
         if(mHopsworksEnalbed){
             // set project (rounting) and dataset (parent) ids 
-            // opWriter.String("_parent");
-            // opWriter.Int(3);
+            opWriter.String("_parent");
+            opWriter.Int(datasetId);
         
-            // opWriter.String("_routing");
-            // opWriter.Int(2);
+            opWriter.String("_routing");
+            opWriter.Int(mDatasetProjectCache->getProjectId(datasetId));
         }
  
         opWriter.String("_id");

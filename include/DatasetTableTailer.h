@@ -16,30 +16,31 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+
 /* 
- * File:   ProjectTableTailer.h
+ * File:   DatasetTableTailer.h
  * Author: Mahmoud Ismail<maism@kth.se>
  *
  */
 
-#ifndef PROJECTTABLETAILER_H
-#define PROJECTTABLETAILER_H
+#ifndef DATASETTABLETAILER_H
+#define DATASETTABLETAILER_H
 
 #include "TableTailer.h"
 #include "DatasetProjectCache.h"
 
-class ProjectTableTailer : public TableTailer{
+class DatasetTableTailer : public TableTailer{
 public:
-    ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
-            const string elastic_index, const string elastic_project_type, DatasetProjectCache* cache);
-    virtual ~ProjectTableTailer();
+    DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
+            const string elastic_index, const string elastic_dataset_type, DatasetProjectCache* cache);
+    virtual ~DatasetTableTailer();
 private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     string mElasticAddr;
     const string mElasticIndex;
-    const string mElasticProjectType;
+    const string mElasticDatasetType;
     DatasetProjectCache* mDatasetProjectCache;
 };
 
-#endif /* PROJECTTABLETAILER_H */
+#endif /* DATASETTABLETAILER_H */
 

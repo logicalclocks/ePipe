@@ -55,8 +55,8 @@ const int TUPLE_INODE_ID_COL = 1;
 
 
 MetadataReader::MetadataReader(Ndb** connections, const int num_readers,  string elastic_ip, 
-        const bool hopsworks, const string elastic_index, const string elastic_inode_type) 
-        : NdbDataReader(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type) {
+        const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache) 
+        : NdbDataReader(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache) {
 
 }
 
@@ -246,6 +246,7 @@ string MetadataReader::createJSON(UInodesToTemplates inodesToTemplates, UTupleId
         opWriter.String(mElasticInodeType.c_str());
 
         if(mHopsworksEnalbed){
+            // TODO:
             // set project (rounting) and dataset (parent) ids 
             // opWriter.String("_parent");
             // opWriter.Int(3);
