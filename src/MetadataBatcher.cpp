@@ -35,27 +35,27 @@ MetadataBatcher::MetadataBatcher(MetadataTableTailer* table_tailer, MetadataRead
 
 void MetadataBatcher::run() {
   while (true) {
-        MetadataRow row = mTableTailer->consume();
+        MetadataEntry entry = mTableTailer->consume();
 
         LOG_TRACE() << "-------------------------";
-        LOG_TRACE() << "Id = " << row.mId;
-        LOG_TRACE() << "FieldId = " << row.mFieldId;
-        LOG_TRACE() << "TupleId = " << row.mTupleId;
-        LOG_TRACE() << "Data = " << row.mMetadata;
-        LOG_TRACE() << "Operation = " << row.mOperation;
+        LOG_TRACE() << "Id = " << entry.mId;
+        LOG_TRACE() << "FieldId = " << entry.mFieldId;
+        LOG_TRACE() << "TupleId = " << entry.mTupleId;
+        LOG_TRACE() << "Data = " << entry.mMetadata;
+        LOG_TRACE() << "Operation = " << entry.mOperation;
         LOG_TRACE() << "-------------------------";
         
-        if (row.mOperation == DELETE) {
+        if (entry.mOperation == DELETE) {
             mLock.lock();
-            mDeleteOperations->push_back(row);
+            mDeleteOperations->push_back(entry);
             mLock.unlock();
-        } else if (row.mOperation == ADD) {
+        } else if (entry.mOperation == ADD) {
             mLock.lock();
-            mAddOperations->push_back(row);
+            mAddOperations->push_back(entry);
             mLock.unlock();
         } else {
 
-            LOG_ERROR() << "Unknown Operation code " << row.mOperation;
+            LOG_ERROR() << "Unknown Operation code " << entry.mOperation;
         }
         
         if(mAddOperations->size() == (unsigned) mBatchSize && !mTimerProcessing){

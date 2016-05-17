@@ -47,22 +47,22 @@ MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait)
 }
 
 void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
-    MetadataRow row;
-    row.mId = value[0]->int32_value();
-    row.mFieldId = value[1]->int32_value();
-    row.mTupleId = value[2]->int32_value();
-    row.mMetadata = Utils::get_string(value[3]);
-    row.mOperation = ADD;
+    MetadataEntry entry;
+    entry.mId = value[0]->int32_value();
+    entry.mFieldId = value[1]->int32_value();
+    entry.mTupleId = value[2]->int32_value();
+    entry.mMetadata = Utils::get_string(value[3]);
+    entry.mOperation = ADD;
     if(eventType == NdbDictionary::Event::TE_DELETE){
-        row.mOperation = DELETE;
+        entry.mOperation = DELETE;
     }
     
-    LOG_TRACE() << " push metadata [" << row.mId  << "," << row.mTupleId << "," << row.mFieldId << "] to queue, Op [" << row.mOperation << "]";
-    mQueue->push(row);
+    LOG_TRACE() << " push metadata [" << entry.mId  << "," << entry.mTupleId << "," << entry.mFieldId << "] to queue, Op [" << entry.mOperation << "]";
+    mQueue->push(entry);
 }
 
-MetadataRow MetadataTableTailer::consume() {
-    MetadataRow res;
+MetadataEntry MetadataTableTailer::consume() {
+    MetadataEntry res;
     mQueue->wait_and_pop(res);
     LOG_TRACE() << " pop metadata [" << res.mId  << "," << res.mTupleId << "," << res.mFieldId << "] to queue, Op [" << res.mOperation << "]";
     return res;

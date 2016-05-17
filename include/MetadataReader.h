@@ -37,26 +37,24 @@ enum FieldType{
 };
 
 struct Field{
+    int mFieldId;
     string mName;
     bool mSearchable;
     int mTableId;
     FieldType mType;
 };
 
-struct Tuple{
-    int mTupleId;
-    Field mField;
-};
-
 struct Table{
    string mName;
    int mTemplateId;
 };
-typedef boost::unordered_map<string, vector<Tuple> > UTableToTuples;
+typedef boost::unordered_map<int, vector<Field> > UTupleToFields;
+typedef boost::unordered_map<string, UTupleToFields > UTableToTuples;
 typedef boost::unordered_map<string, UTableToTuples> UTemplateToTables;
 typedef boost::unordered_map<int, UTemplateToTables> UInodesToTemplates;
 
-typedef boost::unordered_map<int, MetadataRow> UTupleIdToMetadataRow;
+typedef boost::unordered_map<int, MetadataEntry> UFieldIdToMetadataEntry;
+typedef boost::unordered_map<int, UFieldIdToMetadataEntry> UTupleIdToMetadataEntries;
 
 class MetadataReader : public NdbDataReader<Mq_Mq>{
 public:
@@ -65,13 +63,14 @@ public:
 private:
     virtual ReadTimes readData(Ndb* connection, Mq_Mq data_batch);
     
-    UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Mq* added);
+    UInodesToTemplates readMetadataColumns(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, Mq* added, UTupleIdToMetadataEntries &tupleToRows);
     UISet readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids);
     UISet readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
-    string createJSON(UIRowMap tuples, Mq* added);
-    UInodesToTemplates getInodesToTemplates(UIRowMap tuples, UTupleIdToMetadataRow tupleToRow);
+    string createJSON(UInodesToTemplates inodesToTemplates, UTupleIdToMetadataEntries tupleToEntries);
+    UInodesToTemplates getInodesToTemplates(UIRowMap tuples, UTupleIdToMetadataEntries tupleToEntries);
         
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;
