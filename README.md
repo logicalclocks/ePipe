@@ -1,4 +1,4 @@
-# hopsfs-elastic-notifier
+# ePipe
 
 
 Development
