@@ -37,52 +37,61 @@ const int UG_ID_COL = 0;
 const int UG_NAME_COL = 1;
 
 FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
-        const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache) 
+        const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
     : NdbDataReader<Cus_Cus, Ndb*>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
 
 }
 
 ReadTimes FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
+    ReadTimes rt;
     Cus* added = data_batch.added;
-    
+
+    string json;
+    if (added->unsynchronized_size() > 0) {
+        json = processAdded(connection, added, rt);
+    }
+
+    //TODO: handle deleted
+
+    if (!json.empty()) {
+        ptime t1 = getCurrentTime();
+        string resp = bulkUpdateElasticSearch(json);
+        ptime t2 = getCurrentTime();
+        LOG_INFO() << " RESP " << resp;
+        rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
+    }
+    return rt;
+}
+
+string FsMutationsDataReader::processAdded(Ndb* connection, Cus* added, ReadTimes& rt) {
     ptime t1 = getCurrentTime();
 
     const NdbDictionary::Dictionary* database = getDatabase(connection);
 
     NdbTransaction* ts = startNdbTransaction(connection);
-    
+
     int batch_size = added->unsynchronized_size();
     FsMutationRow pending[batch_size];
     Row inodes[batch_size];
-    
+
     readINodes(database, ts, added, inodes, pending);
-        
+
     getUsersAndGroups(database, ts, inodes, batch_size);
-    
+
     ptime t2 = getCurrentTime();
 
     string data = createJSON(pending, inodes, batch_size);
-    
+
     ptime t3 = getCurrentTime();
-    
+
     LOG_INFO() << " Out :: " << endl << data << endl;
 
     connection->closeTransaction(ts);
     
-    string resp = bulkUpdateElasticSearch(data);
-    
-    ptime t4 = getCurrentTime();
-    
-    //TODO: remove the mutation records from the database
-    
-    LOG_INFO() << " RESP " << resp;
-    
-    ReadTimes rt;
     rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);
     rt.mJSONCreationTime = getTimeDiffInMilliseconds(t2, t3);
-    rt.mElasticSearchTime = getTimeDiffInMilliseconds(t3, t4);
     
-    return rt;
+    return data;
 }
 
 void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database, 
@@ -210,7 +219,7 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
             opWriter.Int(datasetId);
         
             opWriter.String("_routing");
-            opWriter.Int(mDatasetProjectCache->getProjectId(datasetId));
+            opWriter.Int(mPDICache->getProjectId(datasetId));
         }
  
         opWriter.String("_id");

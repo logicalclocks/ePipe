@@ -11,25 +11,30 @@
  * Created on May 17, 2016, 2:16 PM
  */
 
-#ifndef DATASETPROJECTCACHE_H
-#define DATASETPROJECTCACHE_H
+#ifndef PROJECTDATASETINODECACHE_H
+#define PROJECTDATASETINODECACHE_H
 
 #include "Cache.h"
 
 
-class DatasetProjectCache {
+class ProjectDatasetINodeCache {
 public:
-    DatasetProjectCache();
+    ProjectDatasetINodeCache();
+    void addINodeToDataset(int inodeId, int datasetId);
     void addDatasetToProject(int datasetId, int projectId);
+    void removeINode(int inodeId);
     void removeProject(int projectId);
     void removeDataset(int datasetId);
     int getProjectId(int datasetId);
+    int getDatasetId(int inodeId);
     
-    virtual ~DatasetProjectCache();
+    virtual ~ProjectDatasetINodeCache();
 private:
+    Cache<int, int> mINodeToDataset;
+    Cache<int, UISet*> mDatasetToINodes;
     Cache<int, int> mDatasetToProject;
     Cache<int, UISet*> mProjectToDataset;
 };
 
-#endif /* DATASETPROJECTCACHE_H */
+#endif /* PROJECTDATASETINODECACHE_H */
 

@@ -55,18 +55,19 @@ void Notifier::start() {
 }
 
 void Notifier::setup() {
+    mPDICache = new ProjectDatasetINodeCache();
+    
     Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
-    mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait);
+    mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mPDICache);
     
     Ndb** mutations_connections = new Ndb*[mNumNdbReaders];
     for(int i=0; i< mNumNdbReaders; i++){
         mutations_connections[i] = create_ndb_connection(mDatabaseName);
     }
     
-    mDatasetProjectCache = new DatasetProjectCache();
     
     mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders, 
-            mElasticAddr, mHopsworksEnabled, mElasticIndex, mElasticInodeType, mDatasetProjectCache);
+            mElasticAddr, mHopsworksEnabled, mElasticIndex, mElasticInodeType, mPDICache);
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, 
             mTimeBeforeIssuingNDBReqs, mBatchSize);
     
@@ -81,17 +82,17 @@ void Notifier::setup() {
     }
      
     mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr, 
-             mHopsworksEnabled, mElasticIndex, mElasticInodeType, mDatasetProjectCache);
+             mHopsworksEnabled, mElasticIndex, mElasticInodeType, mPDICache);
     mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
 
     if (mHopsworksEnabled) {
         Ndb* project_tailer_connection = create_ndb_connection(mMetaDatabaseName);
         mProjectTableTailer = new ProjectTableTailer(project_tailer_connection, mPollMaxTimeToWait,
-                mElasticAddr, mElasticIndex, mElastticProjectType, mDatasetProjectCache);
+                mElasticAddr, mElasticIndex, mElastticProjectType, mPDICache);
         
         Ndb* dataset_tailer_connection = create_ndb_connection(mMetaDatabaseName);
         mDatasetTableTailer = new DatasetTableTailer(dataset_tailer_connection, mPollMaxTimeToWait,
-                mElasticAddr, mElasticIndex, mElasticDatasetType, mDatasetProjectCache);
+                mElasticAddr, mElasticIndex, mElasticDatasetType, mPDICache);
     }
     
 }

@@ -22,12 +22,22 @@
  * 
  */
 
-#include "DatasetProjectCache.h"
+#include "ProjectDatasetINodeCache.h"
 
-DatasetProjectCache::DatasetProjectCache() {
+ProjectDatasetINodeCache::ProjectDatasetINodeCache() {
 }
 
-void DatasetProjectCache::addDatasetToProject(int datasetId, int projectId) {
+void ProjectDatasetINodeCache::addINodeToDataset(int inodeId, int datasetId) {
+    mINodeToDataset.put(inodeId, datasetId);
+    
+    if(!mDatasetToINodes.contains(datasetId)){
+        mDatasetToINodes.put(datasetId, new UISet());
+    }
+    mDatasetToINodes.get(datasetId)->insert(inodeId);
+    LOG_TRACE() << "ADD INode[" << inodeId << "] to Dataset[" << datasetId << "]";
+}
+
+void ProjectDatasetINodeCache::addDatasetToProject(int datasetId, int projectId) {
     mDatasetToProject.put(datasetId, projectId);
     
     if(!mProjectToDataset.contains(projectId)){
@@ -37,13 +47,26 @@ void DatasetProjectCache::addDatasetToProject(int datasetId, int projectId) {
     LOG_TRACE() << "ADD Dataset[" << datasetId << "] to Project[" << projectId << "]";
 }
 
-int DatasetProjectCache::getProjectId(int datasetId) {
+int ProjectDatasetINodeCache::getProjectId(int datasetId) {
+    //TODO: if not in the cache, read from dataset table in database?!
     int projectId = mDatasetToProject.get(datasetId);
     LOG_TRACE() << "GOT Project[" << projectId << "] for Dataset[" << datasetId << "]";
     return projectId;
 }
 
-void DatasetProjectCache::removeProject(int projectId) {
+int ProjectDatasetINodeCache::getDatasetId(int inodeId) {
+    //TODO: if not in the cache revert back
+    int datasetId = mINodeToDataset.get(inodeId);
+    LOG_TRACE() << "GOT Dataset[" << datasetId << "] for INode[" << inodeId << "]";
+    return datasetId;
+}
+
+void ProjectDatasetINodeCache::removeINode(int inodeId) {
+    mINodeToDataset.remove(inodeId);
+    LOG_TRACE() << "REMOVE INode[" << inodeId << "]";
+}
+
+void ProjectDatasetINodeCache::removeProject(int projectId) {
     LOG_TRACE() << "REMOVE Project[" << projectId << "]";
     UISet* datasets = mProjectToDataset.remove(projectId);
     for(UISet::iterator it=datasets->begin(); it != datasets->end(); ++it){
@@ -51,11 +74,15 @@ void DatasetProjectCache::removeProject(int projectId) {
     }
 }
 
-void DatasetProjectCache::removeDataset(int datasetId) {
+void ProjectDatasetINodeCache::removeDataset(int datasetId) {
     mDatasetToProject.remove(datasetId);
     LOG_TRACE() << "REMOVE Dataset[" << datasetId << "]";
+    UISet* inodes = mDatasetToINodes.remove(datasetId);
+    for(UISet::iterator it=inodes->begin(); it != inodes->end(); ++it){
+        removeINode(*it);
+    }
 }
 
-DatasetProjectCache::~DatasetProjectCache() {
+ProjectDatasetINodeCache::~ProjectDatasetINodeCache() {
 }
 

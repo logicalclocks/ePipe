@@ -26,19 +26,19 @@
 #define PROJECTTABLETAILER_H
 
 #include "TableTailer.h"
-#include "DatasetProjectCache.h"
+#include "ProjectDatasetINodeCache.h"
 
 class ProjectTableTailer : public TableTailer{
 public:
     ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
-            const string elastic_index, const string elastic_project_type, DatasetProjectCache* cache);
+            const string elastic_index, const string elastic_project_type, ProjectDatasetINodeCache* cache);
     virtual ~ProjectTableTailer();
 private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     string mElasticAddr;
     const string mElasticIndex;
     const string mElasticProjectType;
-    DatasetProjectCache* mDatasetProjectCache;
+    ProjectDatasetINodeCache* mPDICache;
 };
 
 #endif /* PROJECTTABLETAILER_H */

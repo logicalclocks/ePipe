@@ -41,8 +41,8 @@ const char *MUTATION_TABLE_COLUMNS[NO_MUTATION_TABLE_COLUMNS]=
 const int MUTATION_NUM_EVENT_TYPES_TO_WATCH = 1; 
 const NdbDictionary::Event::TableEvent MUTATION_EVENT_TYPES_TO_WATCH[MUTATION_NUM_EVENT_TYPES_TO_WATCH] = { NdbDictionary::Event::TE_INSERT } ;
 
-FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
-        NO_MUTATION_TABLE_COLUMNS, MUTATION_EVENT_TYPES_TO_WATCH, MUTATION_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait) {
+FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ProjectDatasetINodeCache* cache) : TableTailer(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
+        NO_MUTATION_TABLE_COLUMNS, MUTATION_EVENT_TYPES_TO_WATCH, MUTATION_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), mPDICache(cache) {
     mQueue = new Cpq();
 }
 
@@ -56,6 +56,12 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
     row.mOperation = static_cast<Operation>(value[5]->int8_value());
     LOG_TRACE() << " push inode [" << row.mInodeId << "] to queue, Op [" << row.mOperation << "]";
     mQueue->push(row);
+    
+    if(row.mOperation == ADD){
+        mPDICache->addINodeToDataset(row.mInodeId, row.mDatasetId);
+    }else if(row.mOperation == DELETE){
+        mPDICache->removeINode(row.mInodeId);
+    }
 }
 
 FsMutationRow FsMutationsTableTailer::consume(){

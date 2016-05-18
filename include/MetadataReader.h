@@ -65,10 +65,12 @@ class MetadataReader : public NdbDataReader<Mq_Mq, MConn>{
 public:
     MetadataReader(MConn* connections, const int num_readers, string elastic_ip, 
             const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
-            DatasetProjectCache* cache);
+            ProjectDatasetINodeCache* cache);
     virtual ~MetadataReader();
 private:
     virtual ReadTimes readData(MConn connection, Mq_Mq data_batch);
+    
+    string processAdded(MConn connection, Mq* added, ReadTimes& rt);
     
     UInodesToTemplates readMetadataColumns(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, Mq* added, UTupleIdToMetadataEntries &tupleToRows);
@@ -86,7 +88,6 @@ private:
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;
     Cache<int, string> mTemplatesCache;
-    Cache<int, int> mInodesToDataset;
 };
 
 #endif /* METADATAREADER_H */

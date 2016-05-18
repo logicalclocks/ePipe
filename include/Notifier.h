@@ -66,7 +66,7 @@ private:
     MetadataReader* mMetadataReader;
     MetadataBatcher* mMetadataBatcher;
     
-    DatasetProjectCache* mDatasetProjectCache;
+    ProjectDatasetINodeCache* mPDICache;
     ProjectTableTailer* mProjectTableTailer;
     DatasetTableTailer* mDatasetTableTailer;
     

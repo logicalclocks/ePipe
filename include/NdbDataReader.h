@@ -29,7 +29,7 @@
 #include "ConcurrentQueue.h"
 #include "Cache.h"
 #include "Utils.h"
-#include "DatasetProjectCache.h"
+#include "ProjectDatasetINodeCache.h"
 
 typedef vector<NdbRecAttr*> Row;
 typedef boost::unordered_map<int, Row> UIRowMap;
@@ -46,7 +46,7 @@ template<typename Data, typename Conn>
 class NdbDataReader {
 public:
     NdbDataReader(Conn* connections, const int num_readers, string elastic_addr,
-            const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache);
+            const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache);
     void start();
     void processBatch(Data data_batch);
     virtual ~NdbDataReader();
@@ -68,7 +68,7 @@ protected:
     const bool mHopsworksEnalbed;
     const string mElasticIndex;
     const string mElasticInodeType;
-    DatasetProjectCache* mDatasetProjectCache;
+    ProjectDatasetINodeCache* mPDICache;
     
     virtual ReadTimes readData(Conn connection, Data data_batch) = 0;
     string bulkUpdateElasticSearch(string json);
@@ -80,9 +80,9 @@ protected:
 template<typename Data, typename Conn>
 NdbDataReader<Data, Conn>::NdbDataReader(Conn* connections, const int num_readers, 
         string elastic_ip, const bool hopsworks, const string elastic_index, 
-        const string elastic_inode_type, DatasetProjectCache* cache) :  mElasticAddr(elastic_ip), 
+        const string elastic_inode_type, ProjectDatasetINodeCache* cache) :  mElasticAddr(elastic_ip), 
         mNumReaders(num_readers), mNdbConnections(connections), mHopsworksEnalbed(hopsworks), 
-        mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type), mDatasetProjectCache(cache){
+        mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type), mPDICache(cache){
     mStarted = false;
     mElasticBulkUrl = getElasticSearchBulkUrl(mElasticAddr);
     mBatchedQueue = new ConcurrentQueue<Data>();
@@ -90,6 +90,7 @@ NdbDataReader<Data, Conn>::NdbDataReader(Conn* connections, const int num_reader
 
 template<typename Data, typename Conn>
 string NdbDataReader<Data, Conn>::bulkUpdateElasticSearch(string json) {
+    //TODO: handle elasticsearch failures
     return elasticSearchPOST(mElasticBulkUrl, json);
 }
 

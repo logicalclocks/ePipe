@@ -60,16 +60,41 @@ const int INODE_DATASET_LOOKUP_INODE_ID_COL = 0;
 const int INODE_DATASET_LOOKUO_DATASET_ID_COL = 1;
 
 MetadataReader::MetadataReader(MConn* connections, const int num_readers,  string elastic_ip, 
-        const bool hopsworks, const string elastic_index, const string elastic_inode_type, DatasetProjectCache* cache) 
+        const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
         : NdbDataReader<Mq_Mq, MConn>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache) {
 
 }
 
 ReadTimes MetadataReader::readData(MConn connection, Mq_Mq data_batch) {
+
+    ReadTimes rt;
     Mq* added = data_batch.added;
-    Ndb* metaConn = connection.metadataConnection;
+    string json;
+    if (!added->empty()) {
+        json = processAdded(connection, added, rt);
+    }
+
+    //TODO: handle deleted
+
+    if (!json.empty()) {
+        ptime t1 = getCurrentTime();
+        string resp = bulkUpdateElasticSearch(json);
+
+        ptime t2 = getCurrentTime();
+
+        LOG_INFO() << " RESP " << resp;
+
+        rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
+    }
+
+    return rt;
+}
+
+string MetadataReader::processAdded(MConn connection, Mq* added, ReadTimes& rt) {
     
     ptime t1 = getCurrentTime();
+    
+    Ndb* metaConn = connection.metadataConnection;
     
     const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConn);
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
@@ -100,19 +125,11 @@ ReadTimes MetadataReader::readData(MConn connection, Mq_Mq data_batch) {
     LOG_INFO() << " Out :: " << endl << data << endl;
     
     metaConn->closeTransaction(metaTransaction);
-   
-    string resp = bulkUpdateElasticSearch(data);
     
-    ptime t4 = getCurrentTime();
-    
-    LOG_INFO() << " RESP " << resp;
-    
-    ReadTimes rt;
     rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);
     rt.mJSONCreationTime = getTimeDiffInMilliseconds(t2, t3);
-    rt.mElasticSearchTime = getTimeDiffInMilliseconds(t3, t4);
     
-    return rt;
+    return data;
 }
 
 UInodesToTemplates MetadataReader::readMetadataColumns(const NdbDictionary::Dictionary* database,
@@ -266,7 +283,7 @@ void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* i
 
         int datasetId = it->second[INODE_DATASET_LOOKUO_DATASET_ID_COL]->int32_value();
 
-        mInodesToDataset.put(it->first, datasetId);
+        mPDICache->addINodeToDataset(it->first, datasetId);
     }
 }
 
@@ -294,18 +311,13 @@ string MetadataReader::createJSON(UInodesToTemplates inodesToTemplates, UTupleId
         opWriter.String(mElasticInodeType.c_str());
 
         if(mHopsworksEnalbed){
-            if(mInodesToDataset.contains(inodeId)){
-                int datasetId = mInodesToDataset.get(inodeId);
-                // set project (rounting) and dataset (parent) ids 
-                opWriter.String("_parent");
-                opWriter.Int(datasetId);
+            int datasetId = mPDICache->getDatasetId(inodeId);
+            // set project (rounting) and dataset (parent) ids 
+            opWriter.String("_parent");
+            opWriter.Int(datasetId);
 
-                opWriter.String("_routing");
-                opWriter.Int(mDatasetProjectCache->getProjectId(datasetId));
-                
-            }else{
-                LOG_ERROR() << "Something went wrong: DatasetId for InodeId[" << inodeId<< "] is not in the cache";
-            }
+            opWriter.String("_routing");
+            opWriter.Int(mPDICache->getProjectId(datasetId));  
         }
 
         opWriter.String("_id");

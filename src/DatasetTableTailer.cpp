@@ -42,11 +42,11 @@ const NdbDictionary::Event::TableEvent DATASET_EVENT_TYPES_TO_WATCH[DATASET_NUM_
     };
 
 DatasetTableTailer::DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
-        const string elastic_index, const string elastic_dataset_type,DatasetProjectCache* cache) 
+        const string elastic_index, const string elastic_dataset_type,ProjectDatasetINodeCache* cache) 
     : TableTailer(ndb, DATASET_TABLE_NAME, DATASET_TABLE_COLUMNS, NO_DATASET_TABLE_COLUMNS, 
         DATASET_EVENT_TYPES_TO_WATCH,DATASET_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), 
         mElasticAddr(elastic_addr), mElasticIndex(elastic_index), mElasticDatasetType(elastic_dataset_type),
-        mDatasetProjectCache(cache){
+        mPDICache(cache){
     
 }
 
@@ -60,7 +60,7 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     int id = value[0]->int32_value();
     int projectId = value[3]->int32_value();
     
-    mDatasetProjectCache->addDatasetToProject(id, projectId);
+    mPDICache->addDatasetToProject(id, projectId);
     
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);

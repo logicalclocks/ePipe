@@ -43,11 +43,11 @@ const NdbDictionary::Event::TableEvent PROJECT_EVENT_TYPES_TO_WATCH[PROJECT_NUM_
     };
 
 ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
-        const string elastic_index, const string elastic_project_type, DatasetProjectCache* cache) 
+        const string elastic_index, const string elastic_project_type, ProjectDatasetINodeCache* cache) 
     : TableTailer(ndb, PROJECT_TABLE_NAME, PROJECT_TABLE_COLUMNS, NO_PROJECT_TABLE_COLUMNS, 
         PROJECT_EVENT_TYPES_TO_WATCH,PROJECT_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), 
         mElasticAddr(elastic_addr), mElasticIndex(elastic_index), mElasticProjectType(elastic_project_type),
-        mDatasetProjectCache(cache){
+        mPDICache(cache){
 }
 
 void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {

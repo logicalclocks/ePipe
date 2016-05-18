@@ -28,6 +28,7 @@
 #include "TableTailer.h"
 #include "ConcurrentPriorityQueue.h"
 #include "ConcurrentUnorderedSet.h"
+#include "ProjectDatasetINodeCache.h"
 
 struct FsMutationRow {
      int mDatasetId;
@@ -77,12 +78,13 @@ struct Cus_Cus{
 
 class FsMutationsTableTailer : public TableTailer {
 public:
-    FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait);
+    FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ProjectDatasetINodeCache* cache);
     FsMutationRow consume();
     virtual ~FsMutationsTableTailer();    
 private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     Cpq* mQueue;
+    ProjectDatasetINodeCache* mPDICache;
 };
 
 #endif /* MUTATIONSTABLETAILER_H */

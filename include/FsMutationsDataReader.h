@@ -32,13 +32,14 @@ class FsMutationsDataReader : public NdbDataReader<Cus_Cus, Ndb*>{
 public:
     FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
             const bool hopsworks, const string elastic_index, const string elastic_inode_type,
-            DatasetProjectCache* cache);
+            ProjectDatasetINodeCache* cache);
     virtual ~FsMutationsDataReader();
 private:
     Cache<int, string> mUsersCache;
     Cache<int, string> mGroupsCache;
     
     virtual ReadTimes readData(Ndb* connection, Cus_Cus data_batch);
+    string processAdded(Ndb* connection, Cus* added, ReadTimes& rt);
     
     void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Cus* added, Row* inodes, FsMutationRow* pending);
     void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Row* inodes, int batchSize);
