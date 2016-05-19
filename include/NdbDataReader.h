@@ -138,6 +138,7 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
         ReadTimes rt = readData(mNdbConnections[connIndex], curr);
         LOG_DEBUG() << " Process Batch time taken [ Ndb = " << rt.mNdbReadTime 
                 << " msec, JSON = " << rt.mJSONCreationTime << " msec, ES = " << rt.mElasticSearchTime << " msec ]";
+        delete curr;
     }
 }
 

@@ -24,6 +24,7 @@
 
 #include "FsMutationsDataReader.h"
 
+const char* INODES = "hdfs_inodes";
 const int NUM_INODES_COLS = 4;
 const char* INODES_COLS_TO_READ[] = {"id", "size", "user_id", "group_id"};
 const int INODE_ID_COL = 0;
@@ -31,6 +32,8 @@ const int INODE_SIZE_COL = 1;
 const int INODE_USER_ID_COL=2;
 const int INODE_GROUP_ID_COL=3;
 
+const char* USERS = "hdfs_users";
+const char* GROUPS = "hdfs_groups";
 const int NUM_UG_COLS = 2;
 const char* UG_COLS_TO_READ[] = {"id", "name"};
 const int UG_ID_COL = 0;
@@ -50,8 +53,6 @@ ReadTimes FsMutationsDataReader::readData(Ndb* connection, Fmq* data_batch) {
         json = processAddedandDeleted(connection, data_batch, rt);
     }
 
-    //TODO: handle deleted
-
     if (!json.empty()) {
         ptime t1 = getCurrentTime();
         string resp = bulkUpdateElasticSearch(json);
@@ -69,22 +70,22 @@ string FsMutationsDataReader::processAddedandDeleted(Ndb* connection, Fmq* data_
 
     NdbTransaction* ts = startNdbTransaction(connection);
 
-    int batch_size = data_batch->size();
-    FsMutationRow pending[batch_size];
-    Row inodes[batch_size];
+    Rows inodes(data_batch->size());
+        
+    readINodes(database, ts, data_batch, inodes);
 
-    readINodes(database, ts, data_batch, inodes, pending);
+    getUsersAndGroups(database, ts, inodes);
 
-    getUsersAndGroups(database, ts, inodes, batch_size);
-
+    removeMutationLogs(database, ts, data_batch);
+    
     ptime t2 = getCurrentTime();
 
-    string data = createJSON(pending, inodes, batch_size);
+    string data = createJSON(data_batch, inodes);
 
     ptime t3 = getCurrentTime();
 
     LOG_INFO() << " Out :: " << endl << data << endl;
-
+    
     connection->closeTransaction(ts);
     
     rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);
@@ -94,17 +95,18 @@ string FsMutationsDataReader::processAddedandDeleted(Ndb* connection, Fmq* data_
 }
 
 void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, Fmq* added, Row* inodes, FsMutationRow* pending) {
+        NdbTransaction* transaction, Fmq* data_batch, Rows& inodes) {
     
-    const NdbDictionary::Table* inodes_table = getTable(database, "hdfs_inodes");    
+    const NdbDictionary::Table* inodes_table = getTable(database, INODES);    
     NdbDictionary::Column::ArrayType name_array_type = inodes_table->getColumn("name")->getArrayType();
     
-    int batch_size = added->size();
-        
-    for (int i =0; i < batch_size; i++) {
+    int i = 0;
+    for (Fmq::iterator it=data_batch->begin(); it != data_batch->end(); ++it, i++) {
 
-        FsMutationRow row = added->at(i);
-        
+        FsMutationRow row = *it;
+        if(row.mOperation == DELETE){
+            continue;
+        }
         NdbOperation* op = getNdbOperation(transaction, inodes_table);
         
         op->readTuple(NdbOperation::LM_CommittedRead);
@@ -112,26 +114,30 @@ void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database
         op->equal("parent_id", row.mParentId);
         op->equal("name", Utils::get_ndb_varchar(row.mInodeName, name_array_type));
         
+        inodes[i] = Row(NUM_INODES_COLS);
         for(int c=0; c<NUM_INODES_COLS; c++){
             NdbRecAttr* col = getNdbOperationValue(op, INODES_COLS_TO_READ[c]);
-            inodes[i].push_back(col);
+            inodes[i][c] = col;
         }
         
-        LOG_TRACE() << " Read INode row for [" << row.mParentId << " , "  << row.mInodeName << "]";  
-        pending[i] = row;
+        LOG_TRACE() << " Read INode row for [" << row.mParentId << " , "  << row.mInodeName << "]";       
     }
     
     executeTransaction(transaction, NdbTransaction::NoCommit);
 }
 
 void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, 
-        Row* inodes, int batchSize) {   
+       Rows& inodes) {   
     UISet user_ids;
     UISet group_ids;
     
-    for(int i=0; i< batchSize; i++){
-        int userId = inodes[i][INODE_USER_ID_COL]->int32_value();
-        int groupId = inodes[i][INODE_GROUP_ID_COL]->int32_value();
+    for(vector<Row>::iterator it = inodes.begin(); it != inodes.end(); ++it){
+        Row row = *it;
+        if(row.empty()){
+            continue;
+        }
+        int userId = row[INODE_USER_ID_COL]->int32_value();
+        int groupId = row[INODE_GROUP_ID_COL]->int32_value();
         
         if(!mUsersCache.contains(userId)){
             user_ids.insert(userId);
@@ -174,25 +180,70 @@ void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* d
 }
 
 UIRowMap FsMutationsDataReader::getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids) {
-   return readTableWithIntPK(database, transaction, "hdfs_users", ids, UG_COLS_TO_READ, NUM_UG_COLS, UG_ID_COL);
+   return readTableWithIntPK(database, transaction, USERS, ids, UG_COLS_TO_READ, NUM_UG_COLS, UG_ID_COL);
 }
 
 UIRowMap FsMutationsDataReader::getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids) {
-   return readTableWithIntPK(database, transaction, "hdfs_groups", ids, UG_COLS_TO_READ, NUM_UG_COLS, UG_ID_COL);
+   return readTableWithIntPK(database, transaction, GROUPS, ids, UG_COLS_TO_READ, NUM_UG_COLS, UG_ID_COL);
 }
 
-string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, int batch_size) {
+void FsMutationsDataReader::removeMutationLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch) {
+    
+}
+
+string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
     
     stringstream out;
-    for (int i = 0; i < batch_size; i++) {
-        if (pending[i].mInodeId != inodes[i][INODE_ID_COL]->int32_value()) {
-            LOG_INFO() << " Data for " << pending[i].mParentId << ", " << pending[i].mInodeName << " not found";
+    int i=0;
+    for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it, i++) {
+        FsMutationRow row = *it;
+        
+        if(row.mOperation == DELETE){
+            //Handle the delete
+            rapidjson::StringBuffer sbOp;
+            rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+            opWriter.StartObject();
+            
+            // update could be used and set operation to delete instead of add
+            opWriter.String("delete");
+            opWriter.StartObject();
+
+            opWriter.String("_index");
+            opWriter.String(mElasticIndex.c_str());
+
+            opWriter.String("_type");
+            opWriter.String(mElasticInodeType.c_str());
+
+            if (mHopsworksEnalbed) {
+                // set project (rounting) and dataset (parent) ids 
+                opWriter.String("_parent");
+                opWriter.Int(row.mDatasetId);
+
+                opWriter.String("_routing");
+                opWriter.Int(mPDICache->getProjectId(row.mDatasetId));
+            }
+
+            opWriter.String("_id");
+            opWriter.Int(row.mInodeId);
+
+            opWriter.EndObject();
+
+            opWriter.EndObject();
+
+            out << sbOp.GetString() << endl;
             continue;
         }
         
+        if (row.mInodeId != inodes[i][INODE_ID_COL]->int32_value()) {
+            LOG_INFO() << " Data for " << row.mParentId << ", " << row.mInodeName << " not found";
+            continue;
+        }
+        
+        
+        //Handle ADD
         int userId = inodes[i][INODE_USER_ID_COL]->int32_value();
         int groupId = inodes[i][INODE_GROUP_ID_COL]->int32_value();
-        int datasetId = pending[i].mDatasetId;
         
         rapidjson::StringBuffer sbOp;
         rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -211,14 +262,14 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
         if(mHopsworksEnalbed){
             // set project (rounting) and dataset (parent) ids 
             opWriter.String("_parent");
-            opWriter.Int(datasetId);
+            opWriter.Int(row.mDatasetId);
         
             opWriter.String("_routing");
-            opWriter.Int(mPDICache->getProjectId(datasetId));
+            opWriter.Int(mPDICache->getProjectId(row.mDatasetId));
         }
  
         opWriter.String("_id");
-        opWriter.Int(inodes[i][INODE_ID_COL]->int32_value());
+        opWriter.Int(row.mInodeId);
 
         opWriter.EndObject();
         
@@ -234,16 +285,16 @@ string FsMutationsDataReader::createJSON(FsMutationRow* pending, Row* inodes, in
         docWriter.StartObject();
         
         docWriter.String("parent_id");
-        docWriter.Int(pending[i].mParentId);
+        docWriter.Int(row.mParentId);
         
         docWriter.String("name");
-        docWriter.String(pending[i].mInodeName.c_str());
+        docWriter.String(row.mInodeName.c_str());
         
         docWriter.String("operation");
-        docWriter.Int(pending[i].mOperation);
+        docWriter.Int(row.mOperation);
         
         docWriter.String("timestamp");
-        docWriter.Int64(pending[i].mTimestamp);
+        docWriter.Int64(row.mTimestamp);
         
         docWriter.String("size");
         docWriter.Int64(inodes[i][INODE_SIZE_COL]->int64_value());

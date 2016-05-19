@@ -28,6 +28,8 @@
 #include "FsMutationsTableTailer.h"
 #include "NdbDataReader.h"
 
+typedef vector<Row> Rows;
+
 class FsMutationsDataReader : public NdbDataReader<FsMutationRow, Ndb*>{
 public:
     FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
@@ -41,12 +43,13 @@ private:
     virtual ReadTimes readData(Ndb* connection, Fmq* data_batch);
     string processAddedandDeleted(Ndb* connection, Fmq* data_batch, ReadTimes& rt);
     
-    void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* added, Row* inodes, FsMutationRow* pending);
-    void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Row* inodes, int batchSize);
+    void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch, Rows& inodes);
+    void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Rows& inodes);
     UIRowMap getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
     UIRowMap getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
+    void removeMutationLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch);
     
-    string createJSON(FsMutationRow* pending, Row* inodes, int batch_size);
+    string createJSON(Fmq* pending, Rows& inodes);
 };
 
 #endif /* FSMUTATIONSDATAREADER_H */
