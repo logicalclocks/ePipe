@@ -25,9 +25,8 @@
 #ifndef MUTATIONSTABLETAILER_H
 #define MUTATIONSTABLETAILER_H
 
-#include "TableTailer.h"
+#include "RCTableTailer.h"
 #include "ConcurrentPriorityQueue.h"
-#include "ConcurrentUnorderedSet.h"
 #include "ProjectDatasetINodeCache.h"
 
 struct FsMutationRow {
@@ -37,6 +36,17 @@ struct FsMutationRow {
      string mInodeName;
      long mTimestamp;
      Operation mOperation;
+     
+     void print(){
+        LOG_TRACE() << "-------------------------";
+        LOG_TRACE() << "DatasetId = " << mDatasetId;
+        LOG_TRACE() << "InodeId = " << mInodeId;
+        LOG_TRACE() << "ParentId = " << mParentId;
+        LOG_TRACE() << "InodeName = " << mInodeName;
+        LOG_TRACE() << "Timestamp = " << mTimestamp;
+        LOG_TRACE() << "Operation = " << mOperation;
+        LOG_TRACE() << "-------------------------";
+     }
 };
 
 struct FsMutationRowEqual {
@@ -69,14 +79,9 @@ struct FsMutationRowComparator
 };
 
 typedef ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator> Cpq;
-typedef ConcurrentUnorderedSet<FsMutationRow,FsMutationRowHash,FsMutationRowEqual> Cus;
+typedef vector<FsMutationRow> Fmq;
 
-struct Cus_Cus{
-    Cus* added;
-    Cus* deleted;
-};
-
-class FsMutationsTableTailer : public TableTailer {
+class FsMutationsTableTailer : public RCTableTailer<FsMutationRow>  {
 public:
     FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ProjectDatasetINodeCache* cache);
     FsMutationRow consume();

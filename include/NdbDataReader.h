@@ -48,7 +48,7 @@ public:
     NdbDataReader(Conn* connections, const int num_readers, string elastic_addr,
             const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache);
     void start();
-    void processBatch(Data data_batch);
+    void processBatch(vector<Data>* data_batch);
     virtual ~NdbDataReader();
 
 private:
@@ -58,7 +58,7 @@ private:
     bool mStarted;
     std::vector<boost::thread* > mThreads;
     
-    ConcurrentQueue<Data>* mBatchedQueue;
+    ConcurrentQueue<vector<Data>*>* mBatchedQueue;
     
     void readerThread(int connectionId);
     
@@ -70,7 +70,7 @@ protected:
     const string mElasticInodeType;
     ProjectDatasetINodeCache* mPDICache;
     
-    virtual ReadTimes readData(Conn connection, Data data_batch) = 0;
+    virtual ReadTimes readData(Conn connection, vector<Data>* data_batch) = 0;
     string bulkUpdateElasticSearch(string json);
     UIRowMap readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, const char* table_name, 
             UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index);
@@ -85,7 +85,7 @@ NdbDataReader<Data, Conn>::NdbDataReader(Conn* connections, const int num_reader
         mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type), mPDICache(cache){
     mStarted = false;
     mElasticBulkUrl = getElasticSearchBulkUrl(mElasticAddr);
-    mBatchedQueue = new ConcurrentQueue<Data>();
+    mBatchedQueue = new ConcurrentQueue<vector<Data>*>();
 }
 
 template<typename Data, typename Conn>
@@ -132,7 +132,7 @@ void NdbDataReader<Data, Conn>::start() {
 template<typename Data, typename Conn>
 void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
     while(true){
-        Data curr;
+        vector<Data>* curr;
         mBatchedQueue->wait_and_pop(curr);
         LOG_DEBUG() << " Process Batch ";
         ReadTimes rt = readData(mNdbConnections[connIndex], curr);
@@ -142,7 +142,7 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
 }
 
 template<typename Data, typename Conn>
-void NdbDataReader<Data, Conn>::processBatch(Data data_batch) {
+void NdbDataReader<Data, Conn>::processBatch(vector<Data>* data_batch) {
     mBatchedQueue->push(data_batch);
 }
 

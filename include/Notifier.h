@@ -25,7 +25,6 @@
 #ifndef NOTIFIER_H
 #define NOTIFIER_H
 
-#include "FsMutationsDataReader.h"
 #include "FsMutationsBatcher.h"
 #include "MetadataBatcher.h"
 #include "ProjectTableTailer.h"

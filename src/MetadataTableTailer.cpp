@@ -40,7 +40,7 @@ const NdbDictionary::Event::TableEvent METADATA_EVENT_TYPES_TO_WATCH[METADATA_NU
       NdbDictionary::Event::TE_DELETE
     };
 
-MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait) : TableTailer(ndb, METADATA_TABLE_NAME, METADATA_TABLE_COLUMNS, 
+MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait) : RCTableTailer<MetadataEntry> (ndb, METADATA_TABLE_NAME, METADATA_TABLE_COLUMNS, 
         NO_METADATA_TABLE_COLUMNS, METADATA_EVENT_TYPES_TO_WATCH,METADATA_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait) {
     mQueue = new Cmq();
 

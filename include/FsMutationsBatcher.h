@@ -27,26 +27,17 @@
 #ifndef FSMUTATIONSBATCHER_H
 #define FSMUTATIONSBATCHER_H
 
-#include "Batcher.h"
+#include "RCBatcher.h"
 #include "FsMutationsTableTailer.h"
 #include "FsMutationsDataReader.h"
 
-class FsMutationsBatcher : public Batcher{
+class FsMutationsBatcher : public RCBatcher<FsMutationRow, Ndb*>{
 public:
-    FsMutationsBatcher(FsMutationsTableTailer* table_tailer, FsMutationsDataReader* data_reader, const int time_before_issuing_ndb_reqs, const int batch_size);
-    virtual ~FsMutationsBatcher();
-
-private:
-    
-    FsMutationsTableTailer* mTableTailer;
-    FsMutationsDataReader* mNdbDataReader;
-    
-    Cus* mAddOperations;    
-    Cus* mDeleteOperations;    
-    boost::mutex mLock;
+    FsMutationsBatcher(FsMutationsTableTailer* table_tailer, FsMutationsDataReader* data_reader, 
+            const int time_before_issuing_ndb_reqs, const int batch_size) 
+    : RCBatcher<FsMutationRow, Ndb*>(table_tailer, data_reader, time_before_issuing_ndb_reqs, batch_size) {
         
-    virtual void run();
-    virtual void processBatch();
+    }
 };
 
 #endif /* FSMUTATIONSBATCHER_H */

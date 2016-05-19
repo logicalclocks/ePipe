@@ -38,17 +38,16 @@ const int UG_NAME_COL = 1;
 
 FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
         const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
-    : NdbDataReader<Cus_Cus, Ndb*>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
+    : NdbDataReader<FsMutationRow, Ndb*>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
 
 }
 
-ReadTimes FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
+ReadTimes FsMutationsDataReader::readData(Ndb* connection, Fmq* data_batch) {
     ReadTimes rt;
-    Cus* added = data_batch.added;
-
+    
     string json;
-    if (added->unsynchronized_size() > 0) {
-        json = processAdded(connection, added, rt);
+    if (!data_batch->empty()) {
+        json = processAddedandDeleted(connection, data_batch, rt);
     }
 
     //TODO: handle deleted
@@ -63,18 +62,18 @@ ReadTimes FsMutationsDataReader::readData(Ndb* connection, Cus_Cus data_batch) {
     return rt;
 }
 
-string FsMutationsDataReader::processAdded(Ndb* connection, Cus* added, ReadTimes& rt) {
+string FsMutationsDataReader::processAddedandDeleted(Ndb* connection, Fmq* data_batch, ReadTimes& rt) {
     ptime t1 = getCurrentTime();
 
     const NdbDictionary::Dictionary* database = getDatabase(connection);
 
     NdbTransaction* ts = startNdbTransaction(connection);
 
-    int batch_size = added->unsynchronized_size();
+    int batch_size = data_batch->size();
     FsMutationRow pending[batch_size];
     Row inodes[batch_size];
 
-    readINodes(database, ts, added, inodes, pending);
+    readINodes(database, ts, data_batch, inodes, pending);
 
     getUsersAndGroups(database, ts, inodes, batch_size);
 
@@ -95,20 +94,16 @@ string FsMutationsDataReader::processAdded(Ndb* connection, Cus* added, ReadTime
 }
 
 void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, Cus* added, Row* inodes, FsMutationRow* pending) {
+        NdbTransaction* transaction, Fmq* added, Row* inodes, FsMutationRow* pending) {
     
     const NdbDictionary::Table* inodes_table = getTable(database, "hdfs_inodes");    
     NdbDictionary::Column::ArrayType name_array_type = inodes_table->getColumn("name")->getArrayType();
     
-    int batch_size = added->unsynchronized_size();
+    int batch_size = added->size();
         
     for (int i =0; i < batch_size; i++) {
-        boost::optional<FsMutationRow> res = added->unsynchronized_remove();
-        if(!res){
-            break;
-        }
-        
-        FsMutationRow row = *res;
+
+        FsMutationRow row = added->at(i);
         
         NdbOperation* op = getNdbOperation(transaction, inodes_table);
         

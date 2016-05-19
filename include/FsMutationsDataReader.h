@@ -28,7 +28,7 @@
 #include "FsMutationsTableTailer.h"
 #include "NdbDataReader.h"
 
-class FsMutationsDataReader : public NdbDataReader<Cus_Cus, Ndb*>{
+class FsMutationsDataReader : public NdbDataReader<FsMutationRow, Ndb*>{
 public:
     FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
             const bool hopsworks, const string elastic_index, const string elastic_inode_type,
@@ -38,10 +38,10 @@ private:
     Cache<int, string> mUsersCache;
     Cache<int, string> mGroupsCache;
     
-    virtual ReadTimes readData(Ndb* connection, Cus_Cus data_batch);
-    string processAdded(Ndb* connection, Cus* added, ReadTimes& rt);
+    virtual ReadTimes readData(Ndb* connection, Fmq* data_batch);
+    string processAddedandDeleted(Ndb* connection, Fmq* data_batch, ReadTimes& rt);
     
-    void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Cus* added, Row* inodes, FsMutationRow* pending);
+    void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* added, Row* inodes, FsMutationRow* pending);
     void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Row* inodes, int batchSize);
     UIRowMap getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
     UIRowMap getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);

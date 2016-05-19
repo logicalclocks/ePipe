@@ -25,7 +25,7 @@
 #ifndef METADATATABLETAILER_H
 #define METADATATABLETAILER_H
 
-#include "TableTailer.h"
+#include "RCTableTailer.h"
 #include "ConcurrentPriorityQueue.h"
 
 struct MetadataEntry {
@@ -34,6 +34,16 @@ struct MetadataEntry {
      int mTupleId;
      string mMetadata;
      Operation mOperation;
+     
+     void print(){
+        LOG_TRACE() << "-------------------------";
+        LOG_TRACE() << "Id = " << mId;
+        LOG_TRACE() << "FieldId = " << mFieldId;
+        LOG_TRACE() << "TupleId = " << mTupleId;
+        LOG_TRACE() << "Data = " << mMetadata;
+        LOG_TRACE() << "Operation = " << mOperation;
+        LOG_TRACE() << "-------------------------";
+     }
 };
 
 struct MetadataEntryComparator
@@ -47,12 +57,7 @@ struct MetadataEntryComparator
 typedef ConcurrentPriorityQueue<MetadataEntry, MetadataEntryComparator> Cmq;
 typedef vector<MetadataEntry> Mq;
 
-struct Mq_Mq {
-    Mq* added;
-    Mq* deleted;
-};
-
-class MetadataTableTailer : public TableTailer {
+class MetadataTableTailer : public RCTableTailer<MetadataEntry> {
 public:
     MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait);
     MetadataEntry consume();

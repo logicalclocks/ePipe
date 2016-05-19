@@ -61,16 +61,16 @@ struct MConn{
     Ndb* metadataConnection;
 };
 
-class MetadataReader : public NdbDataReader<Mq_Mq, MConn>{
+class MetadataReader : public NdbDataReader<MetadataEntry, MConn>{
 public:
     MetadataReader(MConn* connections, const int num_readers, string elastic_ip, 
             const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
             ProjectDatasetINodeCache* cache);
     virtual ~MetadataReader();
 private:
-    virtual ReadTimes readData(MConn connection, Mq_Mq data_batch);
+    virtual ReadTimes readData(MConn connection, Mq* data_batch);
     
-    string processAdded(MConn connection, Mq* added, ReadTimes& rt);
+    string processAddedandDeleted(MConn connection, Mq* data_batch, ReadTimes& rt);
     
     UInodesToTemplates readMetadataColumns(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, Mq* added, UTupleIdToMetadataEntries &tupleToRows);

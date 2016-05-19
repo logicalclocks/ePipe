@@ -61,17 +61,16 @@ const int INODE_DATASET_LOOKUO_DATASET_ID_COL = 1;
 
 MetadataReader::MetadataReader(MConn* connections, const int num_readers,  string elastic_ip, 
         const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
-        : NdbDataReader<Mq_Mq, MConn>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache) {
+        : NdbDataReader<MetadataEntry, MConn>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache) {
 
 }
 
-ReadTimes MetadataReader::readData(MConn connection, Mq_Mq data_batch) {
+ReadTimes MetadataReader::readData(MConn connection, Mq* data_batch) {
 
     ReadTimes rt;
-    Mq* added = data_batch.added;
     string json;
-    if (!added->empty()) {
-        json = processAdded(connection, added, rt);
+    if (!data_batch->empty()) {
+        json = processAddedandDeleted(connection, data_batch, rt);
     }
 
     //TODO: handle deleted
@@ -90,7 +89,7 @@ ReadTimes MetadataReader::readData(MConn connection, Mq_Mq data_batch) {
     return rt;
 }
 
-string MetadataReader::processAdded(MConn connection, Mq* added, ReadTimes& rt) {
+string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, ReadTimes& rt) {
     
     ptime t1 = getCurrentTime();
     
@@ -100,7 +99,7 @@ string MetadataReader::processAdded(MConn connection, Mq* added, ReadTimes& rt) 
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
     UTupleIdToMetadataEntries tupleToEntries;
-    UInodesToTemplates inodesToTemplates = readMetadataColumns(metaDatabase, metaTransaction, added, tupleToEntries);
+    UInodesToTemplates inodesToTemplates = readMetadataColumns(metaDatabase, metaTransaction, data_batch, tupleToEntries);
     
     if(mHopsworksEnalbed){
         //read inodes to datasets from inodes datatbase to enable
