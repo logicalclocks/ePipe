@@ -48,13 +48,6 @@ struct Table{
    string mName;
    int mTemplateId;
 };
-typedef boost::unordered_map<int, vector<Field> > UTupleToFields;
-typedef boost::unordered_map<string, UTupleToFields > UTableToTuples;
-typedef boost::unordered_map<string, UTableToTuples> UTemplateToTables;
-typedef boost::unordered_map<int, UTemplateToTables> UInodesToTemplates;
-
-typedef boost::unordered_map<int, MetadataEntry> UFieldIdToMetadataEntry;
-typedef boost::unordered_map<int, UFieldIdToMetadataEntry> UTupleIdToMetadataEntries;
 
 struct MConn{
     Ndb* inodeConnection;
@@ -72,19 +65,18 @@ private:
     
     string processAddedandDeleted(MConn connection, Mq* data_batch, ReadTimes& rt);
     
-    UInodesToTemplates readMetadataColumns(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, Mq* added, UTupleIdToMetadataEntries &tupleToRows);
+    UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, Mq* added);
     UISet readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids);
     UISet readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
     //Read from the inodes database
     void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
-        NdbTransaction* inodesTransaction, UInodesToTemplates inodesToTemplates);
+        NdbTransaction* inodesTransaction, UIRowMap tuples);
     
-    string createJSON(UInodesToTemplates inodesToTemplates, UTupleIdToMetadataEntries tupleToEntries);
-    UInodesToTemplates getInodesToTemplates(UIRowMap tuples, UTupleIdToMetadataEntries tupleToEntries);
-        
+    string createJSON(UIRowMap tuples, Mq* data_batch);
+            
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;
     Cache<int, string> mTemplatesCache;
