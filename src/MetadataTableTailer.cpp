@@ -24,26 +24,27 @@
 
 #include "MetadataTableTailer.h"
 
-const char *METADATA_TABLE_NAME= "meta_data";
-const int NO_METADATA_TABLE_COLUMNS= 4;
-const char *METADATA_TABLE_COLUMNS[NO_METADATA_TABLE_COLUMNS]=
+const char* _metadata_table= "meta_data";
+const int _metadata_noCols= 4;
+const char* _metadata_cols[_metadata_noCols]=
     {"id",
      "fieldid",
      "tupleid",
      "data"
     };
 
-const int METADATA_NUM_EVENT_TYPES_TO_WATCH = 3; 
-const NdbDictionary::Event::TableEvent METADATA_EVENT_TYPES_TO_WATCH[METADATA_NUM_EVENT_TYPES_TO_WATCH] = 
+const int _metadata_noEvents = 3; 
+const NdbDictionary::Event::TableEvent _metadata_events[_metadata_noEvents] = 
     { NdbDictionary::Event::TE_INSERT, 
       NdbDictionary::Event::TE_UPDATE, 
       NdbDictionary::Event::TE_DELETE
     };
 
-MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait) : RCTableTailer<MetadataEntry> (ndb, METADATA_TABLE_NAME, METADATA_TABLE_COLUMNS, 
-        NO_METADATA_TABLE_COLUMNS, METADATA_EVENT_TYPES_TO_WATCH,METADATA_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait) {
-    mQueue = new Cmq();
+const WatchTable MetadataTableTailer::TABLE = {_metadata_table, _metadata_cols, _metadata_noCols , _metadata_events, _metadata_noEvents};
 
+MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait)
+    : RCTableTailer<MetadataEntry> (ndb, TABLE, poll_maxTimeToWait) {
+    mQueue = new Cmq();
 }
 
 void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){

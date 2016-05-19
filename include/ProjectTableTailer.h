@@ -33,6 +33,9 @@ public:
     ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
             const string elastic_index, const string elastic_project_type, ProjectDatasetINodeCache* cache);
     virtual ~ProjectTableTailer();
+    
+    static const WatchTable TABLE;
+    
 private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     string mElasticAddr;

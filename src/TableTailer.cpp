@@ -27,10 +27,8 @@
 
 using namespace Utils;
 
-TableTailer::TableTailer(Ndb* ndb, const char* eventTableName, const char** eventColumnNames, const int noEventColumns,
-        const NdbDictionary::Event::TableEvent* watchEventTypes, const int numOfEventsTypesToWatch, const int poll_maxTimeToWait) : mStarted(false), mNdbConnection(ndb),
-        mEventTableName(eventTableName),mEventColumnNames(eventColumnNames), mEventName(concat("tail-", eventTableName)), mNoEventColumns(noEventColumns),
-        mWatchEventTypes(watchEventTypes), mNumOfEventsTypesToWatch(numOfEventsTypesToWatch), mPollMaxTimeToWait(poll_maxTimeToWait) {
+TableTailer::TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait) :  mStarted(false), mNdbConnection(ndb),
+        mEventName(concat("tail-", table.mTableName)), mTable(table), mPollMaxTimeToWait(poll_maxTimeToWait){
 }
 
 void TableTailer::start() {
@@ -62,15 +60,15 @@ void TableTailer::createListenerEvent() {
     NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
     if (!myDict) LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
 
-    const NdbDictionary::Table *table = myDict->getTable(mEventTableName);
+    const NdbDictionary::Table *table = myDict->getTable(mTable.mTableName);
     if (!table) LOG_NDB_API_ERROR(myDict->getNdbError());
 
     NdbDictionary::Event myEvent(mEventName, *table);
     
-    for(int i=0; i< mNumOfEventsTypesToWatch; i++){
-        myEvent.addTableEvent(mWatchEventTypes[i]);
+    for(int i=0; i< mTable.mNoEvents; i++){
+        myEvent.addTableEvent(mTable.mWatchEvents[i]);
     }
-    myEvent.addEventColumns(mNoEventColumns, mEventColumnNames);
+    myEvent.addEventColumns(mTable.mNoColumns, mTable.mColumnNames);
     //myEvent.mergeEvents(merge_events);
 
     // Add event to database
@@ -100,13 +98,13 @@ void TableTailer::waitForEvents() {
     if ((op = mNdbConnection->createEventOperation(mEventName)) == NULL)
         LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
 
-    NdbRecAttr * recAttr[mNoEventColumns];
-    NdbRecAttr * recAttrPre[mNoEventColumns];
+    NdbRecAttr * recAttr[mTable.mNoColumns];
+    NdbRecAttr * recAttrPre[mTable.mNoColumns];
 
     // primary keys should always be a part of the result
-    for (int i = 0; i < mNoEventColumns; i++) {
-        recAttr[i] = op->getValue(mEventColumnNames[i]);
-        recAttrPre[i] = op->getPreValue(mEventColumnNames[i]);
+    for (int i = 0; i < mTable.mNoColumns; i++) {
+        recAttr[i] = op->getValue(mTable.mColumnNames[i]);
+        recAttrPre[i] = op->getPreValue(mTable.mColumnNames[i]);
     }
 
     LOG_INFO() << "Execute";
@@ -138,9 +136,9 @@ void TableTailer::waitForEvents() {
 }
 
 bool TableTailer::correctResult(NdbDictionary::Event::TableEvent event, NdbRecAttr* values[]){
-    for(int col=0; col<mNoEventColumns; col++){
+    for(int col=0; col<mTable.mNoColumns; col++){
         if(values[col]->isNULL() != 0 && event != NdbDictionary::Event::TE_DELETE ){
-            LOG_ERROR() << "Error at column " << mEventColumnNames[col] << " " << values[col]->isNULL() << " IsDelete " << event << " || " << NdbDictionary::Event::TE_DELETE;
+            LOG_ERROR() << "Error at column " << mTable.mColumnNames[col] << " " << values[col]->isNULL() << " IsDelete " << event << " || " << NdbDictionary::Event::TE_DELETE;
             return false;
         }
     }
@@ -149,11 +147,6 @@ bool TableTailer::correctResult(NdbDictionary::Event::TableEvent event, NdbRecAt
 
 TableTailer::~TableTailer() {
     delete mNdbConnection;
-    delete mEventTableName;
-    for(int i=0; i<mNoEventColumns; i++){
-        delete mEventColumnNames[i];
-    }
-    delete [] mEventColumnNames;
     delete mEventName;
 }
 

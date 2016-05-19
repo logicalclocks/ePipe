@@ -85,7 +85,9 @@ class FsMutationsTableTailer : public RCTableTailer<FsMutationRow>  {
 public:
     FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ProjectDatasetINodeCache* cache);
     FsMutationRow consume();
-    virtual ~FsMutationsTableTailer();    
+    virtual ~FsMutationsTableTailer();
+    
+    static const WatchTable TABLE;
 private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     Cpq* mQueue;

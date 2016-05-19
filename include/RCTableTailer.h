@@ -30,17 +30,12 @@
 template<typename TableRow>
 class RCTableTailer : public TableTailer{
 public:
-    RCTableTailer(Ndb* ndb, const char *eventTableName, const char **eventColumnNames, const int noEventColumnNames,
-            const NdbDictionary::Event::TableEvent* watchEventTypes, const int numOfEventsTypesToWatch, const int poll_maxTimeToWait);
+    RCTableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait) 
+        : TableTailer(ndb, table, poll_maxTimeToWait){ 
+    }
+        
     virtual TableRow consume() = 0;
 };
-
-template<typename TableRow>
-RCTableTailer<TableRow>::RCTableTailer(Ndb* ndb, const char* eventTableName, const char** eventColumnNames, const int noEventColumnNames, 
-        const NdbDictionary::Event::TableEvent* watchEventTypes, const int numOfEventsTypesToWatch, const int poll_maxTimeToWait) 
-: TableTailer(ndb, eventTableName, eventColumnNames, noEventColumnNames, watchEventTypes, numOfEventsTypesToWatch, poll_maxTimeToWait){
-    
-}
 
 #endif /* RCTABLETAILER_H */
 

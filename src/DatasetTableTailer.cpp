@@ -23,9 +23,10 @@
  */
 
 #include "DatasetTableTailer.h"
-const char *DATASET_TABLE_NAME= "dataset";
-const int NO_DATASET_TABLE_COLUMNS= 6;
-const char *DATASET_TABLE_COLUMNS[NO_DATASET_TABLE_COLUMNS]=
+
+const char* _dataset_table= "dataset";
+const int _dataset_noCols= 6;
+const char* _dataset_cols[_dataset_noCols]=
     {"inode_id",
      "inode_pid",
      "inode_name",
@@ -34,20 +35,20 @@ const char *DATASET_TABLE_COLUMNS[NO_DATASET_TABLE_COLUMNS]=
      "public_ds"
     };
 
-const int DATASET_NUM_EVENT_TYPES_TO_WATCH = 3; 
-const NdbDictionary::Event::TableEvent DATASET_EVENT_TYPES_TO_WATCH[DATASET_NUM_EVENT_TYPES_TO_WATCH] = 
+const int _dataset_noEvents = 3; 
+const NdbDictionary::Event::TableEvent _dataset_events[_dataset_noEvents] = 
     { NdbDictionary::Event::TE_INSERT, 
       NdbDictionary::Event::TE_UPDATE, 
       NdbDictionary::Event::TE_DELETE
     };
 
+const WatchTable DatasetTableTailer::TABLE = {_dataset_table, _dataset_cols, _dataset_noCols , _dataset_events, _dataset_noEvents};
+
+
 DatasetTableTailer::DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
         const string elastic_index, const string elastic_dataset_type,ProjectDatasetINodeCache* cache) 
-    : TableTailer(ndb, DATASET_TABLE_NAME, DATASET_TABLE_COLUMNS, NO_DATASET_TABLE_COLUMNS, 
-        DATASET_EVENT_TYPES_TO_WATCH,DATASET_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), 
-        mElasticAddr(elastic_addr), mElasticIndex(elastic_index), mElasticDatasetType(elastic_dataset_type),
-        mPDICache(cache){
-    
+    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticAddr(elastic_addr), mElasticIndex(elastic_index), 
+        mElasticDatasetType(elastic_dataset_type), mPDICache(cache){
 }
 
 void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {

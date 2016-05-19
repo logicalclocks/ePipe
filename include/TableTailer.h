@@ -32,10 +32,18 @@ enum Operation{
     DELETE = 1
 };
 
+struct WatchTable{
+    const char* mTableName;
+    const char** mColumnNames;
+    const int mNoColumns;
+    const NdbDictionary::Event::TableEvent* mWatchEvents;
+    const int mNoEvents;
+};
+
 class TableTailer {
 public:
-    TableTailer(Ndb* ndb, const char *eventTableName, const char **eventColumnNames, const int noEventColumnNames,
-            const NdbDictionary::Event::TableEvent* watchEventTypes, const int numOfEventsTypesToWatch, const int poll_maxTimeToWait);
+    TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait);
+    
     void start();
     void waitToFinish();
     virtual ~TableTailer();
@@ -54,12 +62,8 @@ private:
     boost::thread mThread;
     
     Ndb* mNdbConnection;
-    const char* mEventTableName;
-    const char** mEventColumnNames;
     const char* mEventName;
-    const int mNoEventColumns;
-    const NdbDictionary::Event::TableEvent* mWatchEventTypes;
-    const int mNumOfEventsTypesToWatch;
+    const WatchTable mTable;
     const int mPollMaxTimeToWait;
 };
 

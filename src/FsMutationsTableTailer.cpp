@@ -27,9 +27,9 @@
 
 using namespace Utils;
 
-const char *MUTATION_TABLE_NAME= "hdfs_metadata_log";
-const int NO_MUTATION_TABLE_COLUMNS= 6;
-const char *MUTATION_TABLE_COLUMNS[NO_MUTATION_TABLE_COLUMNS]=
+const char* _mutation_table= "hdfs_metadata_log";
+const int _mutation_noCols= 6;
+const char* _mutation_cols[_mutation_noCols]=
     {"dataset_id",
      "inode_id",
      "timestamp",
@@ -38,11 +38,12 @@ const char *MUTATION_TABLE_COLUMNS[NO_MUTATION_TABLE_COLUMNS]=
      "operation"
     };
 
-const int MUTATION_NUM_EVENT_TYPES_TO_WATCH = 1; 
-const NdbDictionary::Event::TableEvent MUTATION_EVENT_TYPES_TO_WATCH[MUTATION_NUM_EVENT_TYPES_TO_WATCH] = { NdbDictionary::Event::TE_INSERT } ;
+const int _mutation_noEvents = 1; 
+const NdbDictionary::Event::TableEvent _mutation_events[_mutation_noEvents] = { NdbDictionary::Event::TE_INSERT };
 
-FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ProjectDatasetINodeCache* cache) : RCTableTailer<FsMutationRow>(ndb, MUTATION_TABLE_NAME, MUTATION_TABLE_COLUMNS, 
-        NO_MUTATION_TABLE_COLUMNS, MUTATION_EVENT_TYPES_TO_WATCH, MUTATION_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), mPDICache(cache) {
+const WatchTable FsMutationsTableTailer::TABLE = {_mutation_table, _mutation_cols, _mutation_noCols , _mutation_events, _mutation_noEvents};
+
+FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ProjectDatasetINodeCache* cache) : RCTableTailer(ndb, TABLE, poll_maxTimeToWait), mPDICache(cache) {
     mQueue = new Cpq();
 }
 

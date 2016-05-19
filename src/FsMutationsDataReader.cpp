@@ -188,7 +188,7 @@ UIRowMap FsMutationsDataReader::getGroupsFromDB(const NdbDictionary::Dictionary*
 }
 
 void FsMutationsDataReader::removeMutationLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch) {
-    
+
 }
 
 string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {

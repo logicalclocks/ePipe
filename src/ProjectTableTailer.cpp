@@ -24,9 +24,9 @@
 
 #include "ProjectTableTailer.h"
 
-const char *PROJECT_TABLE_NAME= "project";
-const int NO_PROJECT_TABLE_COLUMNS= 6;
-const char *PROJECT_TABLE_COLUMNS[NO_PROJECT_TABLE_COLUMNS]=
+const char* _project_table= "project";
+const int _project_noCols= 6;
+const char* _project_cols[_project_noCols]=
     {"inode_id",
      "inode_pid",
      "inode_name",
@@ -35,19 +35,19 @@ const char *PROJECT_TABLE_COLUMNS[NO_PROJECT_TABLE_COLUMNS]=
      "description"
     };
 
-const int PROJECT_NUM_EVENT_TYPES_TO_WATCH = 3; 
-const NdbDictionary::Event::TableEvent PROJECT_EVENT_TYPES_TO_WATCH[PROJECT_NUM_EVENT_TYPES_TO_WATCH] = 
+const int _project_noEvents = 3; 
+const NdbDictionary::Event::TableEvent _project_events[_project_noEvents] = 
     { NdbDictionary::Event::TE_INSERT, 
       NdbDictionary::Event::TE_UPDATE, 
       NdbDictionary::Event::TE_DELETE
     };
 
+const WatchTable ProjectTableTailer::TABLE = {_project_table, _project_cols, _project_noCols , _project_events, _project_noEvents};
+
 ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
         const string elastic_index, const string elastic_project_type, ProjectDatasetINodeCache* cache) 
-    : TableTailer(ndb, PROJECT_TABLE_NAME, PROJECT_TABLE_COLUMNS, NO_PROJECT_TABLE_COLUMNS, 
-        PROJECT_EVENT_TYPES_TO_WATCH,PROJECT_NUM_EVENT_TYPES_TO_WATCH, poll_maxTimeToWait), 
-        mElasticAddr(elastic_addr), mElasticIndex(elastic_index), mElasticProjectType(elastic_project_type),
-        mPDICache(cache){
+    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticAddr(elastic_addr), mElasticIndex(elastic_index), 
+        mElasticProjectType(elastic_project_type), mPDICache(cache){
 }
 
 void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
