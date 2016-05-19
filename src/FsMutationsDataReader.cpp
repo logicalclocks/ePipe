@@ -78,6 +78,8 @@ string FsMutationsDataReader::processAddedandDeleted(Ndb* connection, Fmq* data_
 
     FsMutationsTableTailer::removeLogs(database, ts, data_batch);
     
+    executeTransaction(ts, NdbTransaction::Commit);
+
     ptime t2 = getCurrentTime();
 
     string data = createJSON(data_batch, inodes);

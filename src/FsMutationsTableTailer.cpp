@@ -90,7 +90,6 @@ void FsMutationsTableTailer::removeLogs(const NdbDictionary::Dictionary* databas
         LOG_TRACE() << "Delete log row: Dataset[" << row.mDatasetId << "], INode[" 
                 << row.mInodeId << "], Timestamp[" << row.mTimestamp << "]";
     }
-    executeTransaction(transaction, NdbTransaction::NoCommit);
 }
 
 FsMutationsTableTailer::~FsMutationsTableTailer() {
