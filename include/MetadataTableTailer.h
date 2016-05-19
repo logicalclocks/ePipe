@@ -62,8 +62,10 @@ public:
     MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait);
     MetadataEntry consume();
     virtual ~MetadataTableTailer();
-    static const WatchTable TABLE;
+    
 private:
+    static const WatchTable TABLE;
+    
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     Cmq* mQueue;
 };

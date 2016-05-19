@@ -47,7 +47,6 @@ private:
     void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Rows& inodes);
     UIRowMap getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
     UIRowMap getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
-    void removeMutationLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch);
     
     string createJSON(Fmq* pending, Rows& inodes);
 };

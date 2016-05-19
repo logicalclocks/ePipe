@@ -76,7 +76,7 @@ string FsMutationsDataReader::processAddedandDeleted(Ndb* connection, Fmq* data_
 
     getUsersAndGroups(database, ts, inodes);
 
-    removeMutationLogs(database, ts, data_batch);
+    FsMutationsTableTailer::removeLogs(database, ts, data_batch);
     
     ptime t2 = getCurrentTime();
 
@@ -185,10 +185,6 @@ UIRowMap FsMutationsDataReader::getUsersFromDB(const NdbDictionary::Dictionary* 
 
 UIRowMap FsMutationsDataReader::getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids) {
    return readTableWithIntPK(database, transaction, GROUPS, ids, UG_COLS_TO_READ, NUM_UG_COLS, UG_ID_COL);
-}
-
-void FsMutationsDataReader::removeMutationLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch) {
-
 }
 
 string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {

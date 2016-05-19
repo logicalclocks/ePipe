@@ -76,6 +76,23 @@ FsMutationRow FsMutationsTableTailer::consume(){
     return row;
 }
 
+void FsMutationsTableTailer::removeLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* rows) {
+    const NdbDictionary::Table* log_table = getTable(database, FsMutationsTableTailer::TABLE.mTableName);
+    for(Fmq::iterator it=rows->begin(); it != rows->end() ; ++it){
+        FsMutationRow row = *it;
+        NdbOperation* op = getNdbOperation(transaction, log_table);
+        
+        op->deleteTuple();
+        op->equal(_mutation_cols[0], row.mDatasetId);
+        op->equal(_mutation_cols[1], row.mInodeId);
+        op->equal(_mutation_cols[2], (Int64)row.mTimestamp);
+        
+        LOG_TRACE() << "Delete log row: Dataset[" << row.mDatasetId << "], INode[" 
+                << row.mInodeId << "], Timestamp[" << row.mTimestamp << "]";
+    }
+    executeTransaction(transaction, NdbTransaction::NoCommit);
+}
+
 FsMutationsTableTailer::~FsMutationsTableTailer() {
     delete mQueue;
 }

@@ -87,8 +87,9 @@ public:
     FsMutationRow consume();
     virtual ~FsMutationsTableTailer();
     
-    static const WatchTable TABLE;
+    static void removeLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* rows);
 private:
+    static const WatchTable TABLE;
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     Cpq* mQueue;
     ProjectDatasetINodeCache* mPDICache;

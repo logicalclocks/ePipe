@@ -66,7 +66,7 @@ namespace Utils {
     }
     
     inline static void executeTransaction(NdbTransaction* transaction, NdbTransaction::ExecType exec_type){
-        if(transaction->execute(NdbTransaction::NoCommit) == -1){
+        if(transaction->execute(exec_type) == -1){
             LOG_NDB_API_ERROR(transaction->getNdbError());
         }
     }
