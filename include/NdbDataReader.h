@@ -34,7 +34,10 @@
 typedef vector<NdbRecAttr*> Row;
 typedef boost::unordered_map<int, Row> UIRowMap;
 
+
 using namespace Utils;
+using namespace Utils::ElasticSearch;
+using namespace Utils::NdbC;
 
 struct ReadTimes{
     float mNdbReadTime;

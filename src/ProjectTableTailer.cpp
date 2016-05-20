@@ -24,6 +24,9 @@
 
 #include "ProjectTableTailer.h"
 
+using namespace Utils::NdbC;
+using namespace Utils::ElasticSearch;
+
 const char* _project_table= "project";
 const int _project_noCols= 6;
 const char* _project_cols[_project_noCols]=
@@ -51,13 +54,39 @@ ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, s
 }
 
 void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
-    
+    int id = value[0]->int32_value();
+        
     if(eventType == NdbDictionary::Event::TE_DELETE){
-        //TODO: handle deleted
+        string deleteDatasetUrl = getElasticSearchUrlOnDoc(mElasticAddr, mElasticIndex, mElasticProjectType, id);
+        string resp = elasticSearchDELETE(deleteDatasetUrl);
+        LOG_INFO() << "Delete Project[" << id << "]: "<< resp;
+        
+        string deteteProjectChildren = getElasticSearchDeleteByQueryUrl(mElasticAddr, mElasticIndex, id);
+
+        rapidjson::StringBuffer sbDoc;
+        rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
+        docWriter.StartObject();
+        docWriter.String("query");
+
+        docWriter.StartObject();
+
+        docWriter.String("match");
+        docWriter.StartObject();
+        docWriter.String("project_id");
+        docWriter.Int(id);
+        docWriter.EndObject();
+
+        docWriter.EndObject();
+
+        docWriter.EndObject();
+        
+        string resp2 = elasticSearchDELETE(deteteProjectChildren, string(sbDoc.GetString()));
+        LOG_INFO() << "Delete Project[" << id << "] children inodes and datasets : "<< resp2;
+
+        mPDICache->removeProject(id);
+        
         return;
     }
-    
-    int id = value[0]->int32_value();
     
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -70,16 +99,16 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.Int(value[1]->int32_value());
     
     docWriter.String("inode_name");
-    docWriter.String(Utils::get_string(value[2]).c_str());
+    docWriter.String(get_string(value[2]).c_str());
     
     docWriter.String("project_name");
-    docWriter.String(Utils::get_string(value[3]).c_str());
+    docWriter.String(get_string(value[3]).c_str());
     
     docWriter.String("user");
-    docWriter.String(Utils::get_string(value[4]).c_str());
+    docWriter.String(get_string(value[4]).c_str());
     
     docWriter.String("description");
-    docWriter.String(Utils::get_string(value[5]).c_str());
+    docWriter.String(get_string(value[5]).c_str());
     
     docWriter.EndObject();
     docWriter.String("doc_as_upsert");
@@ -87,9 +116,9 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.EndObject();
     
     string data = string(sbDoc.GetString());
-    string url = Utils::getElasticSearchUpdateDoc(mElasticAddr, mElasticIndex, mElasticProjectType, id);
+    string url = getElasticSearchUpdateDocUrl(mElasticAddr, mElasticIndex, mElasticProjectType, id);
     LOG_INFO() << "Project ::  " << data;
-    string resp = Utils::elasticSearchPOST(url, data);
+    string resp = elasticSearchPOST(url, data);
     LOG_INFO() << "Resp :: " << resp;
 }
 

@@ -68,18 +68,22 @@ void ProjectDatasetINodeCache::removeINode(int inodeId) {
 
 void ProjectDatasetINodeCache::removeProject(int projectId) {
     LOG_TRACE() << "REMOVE Project[" << projectId << "]";
-    UISet* datasets = mProjectToDataset.remove(projectId);
-    for(UISet::iterator it=datasets->begin(); it != datasets->end(); ++it){
-        removeDataset(*it);
+    if (mProjectToDataset.contains(projectId)) {
+        UISet* datasets = mProjectToDataset.remove(projectId);
+        for (UISet::iterator it = datasets->begin(); it != datasets->end(); ++it) {
+            removeDataset(*it);
+        }
     }
 }
 
 void ProjectDatasetINodeCache::removeDataset(int datasetId) {
     mDatasetToProject.remove(datasetId);
     LOG_TRACE() << "REMOVE Dataset[" << datasetId << "]";
-    UISet* inodes = mDatasetToINodes.remove(datasetId);
-    for(UISet::iterator it=inodes->begin(); it != inodes->end(); ++it){
-        removeINode(*it);
+    if (mDatasetToINodes.contains(datasetId)) {
+        UISet* inodes = mDatasetToINodes.remove(datasetId);
+        for (UISet::iterator it = inodes->begin(); it != inodes->end(); ++it) {
+            removeINode(*it);
+        }
     }
 }
 

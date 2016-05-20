@@ -25,7 +25,7 @@
 #include "FsMutationsTableTailer.h"
 #include "Utils.h"
 
-using namespace Utils;
+using namespace Utils::NdbC;
 
 const char* _mutation_table= "hdfs_metadata_log";
 const int _mutation_noCols= 6;

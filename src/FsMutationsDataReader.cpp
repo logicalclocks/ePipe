@@ -114,7 +114,7 @@ void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database
         op->readTuple(NdbOperation::LM_CommittedRead);
         
         op->equal("parent_id", row.mParentId);
-        op->equal("name", Utils::get_ndb_varchar(row.mInodeName, name_array_type));
+        op->equal("name", get_ndb_varchar(row.mInodeName, name_array_type));
         
         inodes[i] = Row(NUM_INODES_COLS);
         for(int c=0; c<NUM_INODES_COLS; c++){
@@ -257,13 +257,15 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
         opWriter.String("_type");
         opWriter.String(mElasticInodeType.c_str());
         
+        int projectId = -1;
         if(mHopsworksEnalbed){
             // set project (rounting) and dataset (parent) ids 
             opWriter.String("_parent");
             opWriter.Int(row.mDatasetId);
-        
+            
+            projectId = mPDICache->getProjectId(row.mDatasetId);
             opWriter.String("_routing");
-            opWriter.Int(mPDICache->getProjectId(row.mDatasetId));
+            opWriter.Int(projectId);
         }
  
         opWriter.String("_id");
@@ -284,6 +286,14 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
         
         docWriter.String("parent_id");
         docWriter.Int(row.mParentId);
+        
+        if(mHopsworksEnalbed){
+            docWriter.String("dataset_id");
+            docWriter.Int(row.mDatasetId);
+        
+            docWriter.String("project_id");
+            docWriter.Int(projectId);
+        }
         
         docWriter.String("name");
         docWriter.String(row.mInodeName.c_str());

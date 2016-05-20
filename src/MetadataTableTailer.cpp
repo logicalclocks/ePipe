@@ -24,6 +24,8 @@
 
 #include "MetadataTableTailer.h"
 
+using namespace Utils::NdbC;
+
 const char* _metadata_table= "meta_data";
 const int _metadata_noCols= 4;
 const char* _metadata_cols[_metadata_noCols]=
@@ -52,7 +54,7 @@ void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType
     entry.mId = value[0]->int32_value();
     entry.mFieldId = value[1]->int32_value();
     entry.mTupleId = value[2]->int32_value();
-    entry.mMetadata = Utils::get_string(value[3]);
+    entry.mMetadata = get_string(value[3]);
     entry.mOperation = ADD;
     if(eventType == NdbDictionary::Event::TE_DELETE){
         entry.mOperation = DELETE;
