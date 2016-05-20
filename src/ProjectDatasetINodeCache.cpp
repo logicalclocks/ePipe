@@ -27,13 +27,15 @@
 ProjectDatasetINodeCache::ProjectDatasetINodeCache() {
 }
 
+//TODO: sync most recent on all the related caches
+
 void ProjectDatasetINodeCache::addINodeToDataset(int inodeId, int datasetId) {
     mINodeToDataset.put(inodeId, datasetId);
     
     if(!mDatasetToINodes.contains(datasetId)){
         mDatasetToINodes.put(datasetId, new UISet());
     }
-    mDatasetToINodes.get(datasetId)->insert(inodeId);
+    mDatasetToINodes.get(datasetId).get()->insert(inodeId);
     LOG_TRACE() << "ADD INode[" << inodeId << "] to Dataset[" << datasetId << "]";
 }
 
@@ -43,20 +45,32 @@ void ProjectDatasetINodeCache::addDatasetToProject(int datasetId, int projectId)
     if(!mProjectToDataset.contains(projectId)){
         mProjectToDataset.put(projectId, new UISet());
     }
-    mProjectToDataset.get(projectId)->insert(datasetId);
+    mProjectToDataset.get(projectId).get()->insert(datasetId);
     LOG_TRACE() << "ADD Dataset[" << datasetId << "] to Project[" << projectId << "]";
 }
 
 int ProjectDatasetINodeCache::getProjectId(int datasetId) {
-    //TODO: if not in the cache, read from dataset table in database?!
-    int projectId = mDatasetToProject.get(datasetId);
+    int projectId = -1;
+    boost::optional<int> res = mDatasetToProject.get(datasetId);
+    if(!res){
+        //TODO: if not in the cache, read from dataset table in database?!
+        LOG_TRACE() << "Project not in the cache for Dataset[" << datasetId << "]";
+        return projectId;
+    }
+    projectId = *res;
     LOG_TRACE() << "GOT Project[" << projectId << "] for Dataset[" << datasetId << "]";
     return projectId;
 }
 
 int ProjectDatasetINodeCache::getDatasetId(int inodeId) {
-    //TODO: if not in the cache revert back
-    int datasetId = mINodeToDataset.get(inodeId);
+    int datasetId = -1;
+    boost::optional<int> res = mINodeToDataset.get(inodeId);
+    if(!res){
+         //TODO: if not in the cache, read from lookup table in database?!
+        LOG_TRACE() << "Dataset not in the cache for INode[" << inodeId << "]";
+        return datasetId;
+    }
+    datasetId = *res;
     LOG_TRACE() << "GOT Dataset[" << datasetId << "] for INode[" << inodeId << "]";
     return datasetId;
 }
@@ -69,7 +83,7 @@ void ProjectDatasetINodeCache::removeINode(int inodeId) {
 void ProjectDatasetINodeCache::removeProject(int projectId) {
     LOG_TRACE() << "REMOVE Project[" << projectId << "]";
     if (mProjectToDataset.contains(projectId)) {
-        UISet* datasets = mProjectToDataset.remove(projectId);
+        UISet* datasets = mProjectToDataset.remove(projectId).get();
         for (UISet::iterator it = datasets->begin(); it != datasets->end(); ++it) {
             removeDataset(*it);
         }
@@ -80,7 +94,7 @@ void ProjectDatasetINodeCache::removeDataset(int datasetId) {
     mDatasetToProject.remove(datasetId);
     LOG_TRACE() << "REMOVE Dataset[" << datasetId << "]";
     if (mDatasetToINodes.contains(datasetId)) {
-        UISet* inodes = mDatasetToINodes.remove(datasetId);
+        UISet* inodes = mDatasetToINodes.remove(datasetId).get();
         for (UISet::iterator it = inodes->begin(); it != inodes->end(); ++it) {
             removeINode(*it);
         }

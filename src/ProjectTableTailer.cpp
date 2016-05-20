@@ -80,6 +80,7 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
 
         docWriter.EndObject();
         
+        //TODO: handle failures in elastic search
         string resp2 = elasticSearchDELETE(deteteProjectChildren, string(sbDoc.GetString()));
         LOG_INFO() << "Delete Project[" << id << "] children inodes and datasets : "<< resp2;
 

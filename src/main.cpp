@@ -90,6 +90,7 @@ int main(int argc, char** argv) {
     string elastic_dataset_type = "ds";
     string elastic_inode_type = "inode";
     
+    //TODO: add a parameter for max cache capacity
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);

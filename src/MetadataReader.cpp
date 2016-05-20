@@ -293,12 +293,15 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
             continue;
         }
         
+        //FIXME: no need to use contains here?!, 
+        // just check on the return optional field would be enough, if we check for existance  in the cache before
+        
         if (!mFieldsCache.contains(entry.mFieldId)) {
             LOG_ERROR() << " Field " << entry.mFieldId << " is not in the cache";
             continue;
         }
 
-        Field field = mFieldsCache.get(entry.mFieldId);
+        Field field = mFieldsCache.get(entry.mFieldId).get();
 
         if (!mTablesCache.contains(field.mTableId)) {
             LOG_ERROR() << " Table " << field.mTableId << " is not in the cache";
@@ -306,14 +309,14 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
         }
 
 
-        Table table = mTablesCache.get(field.mTableId);
+        Table table = mTablesCache.get(field.mTableId).get();
 
         if (!mTemplatesCache.contains(table.mTemplateId)) {
             LOG_ERROR() << " Template " << table.mTemplateId << " is not in the cache";
             continue;
         }
 
-        string templateName = mTemplatesCache.get(table.mTemplateId);
+        string templateName = mTemplatesCache.get(table.mTemplateId).get();
         
         int inodeId = tuples[entry.mTupleId][TUPLE_INODE_ID_COL]->int32_value();
 

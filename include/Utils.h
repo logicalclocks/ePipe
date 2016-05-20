@@ -241,6 +241,7 @@ namespace Utils {
         };
 
         inline static string elasticSearchHttpRequest(HttpOp op, string elasticUrl, string json) {
+            //TODO: support retry if server is down
             try {
                 httpclient::request request_(elasticUrl);
                 request_ << boost::network::header("Connection", "close");

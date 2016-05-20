@@ -307,11 +307,13 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
         docWriter.String("size");
         docWriter.Int64(inodes[i][INODE_SIZE_COL]->int64_value());
         
+        //FIXME: 
         docWriter.String("user");
-        docWriter.String(mUsersCache.get(userId).c_str());
+        docWriter.String(mUsersCache.get(userId).get().c_str());
         
+        //FIXME:
         docWriter.String("group");
-        docWriter.String(mGroupsCache.get(groupId).c_str());
+        docWriter.String(mGroupsCache.get(groupId).get().c_str());
         
         docWriter.EndObject();
         

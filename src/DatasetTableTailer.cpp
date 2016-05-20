@@ -82,6 +82,7 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
 
         docWriter.EndObject();
         
+        //TODO: handle failures in elastic search
         string resp2 = elasticSearchDELETE(deteteDatasetChildren, string(sbDoc.GetString()));
         LOG_INFO() << "Delete Dataset[" << id << "] children inodes: "<< resp2;
 

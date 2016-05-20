@@ -25,25 +25,46 @@
 #ifndef CACHE_H
 #define CACHE_H
 #include "common.h"
+#include "boost/bimap.hpp"
+#include "boost/bimap/list_of.hpp"
+#include "boost/bimap/unordered_set_of.hpp"
+#include "boost/optional.hpp"
 
-//TODO: implement LRU, how to handle eviction?! since i'm using the cache to pass elements between functions
+#define DEFAULT_MAX_CAPACITY 10000
 
+/*
+ * LRU Cache based on the design described in http://timday.bitbucket.org/lru.html
+ */
 template<typename Key, typename Value>
 class Cache {
 public:
+    
+    typedef boost::bimaps::bimap<boost::bimaps::unordered_set_of<Key>,
+            boost::bimaps::list_of<Value> > CacheContainer;
+    
     Cache();
+    Cache(const int max_capacity);
     void put(Key key, Value value);
-    Value get(Key key);
-    Value remove(Key key);
+    boost::optional<Value> get(Key key);
+    boost::optional<Value> remove(Key key);
     bool contains(Key key);
     virtual ~Cache();
+        
 private:
+    const int mCapacity;
+    CacheContainer mCache;
+    
     mutable boost::mutex mLock;
-    boost::unordered_map<Key, Value> cache;
+    
 };
 
 template<typename Key, typename Value>
-Cache<Key,Value>::Cache(){
+Cache<Key,Value>::Cache() : mCapacity(DEFAULT_MAX_CAPACITY){
+    
+}
+
+template<typename Key, typename Value>
+Cache<Key,Value>::Cache(const int max_capacity) : mCapacity(max_capacity){
     
 }
 
@@ -55,27 +76,53 @@ Cache<Key,Value>::~Cache(){
 template<typename Key, typename Value>
 void Cache<Key,Value>::put(Key key, Value value){
     boost::mutex::scoped_lock lock(mLock);
-    cache[key] = value;
+    const typename CacheContainer::left_iterator it = mCache.left.find(key);
+    if(it == mCache.left.end()){
+        //new key
+        if(mCache.size() == mCapacity){
+            mCache.right.erase(mCache.right.begin());
+        }
+        mCache.insert(typename CacheContainer::value_type(key, value));
+    }else{
+        //update to most recent
+        mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+    }
 }
 
 template<typename Key, typename Value>
-Value Cache<Key,Value>::get(Key key){
+boost::optional<Value> Cache<Key,Value>::get(Key key){
     boost::mutex::scoped_lock lock(mLock);
-    return cache[key];
+    const typename CacheContainer::left_iterator it = mCache.left.find(key);
+    if(it != mCache.left.end()){
+        //update to most recent
+        mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+        return it->second;
+    }
+    return boost::none;
 }
 
 template<typename Key, typename Value>
-Value Cache<Key,Value>::remove(Key key){
+boost::optional<Value> Cache<Key,Value>::remove(Key key){
     boost::mutex::scoped_lock lock(mLock);
-    Value val = cache[key];
-    cache.erase(key);
-    return val;
+    const typename CacheContainer::left_iterator it = mCache.left.find(key);
+    if(it != mCache.left.end()){
+        mCache.left.erase(it);
+        return it->second;
+    }
+    return boost::none;
 }
 
 template<typename Key, typename Value>
 bool Cache<Key,Value>::contains(Key key){
     boost::mutex::scoped_lock lock(mLock);
-    return cache.find(key) != cache.end();
+    const typename CacheContainer::left_iterator it = mCache.left.find(key);
+    if(it != mCache.left.end()){
+        //update to most recent
+        mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+        return true;
+    }
+    return false;
 }
+
 #endif /* CACHE_H */
 
