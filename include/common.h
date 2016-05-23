@@ -49,6 +49,7 @@
 using namespace std;
 
 typedef boost::unordered_set<int> UISet;
+typedef boost::unordered_map<int, int> UIMap;
 
 //Constansts
 

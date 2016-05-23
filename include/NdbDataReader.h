@@ -31,10 +31,6 @@
 #include "Utils.h"
 #include "ProjectDatasetINodeCache.h"
 
-typedef vector<NdbRecAttr*> Row;
-typedef boost::unordered_map<int, Row> UIRowMap;
-
-
 using namespace Utils;
 using namespace Utils::ElasticSearch;
 using namespace Utils::NdbC;
@@ -43,6 +39,11 @@ struct ReadTimes{
     float mNdbReadTime;
     float mJSONCreationTime;
     float mElasticSearchTime;
+};
+
+struct MConn{
+    Ndb* inodeConnection;
+    Ndb* metadataConnection;
 };
 
 template<typename Data, typename Conn>
@@ -75,8 +76,6 @@ protected:
     
     virtual ReadTimes readData(Conn connection, vector<Data>* data_batch) = 0;
     string bulkUpdateElasticSearch(string json);
-    UIRowMap readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, const char* table_name, 
-            UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index);
 };
 
 
@@ -95,27 +94,6 @@ template<typename Data, typename Conn>
 string NdbDataReader<Data, Conn>::bulkUpdateElasticSearch(string json) {
     //TODO: handle elasticsearch failures
     return elasticSearchPOST(mElasticBulkUrl, json);
-}
-
-template<typename Data, typename Conn>
-UIRowMap NdbDataReader<Data, Conn>::readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, 
-        const char* table_name,  UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index) {
-    
-    UIRowMap res;
-    const NdbDictionary::Table* table = getTable(database, table_name);
-    
-    for(UISet::iterator it = ids.begin(); it != ids.end(); ++it){
-        NdbOperation* op = getNdbOperation(transaction, table);
-        op->readTuple(NdbOperation::LM_CommittedRead);
-        op->equal(columns_to_read[column_pk_index], *it);
-        
-        for(int c=0; c<columns_count; c++){
-            NdbRecAttr* col =getNdbOperationValue(op, columns_to_read[c]);
-            res[*it].push_back(col);
-        }
-        LOG_TRACE() << " Read " << table_name << " row for [" << *it<< "]"; 
-    }
-    return res;
 }
 
 template<typename Data, typename Conn>

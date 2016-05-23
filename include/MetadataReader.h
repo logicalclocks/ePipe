@@ -49,11 +49,6 @@ struct Table{
    int mTemplateId;
 };
 
-struct MConn{
-    Ndb* inodeConnection;
-    Ndb* metadataConnection;
-};
-
 class MetadataReader : public NdbDataReader<MetadataEntry, MConn>{
 public:
     MetadataReader(MConn* connections, const int num_readers, string elastic_ip, 
@@ -72,8 +67,9 @@ private:
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
     //Read from the inodes database
+    UISet readINodeToDatasetLookup(Ndb* inode_connection, UIRowMap tuples);  
     void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
-        NdbTransaction* inodesTransaction, UIRowMap tuples);
+        NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read);
     
     string createJSON(UIRowMap tuples, Mq* data_batch);
             

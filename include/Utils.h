@@ -33,6 +33,9 @@
 typedef boost::posix_time::ptime ptime;
 typedef boost::network::http::client httpclient;
 
+typedef vector<NdbRecAttr*> Row;
+typedef boost::unordered_map<int, Row> UIRowMap;
+
 namespace Utils {
 
     namespace NdbC {
@@ -60,7 +63,13 @@ namespace Utils {
             if (!col) LOG_NDB_API_ERROR(op->getNdbError());
             return col;
         }
-
+        
+        inline static NdbIndexOperation* getNdbIndexOperation(NdbTransaction* transaction, const NdbDictionary::Index* index) {
+            NdbIndexOperation* op = transaction->getNdbIndexOperation(index);
+            if (!op) LOG_NDB_API_ERROR(transaction->getNdbError());
+            return op;
+        }
+        
         inline static NdbTransaction* startNdbTransaction(Ndb* connection) {
             NdbTransaction* ts = connection->startTransaction();
             if (!ts) LOG_NDB_API_ERROR(connection->getNdbError());
@@ -179,6 +188,26 @@ namespace Utils {
                 return string(str);
             }
             return NULL;
+        }
+
+        inline static UIRowMap readTableWithIntPK(const NdbDictionary::Dictionary* database, NdbTransaction* transaction,
+                const char* table_name, UISet ids, const char** columns_to_read, const int columns_count, const int column_pk_index) {
+
+            UIRowMap res;
+            const NdbDictionary::Table* table = getTable(database, table_name);
+
+            for (UISet::iterator it = ids.begin(); it != ids.end(); ++it) {
+                NdbOperation* op = getNdbOperation(transaction, table);
+                op->readTuple(NdbOperation::LM_CommittedRead);
+                op->equal(columns_to_read[column_pk_index], *it);
+
+                for (int c = 0; c < columns_count; c++) {
+                    NdbRecAttr* col = getNdbOperationValue(op, columns_to_read[c]);
+                    res[*it].push_back(col);
+                }
+                LOG_TRACE() << " Read " << table_name << " row for [" << *it << "]";
+            }
+            return res;
         }
     }
 

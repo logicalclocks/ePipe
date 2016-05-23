@@ -23,6 +23,7 @@
  */
 
 #include "MetadataReader.h"
+#include "DatasetTableTailer.h"
 
 const char* META_FIELDS = "meta_fields";
 const int NUM_FIELDS_COLS = 5;
@@ -104,15 +105,10 @@ string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, 
     if(mHopsworksEnalbed){
         //read inodes to datasets from inodes datatbase to enable
         //parent/child relationship
-        Ndb* inodeConn = connection.inodeConnection;
-        
-        const NdbDictionary::Dictionary* inodeDatabase = getDatabase(inodeConn);
-        NdbTransaction* inodeTransaction = startNdbTransaction(inodeConn);
-        
-        readINodeToDatasetLookup(inodeDatabase, inodeTransaction, tuples);
-        
-        executeTransaction(inodeTransaction, NdbTransaction::NoCommit);
-        inodeConn->closeTransaction(inodeTransaction);
+        UISet dataset_ids = readINodeToDatasetLookup(connection.inodeConnection, tuples);
+        if(!dataset_ids.empty()){
+           DatasetTableTailer::updateProjectIds(metaDatabase, metaTransaction, dataset_ids, mPDICache);
+        }
     }
     
     ptime t2 = getCurrentTime();
@@ -140,8 +136,10 @@ UIRowMap MetadataReader::readMetadataColumns(const NdbDictionary::Dictionary* da
     for (Mq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
        MetadataEntry entry = *it;
        
-       //TODO: check in the cache
-       fields_ids.insert(entry.mFieldId);
+       if(!mFieldsCache.contains(entry.mFieldId)){
+          fields_ids.insert(entry.mFieldId);
+       }
+       
        tuple_ids.insert(entry.mTupleId);
     }
     
@@ -187,8 +185,7 @@ UISet MetadataReader::readFields(const NdbDictionary::Dictionary* database, NdbT
         field.mType = (FieldType) it->second[FIELD_TYPE_COL]->short_value();
         mFieldsCache.put(it->first, field);
         
-        //TODO: check in the cache
-        if(field.mSearchable){
+        if(field.mSearchable && !mTablesCache.contains(field.mTableId)){
             tables_to_read.insert(field.mTableId);
         }
     }
@@ -221,8 +218,9 @@ UISet MetadataReader::readTables(const NdbDictionary::Dictionary* database, NdbT
         
         mTablesCache.put(it->first, table);
         
-        //TODO: check in the cache
-        templates_to_read.insert(table.mTemplateId);
+        if(!mTemplatesCache.contains(table.mTemplateId)){
+            templates_to_read.insert(table.mTemplateId);
+        }
     }
     
     return templates_to_read;
@@ -251,17 +249,47 @@ void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, Nd
     }
 }
 
-void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
-        NdbTransaction* inodesTransaction, UIRowMap tuples) {
-    
+UISet MetadataReader::readINodeToDatasetLookup(Ndb* inode_connection, UIRowMap tuples) {
+
     //read inodes to dataset ids
     UISet inodes_ids;
-    for(UIRowMap::iterator it=tuples.begin(); it != tuples.end(); ++it){
-        //TODO: check if is in the cache
-        if(it->first == it->second[TUPLE_ID_COL]->int32_value()){
-            inodes_ids.insert(it->second[TUPLE_INODE_ID_COL]->int32_value());
+    UISet dataset_ids;
+
+    for (UIRowMap::iterator it = tuples.begin(); it != tuples.end(); ++it) {
+        if (it->first != it->second[TUPLE_ID_COL]->int32_value()) {
+            LOG_ERROR() << " Tuple " << it->first << " doesn't exists";
+            continue;
+        }
+
+        int inodeId = it->second[TUPLE_INODE_ID_COL]->int32_value();
+
+        int datasetId = mPDICache->getDatasetId(inodeId);
+        if (datasetId == -1) {
+            inodes_ids.insert(inodeId);
+            continue;
+        }
+
+        int projectId = mPDICache->getProjectId(datasetId);
+        if (projectId == -1) {
+            dataset_ids.insert(datasetId);
         }
     }
+
+
+    if (!inodes_ids.empty()) {
+        const NdbDictionary::Dictionary* inodeDatabase = getDatabase(inode_connection);
+        NdbTransaction* inodeTransaction = startNdbTransaction(inode_connection);
+
+        readINodeToDatasetLookup(inodeDatabase, inodeTransaction, inodes_ids, dataset_ids);
+
+        executeTransaction(inodeTransaction, NdbTransaction::NoCommit);
+        inode_connection->closeTransaction(inodeTransaction);
+    }
+    return dataset_ids;
+}
+
+void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
+        NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read) {
     
     UIRowMap inodesToDatasets = readTableWithIntPK(inodesDatabase, inodesTransaction,
             INODE_DATASET_LOOKUP, inodes_ids, INODE_DATASET_LOOKUP_COLS_TO_READ,
@@ -279,6 +307,9 @@ void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* i
         int datasetId = it->second[INODE_DATASET_LOOKUO_DATASET_ID_COL]->int32_value();
 
         mPDICache->addINodeToDataset(it->first, datasetId);
+        if(!mPDICache->containsDataset(datasetId)){
+            datasets_to_read.insert(datasetId);
+        }
     }
 }
 
@@ -292,31 +323,32 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
             LOG_DEBUG() << " Tuple " << entry.mTupleId  << " doesn't exists";
             continue;
         }
+       
+        boost::optional<Field> _fres = mFieldsCache.get(entry.mFieldId);
         
-        //FIXME: no need to use contains here?!, 
-        // just check on the return optional field would be enough, if we check for existance  in the cache before
-        
-        if (!mFieldsCache.contains(entry.mFieldId)) {
+        if(!_fres){
             LOG_ERROR() << " Field " << entry.mFieldId << " is not in the cache";
             continue;
         }
-
-        Field field = mFieldsCache.get(entry.mFieldId).get();
-
-        if (!mTablesCache.contains(field.mTableId)) {
+        
+        Field field = *_fres;
+        boost::optional<Table> _tres = mTablesCache.get(field.mTableId);
+        
+        if (!_tres) {
             LOG_ERROR() << " Table " << field.mTableId << " is not in the cache";
             continue;
         }
 
+        Table table = *_tres;
+        
+        boost::optional<string> _ttres = mTemplatesCache.get(table.mTemplateId);
 
-        Table table = mTablesCache.get(field.mTableId).get();
-
-        if (!mTemplatesCache.contains(table.mTemplateId)) {
+        if (!_ttres) {
             LOG_ERROR() << " Template " << table.mTemplateId << " is not in the cache";
             continue;
         }
-
-        string templateName = mTemplatesCache.get(table.mTemplateId).get();
+        
+        string templateName = *_ttres;
         
         int inodeId = tuples[entry.mTupleId][TUPLE_INODE_ID_COL]->int32_value();
 

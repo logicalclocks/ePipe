@@ -30,7 +30,7 @@ using namespace Utils::ElasticSearch;
 const char* _project_table= "project";
 const int _project_noCols= 6;
 const char* _project_cols[_project_noCols]=
-    {"inode_id",
+    {"id",
      "inode_pid",
      "inode_name",
      "projectname",

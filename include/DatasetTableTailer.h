@@ -34,7 +34,8 @@ public:
     DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
             const string elastic_index, const string elastic_dataset_type, ProjectDatasetINodeCache* cache);
     virtual ~DatasetTableTailer();
-        
+    
+    static void updateProjectIds(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet dataset_ids, ProjectDatasetINodeCache* cache);    
 private:
     static const WatchTable TABLE;
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);

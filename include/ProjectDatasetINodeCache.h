@@ -16,7 +16,6 @@
 
 #include "Cache.h"
 
-
 class ProjectDatasetINodeCache {
 public:
     ProjectDatasetINodeCache();
@@ -27,6 +26,9 @@ public:
     void removeDataset(int datasetId);
     int getProjectId(int datasetId);
     int getDatasetId(int inodeId);
+    
+    bool containsINode(int inodeId);
+    bool containsDataset(int datasetId);
     
     virtual ~ProjectDatasetINodeCache();
 private:

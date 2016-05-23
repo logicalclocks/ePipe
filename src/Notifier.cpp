@@ -60,11 +60,11 @@ void Notifier::setup() {
     Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
     mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mPDICache);
     
-    Ndb** mutations_connections = new Ndb*[mNumNdbReaders];
+    MConn* mutations_connections = new MConn[mNumNdbReaders];
     for(int i=0; i< mNumNdbReaders; i++){
-        mutations_connections[i] = create_ndb_connection(mDatabaseName);
+        mutations_connections[i].inodeConnection =  create_ndb_connection(mDatabaseName);
+        mutations_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
     }
-    
     
     mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders, 
             mElasticAddr, mHopsworksEnabled, mElasticIndex, mElasticInodeType, mPDICache);

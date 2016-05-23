@@ -77,7 +77,7 @@ FsMutationRow FsMutationsTableTailer::consume(){
 }
 
 void FsMutationsTableTailer::removeLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* rows) {
-    const NdbDictionary::Table* log_table = getTable(database, FsMutationsTableTailer::TABLE.mTableName);
+    const NdbDictionary::Table* log_table = getTable(database, TABLE.mTableName);
     for(Fmq::iterator it=rows->begin(); it != rows->end() ; ++it){
         FsMutationRow row = *it;
         NdbOperation* op = getNdbOperation(transaction, log_table);

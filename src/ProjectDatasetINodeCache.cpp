@@ -27,8 +27,6 @@
 ProjectDatasetINodeCache::ProjectDatasetINodeCache() {
 }
 
-//TODO: sync most recent on all the related caches
-
 void ProjectDatasetINodeCache::addINodeToDataset(int inodeId, int datasetId) {
     mINodeToDataset.put(inodeId, datasetId);
     
@@ -53,7 +51,6 @@ int ProjectDatasetINodeCache::getProjectId(int datasetId) {
     int projectId = -1;
     boost::optional<int> res = mDatasetToProject.get(datasetId);
     if(!res){
-        //TODO: if not in the cache, read from dataset table in database?!
         LOG_TRACE() << "Project not in the cache for Dataset[" << datasetId << "]";
         return projectId;
     }
@@ -66,7 +63,6 @@ int ProjectDatasetINodeCache::getDatasetId(int inodeId) {
     int datasetId = -1;
     boost::optional<int> res = mINodeToDataset.get(inodeId);
     if(!res){
-         //TODO: if not in the cache, read from lookup table in database?!
         LOG_TRACE() << "Dataset not in the cache for INode[" << inodeId << "]";
         return datasetId;
     }
@@ -99,6 +95,16 @@ void ProjectDatasetINodeCache::removeDataset(int datasetId) {
             removeINode(*it);
         }
     }
+}
+
+bool ProjectDatasetINodeCache::containsDataset(int datasetId) {
+    LOG_TRACE() << "CONTAINS Dataset[" << datasetId << "]";
+    return mDatasetToProject.contains(datasetId);
+}
+
+bool ProjectDatasetINodeCache::containsINode(int inodeId) {
+    LOG_TRACE() << "CONTAINS INode[" << inodeId << "]";
+    return mINodeToDataset.contains(inodeId);
 }
 
 ProjectDatasetINodeCache::~ProjectDatasetINodeCache() {

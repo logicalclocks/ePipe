@@ -130,6 +130,35 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     LOG_INFO() << "Resp :: " << resp;
 }
 
+void DatasetTableTailer::updateProjectIds(const NdbDictionary::Dictionary* database,
+        NdbTransaction* transaction, UISet dataset_ids, ProjectDatasetINodeCache* cache) {    
+
+    const NdbDictionary::Index * index= database->getIndex(Utils::concat(_dataset_cols[0], "$unique"), TABLE.mTableName);
+    
+    UIRowMap rows;
+    for (UISet::iterator it = dataset_ids.begin(); it != dataset_ids.end(); ++it) {
+        NdbIndexOperation* op = getNdbIndexOperation(transaction, index);
+        op->readTuple(NdbOperation::LM_CommittedRead);
+        op->equal(_dataset_cols[0], *it);
+        
+        NdbRecAttr* id_col = getNdbOperationValue(op, _dataset_cols[0]);
+        NdbRecAttr* proj_id_col = getNdbOperationValue(op, _dataset_cols[3]);
+        rows[*it].push_back(id_col);
+        rows[*it].push_back(proj_id_col);
+    }
+
+    executeTransaction(transaction, NdbTransaction::NoCommit);
+
+    for (UIRowMap::iterator it = rows.begin(); it != rows.end(); ++it) {
+        if (it->first != it->second[0]->int32_value()) {
+            LOG_ERROR() << "Dataset [" << it->first << "] doesn't exists";
+            continue;
+        }
+
+        int projectId = it->second[1]->int32_value();
+        cache->addDatasetToProject(it->first, projectId);
+    }
+}
 
 DatasetTableTailer::~DatasetTableTailer() {
 }

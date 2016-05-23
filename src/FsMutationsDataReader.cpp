@@ -23,6 +23,7 @@
  */
 
 #include "FsMutationsDataReader.h"
+#include "DatasetTableTailer.h"
 
 const char* INODES = "hdfs_inodes";
 const int NUM_INODES_COLS = 4;
@@ -39,13 +40,13 @@ const char* UG_COLS_TO_READ[] = {"id", "name"};
 const int UG_ID_COL = 0;
 const int UG_NAME_COL = 1;
 
-FsMutationsDataReader::FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
+FsMutationsDataReader::FsMutationsDataReader(MConn* connections, const int num_readers, string elastic_ip,
         const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
-    : NdbDataReader<FsMutationRow, Ndb*>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
+    : NdbDataReader<FsMutationRow,MConn>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
 
 }
 
-ReadTimes FsMutationsDataReader::readData(Ndb* connection, Fmq* data_batch) {
+ReadTimes FsMutationsDataReader::readData(MConn connection, Fmq* data_batch) {
     ReadTimes rt;
     
     string json;
@@ -63,12 +64,13 @@ ReadTimes FsMutationsDataReader::readData(Ndb* connection, Fmq* data_batch) {
     return rt;
 }
 
-string FsMutationsDataReader::processAddedandDeleted(Ndb* connection, Fmq* data_batch, ReadTimes& rt) {
+string FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch, ReadTimes& rt) {
     ptime t1 = getCurrentTime();
 
-    const NdbDictionary::Dictionary* database = getDatabase(connection);
+    Ndb* inodeConnection = conn.inodeConnection;
+    const NdbDictionary::Dictionary* database = getDatabase(inodeConnection);
 
-    NdbTransaction* ts = startNdbTransaction(connection);
+    NdbTransaction* ts = startNdbTransaction(inodeConnection);
 
     Rows inodes(data_batch->size());
         
@@ -79,7 +81,11 @@ string FsMutationsDataReader::processAddedandDeleted(Ndb* connection, Fmq* data_
     FsMutationsTableTailer::removeLogs(database, ts, data_batch);
     
     executeTransaction(ts, NdbTransaction::Commit);
-
+    
+    if(mHopsworksEnalbed){
+        updateProjectIds(conn.metadataConnection, data_batch);
+    }
+    
     ptime t2 = getCurrentTime();
 
     string data = createJSON(data_batch, inodes);
@@ -88,7 +94,7 @@ string FsMutationsDataReader::processAddedandDeleted(Ndb* connection, Fmq* data_
 
     LOG_INFO() << " Out :: " << endl << data << endl;
     
-    connection->closeTransaction(ts);
+    inodeConnection->closeTransaction(ts);
     
     rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);
     rt.mJSONCreationTime = getTimeDiffInMilliseconds(t2, t3);
@@ -187,6 +193,24 @@ UIRowMap FsMutationsDataReader::getUsersFromDB(const NdbDictionary::Dictionary* 
 
 UIRowMap FsMutationsDataReader::getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids) {
    return readTableWithIntPK(database, transaction, GROUPS, ids, UG_COLS_TO_READ, NUM_UG_COLS, UG_ID_COL);
+}
+
+void FsMutationsDataReader::updateProjectIds(Ndb* metaConnection, Fmq* data_batch) {
+    UISet dataset_ids;
+    for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
+        FsMutationRow row = *it;
+
+        if (!mPDICache->containsDataset(row.mDatasetId)) {
+            dataset_ids.insert(row.mDatasetId);
+        }
+    }
+
+    if (!dataset_ids.empty()) {
+        const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConnection);
+        NdbTransaction* metaTransaction = startNdbTransaction(metaConnection);
+        DatasetTableTailer::updateProjectIds(metaDatabase, metaTransaction, dataset_ids, mPDICache);
+        metaConnection->closeTransaction(metaTransaction);
+    }
 }
 
 string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
@@ -331,6 +355,7 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
 
 FsMutationsDataReader::~FsMutationsDataReader() {
     for(int i=0; i< mNumReaders; i++){
-        delete mNdbConnections[i];
+        delete mNdbConnections[i].inodeConnection;
+        delete mNdbConnections[i].metadataConnection;
     }
 }

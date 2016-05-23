@@ -30,9 +30,9 @@
 
 typedef vector<Row> Rows;
 
-class FsMutationsDataReader : public NdbDataReader<FsMutationRow, Ndb*>{
+class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn>{
 public:
-    FsMutationsDataReader(Ndb** connections, const int num_readers, string elastic_ip,
+    FsMutationsDataReader(MConn* connections, const int num_readers, string elastic_ip,
             const bool hopsworks, const string elastic_index, const string elastic_inode_type,
             ProjectDatasetINodeCache* cache);
     virtual ~FsMutationsDataReader();
@@ -40,8 +40,9 @@ private:
     Cache<int, string> mUsersCache;
     Cache<int, string> mGroupsCache;
     
-    virtual ReadTimes readData(Ndb* connection, Fmq* data_batch);
-    string processAddedandDeleted(Ndb* connection, Fmq* data_batch, ReadTimes& rt);
+    virtual ReadTimes readData(MConn connection, Fmq* data_batch);
+    string processAddedandDeleted(MConn connection, Fmq* data_batch, ReadTimes& rt);
+    void updateProjectIds(Ndb* metaConnection, Fmq* data_batch);
     
     void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch, Rows& inodes);
     void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Rows& inodes);
