@@ -51,6 +51,7 @@ MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait)
 
 void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
     MetadataEntry entry;
+    entry.mEventCreationTime = Utils::getCurrentTime();
     entry.mId = value[0]->int32_value();
     entry.mFieldId = value[1]->int32_value();
     entry.mTupleId = value[2]->int32_value();

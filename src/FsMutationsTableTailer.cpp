@@ -49,6 +49,7 @@ FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeT
 
 void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
     FsMutationRow row;
+    row.mEventCreationTime = Utils::getCurrentTime();
     row.mDatasetId = value[0]->int32_value();
     row.mInodeId =  value[1]->int32_value();
     row.mTimestamp = value[2]->int64_value();

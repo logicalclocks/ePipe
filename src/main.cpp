@@ -28,7 +28,7 @@ namespace po = boost::program_options;
 
 void init_logging(int level) {
     switch (level) {
-         case 0:
+        case 0:
             boost::log::core::get()->set_filter
                     (
                     boost::log::trivial::severity >= boost::log::trivial::trace
@@ -52,6 +52,12 @@ void init_logging(int level) {
                     boost::log::trivial::severity >= boost::log::trivial::error
                     );
             break;
+        case 4:
+            boost::log::core::get()->set_filter
+                    (
+                    boost::log::trivial::severity >= boost::log::trivial::fatal
+                    );
+            break;
     }
 }
 
@@ -73,7 +79,7 @@ int main(int argc, char** argv) {
             ("dataset_type", po::value<string>(), "Elastic type for datasets, only used when hopsworks is enabled. Default: ds")
             ("inode_type", po::value<string>(), "Elastic type for inodes. Default: inode")
             ("lru_cap", po::value<int>(), "LRU Cache max capacity")
-            ("log", po::value<int>(), "log level trace=0, debug=1, info=1, error=2")
+            ("log", po::value<int>(), "log level trace=0, debug=1, info=2, error=3, fatal=4")
             ;
 
     string connection_string;

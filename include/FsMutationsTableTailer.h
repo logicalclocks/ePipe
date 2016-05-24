@@ -37,6 +37,8 @@ struct FsMutationRow {
      long mTimestamp;
      Operation mOperation;
      
+     ptime mEventCreationTime;
+     
      void print(){
         LOG_TRACE() << "-------------------------";
         LOG_TRACE() << "DatasetId = " << mDatasetId;

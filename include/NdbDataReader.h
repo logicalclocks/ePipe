@@ -31,14 +31,30 @@
 #include "Utils.h"
 #include "ProjectDatasetINodeCache.h"
 
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/min.hpp>
+#include <boost/accumulators/statistics/max.hpp>
+
+namespace bc = boost::accumulators;
+
+typedef bc::accumulator_set<double, bc::stats<bc::tag::mean, bc::tag::min, bc::tag::max> >  Accumulator;
+
 using namespace Utils;
 using namespace Utils::ElasticSearch;
 using namespace Utils::NdbC;
 
-struct ReadTimes{
+struct BatchStats{
     float mNdbReadTime;
     float mJSONCreationTime;
     float mElasticSearchTime;
+    
+    string str(){
+        stringstream out;
+        out << "[Ndb=" << mNdbReadTime << " msec, JSON=" << mJSONCreationTime << " msec, ES=" << mElasticSearchTime << " msec]";
+        return out.str();
+    }
 };
 
 struct MConn{
@@ -74,9 +90,14 @@ protected:
     const string mElasticIndex;
     const string mElasticInodeType;
     ProjectDatasetINodeCache* mPDICache;
+    Accumulator mQueuingAcc;
+    Accumulator mBatchingAcc;
+    Accumulator mProcessingAcc;
     
-    virtual ReadTimes readData(Conn connection, vector<Data>* data_batch) = 0;
+    virtual ptime getEventCreationTime(Data row) = 0;
+    virtual BatchStats readData(Conn connection, vector<Data>* data_batch) = 0;
     string bulkUpdateElasticSearch(string json);
+    string getAccString(Accumulator acc);
 };
 
 
@@ -118,9 +139,25 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
         vector<Data>* curr;
         mBatchedQueue->wait_and_pop(curr);
         LOG_DEBUG() << " Process Batch ";
-        ReadTimes rt = readData(mNdbConnections[connIndex], curr);
-        LOG_DEBUG() << " Process Batch time taken [ Ndb = " << rt.mNdbReadTime 
-                << " msec, JSON = " << rt.mJSONCreationTime << " msec, ES = " << rt.mElasticSearchTime << " msec ]";
+        ptime startProcessing = getCurrentTime();
+        BatchStats rt = readData(mNdbConnections[connIndex], curr);
+        ptime endProcessing = getCurrentTime();
+        
+        for(unsigned int i=0; i < curr->size(); i++){
+            Data data = curr->at(i);
+            float queueTime = getTimeDiffInMilliseconds(getEventCreationTime(data), startProcessing);
+            mQueuingAcc(queueTime);
+        }
+        
+        float batch_time = getTimeDiffInMilliseconds(getEventCreationTime(curr->at(0)), getEventCreationTime(curr->at(curr->size() -1 )));
+        mBatchingAcc(batch_time);
+        float processing = getTimeDiffInMilliseconds(startProcessing, endProcessing);
+        mProcessingAcc(processing);
+        
+        LOG_INFO() << " Processing[" << curr->size() << "]=" << processing 
+                << " msec " << rt.str() << ", Batching=" << batch_time << " msec";
+        //LOG_INFO() << " Processing Acc " << getAccString(mProcessingAcc) 
+        //        << ", Batching Acc " << getAccString(mBatchingAcc) << ", Queuing Acc " << getAccString(mQueuingAcc); 
         delete curr;
     }
 }
@@ -128,6 +165,13 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
 template<typename Data, typename Conn>
 void NdbDataReader<Data, Conn>::processBatch(vector<Data>* data_batch) {
     mBatchedQueue->push(data_batch);
+}
+
+template<typename Data, typename Conn>
+string NdbDataReader<Data, Conn>::getAccString(Accumulator acc){
+    stringstream out;
+    out << "[" << bc::min(acc) << "," << bc::mean(acc) << "," << bc::max(acc) << "]";
+    return out.str();
 }
 
 template<typename Data, typename Conn>

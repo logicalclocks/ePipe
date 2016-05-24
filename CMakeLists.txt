@@ -24,6 +24,6 @@ SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DBOOST_LOG_DYN_LINK -DBOOST_SPIRIT_US
 
 file(GLOB SOURCE ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
-add_executable(hopsfs-elastic-notifer ${SOURCE})
+add_executable(ePipe ${SOURCE})
 
-target_link_libraries(hopsfs-elastic-notifer ${Boost_LIBRARIES} ${CPPNETLIB_LIBRARIES} ndbclient pthread)
+target_link_libraries(ePipe ${Boost_LIBRARIES} ${CPPNETLIB_LIBRARIES} ndbclient pthread)

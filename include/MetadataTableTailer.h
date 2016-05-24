@@ -35,6 +35,8 @@ struct MetadataEntry {
      string mMetadata;
      Operation mOperation;
      
+     ptime mEventCreationTime;
+     
      void print(){
         LOG_TRACE() << "-------------------------";
         LOG_TRACE() << "Id = " << mId;

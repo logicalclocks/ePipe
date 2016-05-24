@@ -56,9 +56,11 @@ public:
             ProjectDatasetINodeCache* cache, const int lru_cap);
     virtual ~MetadataReader();
 private:
-    virtual ReadTimes readData(MConn connection, Mq* data_batch);
+    virtual ptime getEventCreationTime(MetadataEntry entry);
+
+    virtual BatchStats readData(MConn connection, Mq* data_batch);
     
-    string processAddedandDeleted(MConn connection, Mq* data_batch, ReadTimes& rt);
+    string processAddedandDeleted(MConn connection, Mq* data_batch, BatchStats& rt);
     
     UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, Mq* added);

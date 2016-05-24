@@ -36,12 +36,14 @@ public:
             const bool hopsworks, const string elastic_index, const string elastic_inode_type,
             ProjectDatasetINodeCache* cache, const int lru_cap);
     virtual ~FsMutationsDataReader();
-private:
+private:    
     Cache<int, string> mUsersCache;
     Cache<int, string> mGroupsCache;
     
-    virtual ReadTimes readData(MConn connection, Fmq* data_batch);
-    string processAddedandDeleted(MConn connection, Fmq* data_batch, ReadTimes& rt);
+    virtual ptime getEventCreationTime(FsMutationRow row);
+    
+    virtual BatchStats readData(MConn connection, Fmq* data_batch);
+    string processAddedandDeleted(MConn connection, Fmq* data_batch, BatchStats& rt);
     void updateProjectIds(Ndb* metaConnection, Fmq* data_batch);
     
     void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch, Rows& inodes);

@@ -71,9 +71,13 @@ MetadataReader::MetadataReader(MConn* connections, const int num_readers,  strin
 
 }
 
-ReadTimes MetadataReader::readData(MConn connection, Mq* data_batch) {
+ptime MetadataReader::getEventCreationTime(MetadataEntry entry) {
+    return entry.mEventCreationTime;
+}
 
-    ReadTimes rt;
+BatchStats MetadataReader::readData(MConn connection, Mq* data_batch) {
+
+    BatchStats rt;
     string json;
     if (!data_batch->empty()) {
         json = processAddedandDeleted(connection, data_batch, rt);
@@ -85,7 +89,7 @@ ReadTimes MetadataReader::readData(MConn connection, Mq* data_batch) {
 
         ptime t2 = getCurrentTime();
 
-        LOG_INFO() << " RESP " << resp;
+        LOG_DEBUG() << " ES RESP " << resp;
 
         rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
     }
@@ -93,7 +97,7 @@ ReadTimes MetadataReader::readData(MConn connection, Mq* data_batch) {
     return rt;
 }
 
-string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, ReadTimes& rt) {
+string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, BatchStats& rt) {
     
     ptime t1 = getCurrentTime();
     
@@ -119,7 +123,7 @@ string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, 
     
     ptime t3 = getCurrentTime();
     
-    LOG_INFO() << " Out :: " << endl << data << endl;
+    LOG_DEBUG() << " JSON Object :: " << endl << data << endl;
     
     metaConn->closeTransaction(metaTransaction);
     
@@ -173,9 +177,11 @@ UISet MetadataReader::readFields(const NdbDictionary::Dictionary* database, NdbT
     executeTransaction(transaction, NdbTransaction::NoCommit);
     
     for(UIRowMap::iterator it=fields.begin(); it != fields.end(); ++it){
-        if(it->first != it->second[FIELD_ID_COL]->int32_value()){
-            // TODO: update elastic?!
-            LOG_DEBUG() << " Field " << it->first << " doesn't exists";
+        int fieldId = it->second[FIELD_ID_COL]->int32_value();
+        if(it->first != fieldId){
+            // TODO: update elastic?!            
+            LOG_ERROR() << "Field " << it->first << " doesn't exist, got fieldId " 
+                    << fieldId << " was expecting " << it->first;
             continue;
         }
         
@@ -208,9 +214,11 @@ UISet MetadataReader::readTables(const NdbDictionary::Dictionary* database, NdbT
     executeTransaction(transaction, NdbTransaction::NoCommit);
 
     for(UIRowMap::iterator it=tables.begin(); it != tables.end(); ++it){
-        if(it->first != it->second[TABLE_ID_COL]->int32_value()){
+        int tableId = it->second[TABLE_ID_COL]->int32_value();
+        if(it->first != tableId){
             //TODO: update elastic?!
-            LOG_DEBUG() << " TABLE " << it->first << " doesn't exists";
+            LOG_ERROR() << "Table " << it->first << " doesn't exist, got tableId " 
+                    << tableId << " was expecting " << it->first;
             continue;
         }
         
@@ -239,9 +247,11 @@ void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, Nd
     executeTransaction(transaction, NdbTransaction::NoCommit);
     
      for(UIRowMap::iterator it=templates.begin(); it != templates.end(); ++it){
-        if(it->first != it->second[TEMPLATE_ID_COL]->int32_value()){
+        int templateId = it->second[TEMPLATE_ID_COL]->int32_value(); 
+        if(it->first != templateId){
             //TODO: update elastic?!
-            LOG_DEBUG() << " TEMPLATE " << it->first << " doesn't exists";
+            LOG_ERROR() << "Template " << it->first << " doesn't exist, got templateId " 
+                    << templateId << " was expecting " << it->first;
             continue;
         }
         
@@ -258,8 +268,11 @@ UISet MetadataReader::readINodeToDatasetLookup(Ndb* inode_connection, UIRowMap t
     UISet dataset_ids;
 
     for (UIRowMap::iterator it = tuples.begin(); it != tuples.end(); ++it) {
-        if (it->first != it->second[TUPLE_ID_COL]->int32_value()) {
-            LOG_ERROR() << " Tuple " << it->first << " doesn't exists";
+        int tupleId = it->second[TUPLE_ID_COL]->int32_value();
+        if (it->first != tupleId) {
+            //TODO: update elastic?!
+            LOG_ERROR() << "Tuple " << it->first << " doesn't exist, got tupleId " 
+                    << tupleId << " was expecting " << it->first;
             continue;
         }
 
@@ -300,9 +313,11 @@ void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* i
     executeTransaction(inodesTransaction, NdbTransaction::NoCommit);
 
     for (UIRowMap::iterator it = inodesToDatasets.begin(); it != inodesToDatasets.end(); ++it) {
-        if (it->first != it->second[INODE_DATASET_LOOKUP_INODE_ID_COL]->int32_value()) {
+        int inodeId = it->second[INODE_DATASET_LOOKUP_INODE_ID_COL]->int32_value();
+        if (it->first != inodeId) {
             //TODO: update elastic?!
-            LOG_DEBUG() << " TEMPLATE " << it->first << " doesn't exists";
+             LOG_ERROR() << "INodeToDataset " << it->first << " doesn't exist, got inodeId " 
+                    << inodeId << " was expecting " << it->first;
             continue;
         }
 
@@ -320,12 +335,6 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
     for(Mq::iterator it=data_batch->begin(); it != data_batch->end(); ++it){
         MetadataEntry entry = *it;
 
-        if(entry.mTupleId != tuples[entry.mTupleId][TUPLE_ID_COL]->int32_value()){
-            //TODO: update elastic?!
-            LOG_DEBUG() << " Tuple " << entry.mTupleId  << " doesn't exists";
-            continue;
-        }
-       
         boost::optional<Field> _fres = mFieldsCache.get(entry.mFieldId);
         
         if(!_fres){

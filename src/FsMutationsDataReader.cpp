@@ -48,8 +48,12 @@ FsMutationsDataReader::FsMutationsDataReader(MConn* connections, const int num_r
 
 }
 
-ReadTimes FsMutationsDataReader::readData(MConn connection, Fmq* data_batch) {
-    ReadTimes rt;
+ptime FsMutationsDataReader::getEventCreationTime(FsMutationRow row) {
+    return row.mEventCreationTime;
+}
+
+BatchStats FsMutationsDataReader::readData(MConn connection, Fmq* data_batch) {
+    BatchStats rt;
     
     string json;
     if (!data_batch->empty()) {
@@ -60,13 +64,13 @@ ReadTimes FsMutationsDataReader::readData(MConn connection, Fmq* data_batch) {
         ptime t1 = getCurrentTime();
         string resp = bulkUpdateElasticSearch(json);
         ptime t2 = getCurrentTime();
-        LOG_INFO() << " RESP " << resp;
+        LOG_DEBUG() << " ES RESP " << resp;
         rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
     }
     return rt;
 }
 
-string FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch, ReadTimes& rt) {
+string FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch, BatchStats& rt) {
     ptime t1 = getCurrentTime();
 
     Ndb* inodeConnection = conn.inodeConnection;
@@ -94,7 +98,7 @@ string FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch
 
     ptime t3 = getCurrentTime();
 
-    LOG_INFO() << " Out :: " << endl << data << endl;
+    LOG_DEBUG() << " JSON Object :: " << endl << data << endl;
     
     inodeConnection->closeTransaction(ts);
     
@@ -169,8 +173,10 @@ void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* d
     executeTransaction(transaction, NdbTransaction::NoCommit);
     
     for(UIRowMap::iterator it = users.begin(); it != users.end(); ++it){
-        if(it->first != it->second[UG_ID_COL]->int32_value()){
-            LOG_DEBUG() << "User " << it->first << " doesn't exist";
+        int userId = it->second[UG_ID_COL]->int32_value();
+        if(it->first != userId){
+            LOG_ERROR() << "User " << it->first << " doesn't exist, got userId " 
+                    << userId << " was expecting " << it->first;
             continue;
         }
         string userName = get_string(it->second[UG_NAME_COL]);
@@ -179,8 +185,10 @@ void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* d
     }
     
      for(UIRowMap::iterator it = groups.begin(); it != groups.end(); ++it){
-          if(it->first != it->second[UG_ID_COL]->int32_value()){
-            LOG_DEBUG() << "Group " << it->first << " doesn't exist";
+         int groupId = it->second[UG_ID_COL]->int32_value();
+         if(it->first != groupId){
+            LOG_ERROR() << "Group " << it->first << " doesn't exist, got groupId " 
+                    << groupId << " was expecting " << it->first;
             continue;
         }
         string groupName = get_string(it->second[UG_NAME_COL]);
@@ -259,8 +267,10 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
             continue;
         }
         
-        if (row.mInodeId != inodes[i][INODE_ID_COL]->int32_value()) {
-            LOG_INFO() << " Data for " << row.mParentId << ", " << row.mInodeName << " not found";
+        int inodeId = inodes[i][INODE_ID_COL]->int32_value();
+        if (row.mInodeId != inodeId) {
+            LOG_ERROR() << " Data for " << row.mParentId << ", " << row.mInodeName 
+                    << " not found, got inode id " << inodeId << " was expecting " << row.mInodeId;
             continue;
         }
         
@@ -333,13 +343,15 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
         docWriter.String("size");
         docWriter.Int64(inodes[i][INODE_SIZE_COL]->int64_value());
         
-        //FIXME: 
+        boost::optional<string> user = mUsersCache.get(userId);
+        const char* userName = user ? user.get().c_str() : "-1";
         docWriter.String("user");
-        docWriter.String(mUsersCache.get(userId).get().c_str());
+        docWriter.String(userName);
         
-        //FIXME:
+        boost::optional<string> group = mGroupsCache.get(groupId);
+        const char* groupName = group ? group.get().c_str() : "-1";
         docWriter.String("group");
-        docWriter.String(mGroupsCache.get(groupId).get().c_str());
+        docWriter.String(groupName);
         
         docWriter.EndObject();
         

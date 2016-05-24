@@ -59,8 +59,10 @@ typedef boost::unordered_map<int, int> UIMap;
 #define WAIT_UNTIL_READY 30
 #define DEFAULT_MAX_CAPACITY 10000
 
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
 #define LOG(severity) \
-    BOOST_LOG_TRIVIAL(severity) << "(" << __FILE__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") "
+    BOOST_LOG_TRIVIAL(severity) << "(" << __FILENAME__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") "
 
 #define LOG_TRACE() LOG(trace)
 #define LOG_DEBUG() LOG(debug)
