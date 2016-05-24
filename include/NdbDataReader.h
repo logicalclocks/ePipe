@@ -154,8 +154,8 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
         float processing = getTimeDiffInMilliseconds(startProcessing, endProcessing);
         mProcessingAcc(processing);
         
-        LOG_INFO() << " Processing[" << curr->size() << "]=" << processing 
-                << " msec " << rt.str() << ", Batching=" << batch_time << " msec";
+        LOG_INFO() << " Batch[" << curr->size() << "]=" << (processing + batch_time) 
+                << " msec --> Processing = " << rt.str() << ", Batching = " << batch_time << " msec";
         //LOG_INFO() << " Processing Acc " << getAccString(mProcessingAcc) 
         //        << ", Batching Acc " << getAccString(mBatchingAcc) << ", Queuing Acc " << getAccString(mQueuingAcc); 
         delete curr;
