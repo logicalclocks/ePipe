@@ -30,7 +30,6 @@
 #include "boost/bimap/unordered_set_of.hpp"
 #include "boost/optional.hpp"
 
-#define DEFAULT_MAX_CAPACITY 10000
 
 /*
  * LRU Cache based on the design described in http://timday.bitbucket.org/lru.html
@@ -44,6 +43,7 @@ public:
     
     Cache();
     Cache(const int max_capacity);
+    Cache(const int max_capacity, const char* trace_prefix);
     void put(Key key, Value value);
     boost::optional<Value> get(Key key);
     boost::optional<Value> remove(Key key);
@@ -52,6 +52,7 @@ public:
         
 private:
     const int mCapacity;
+    const char* mTracePrefix;
     CacheContainer mCache;
     
     mutable boost::mutex mLock;
@@ -59,12 +60,18 @@ private:
 };
 
 template<typename Key, typename Value>
-Cache<Key,Value>::Cache() : mCapacity(DEFAULT_MAX_CAPACITY){
+Cache<Key,Value>::Cache() : mCapacity(DEFAULT_MAX_CAPACITY), mTracePrefix(""){
     
 }
 
 template<typename Key, typename Value>
-Cache<Key,Value>::Cache(const int max_capacity) : mCapacity(max_capacity){
+Cache<Key,Value>::Cache(const int max_capacity) : mCapacity(max_capacity), mTracePrefix(""){
+    
+}
+
+template<typename Key, typename Value>
+Cache<Key,Value>::Cache(const int max_capacity, const char* trace_prefix) 
+    : mCapacity(max_capacity), mTracePrefix(trace_prefix){
     
 }
 
@@ -75,11 +82,13 @@ Cache<Key,Value>::~Cache(){
 
 template<typename Key, typename Value>
 void Cache<Key,Value>::put(Key key, Value value){
+    LOG_TRACE() << "PUT " << mTracePrefix << " [" << key << "]";
     boost::mutex::scoped_lock lock(mLock);
     const typename CacheContainer::left_iterator it = mCache.left.find(key);
     if(it == mCache.left.end()){
         //new key
         if(mCache.size() == mCapacity){
+            LOG_TRACE() << "EVICT " << mTracePrefix << " [" << mCache.right.begin()->second << "]";
             mCache.right.erase(mCache.right.begin());
         }
         mCache.insert(typename CacheContainer::value_type(key, value));
@@ -91,6 +100,7 @@ void Cache<Key,Value>::put(Key key, Value value){
 
 template<typename Key, typename Value>
 boost::optional<Value> Cache<Key,Value>::get(Key key){
+    LOG_TRACE() << "GET " << mTracePrefix << " [" << key << "]";
     boost::mutex::scoped_lock lock(mLock);
     const typename CacheContainer::left_iterator it = mCache.left.find(key);
     if(it != mCache.left.end()){
@@ -103,6 +113,7 @@ boost::optional<Value> Cache<Key,Value>::get(Key key){
 
 template<typename Key, typename Value>
 boost::optional<Value> Cache<Key,Value>::remove(Key key){
+    LOG_TRACE() << "REMOVE " << mTracePrefix << " [" << key << "] " << (mCache.size() - 1) << "/" << mCapacity;
     boost::mutex::scoped_lock lock(mLock);
     const typename CacheContainer::left_iterator it = mCache.left.find(key);
     if(it != mCache.left.end()){
@@ -114,6 +125,7 @@ boost::optional<Value> Cache<Key,Value>::remove(Key key){
 
 template<typename Key, typename Value>
 bool Cache<Key,Value>::contains(Key key){
+    LOG_TRACE() << "CONTAINS " << mTracePrefix << " [" << key << "]";
     boost::mutex::scoped_lock lock(mLock);
     const typename CacheContainer::left_iterator it = mCache.left.find(key);
     if(it != mCache.left.end()){

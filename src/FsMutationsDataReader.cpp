@@ -40,9 +40,11 @@ const char* UG_COLS_TO_READ[] = {"id", "name"};
 const int UG_ID_COL = 0;
 const int UG_NAME_COL = 1;
 
-FsMutationsDataReader::FsMutationsDataReader(MConn* connections, const int num_readers, string elastic_ip,
-        const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
-    : NdbDataReader<FsMutationRow,MConn>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache){
+FsMutationsDataReader::FsMutationsDataReader(MConn* connections, const int num_readers,
+        string elastic_ip, const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
+        ProjectDatasetINodeCache* cache, const int lru_cap) : NdbDataReader<FsMutationRow,MConn>(connections, 
+        num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache), mUsersCache(lru_cap, "User"), 
+        mGroupsCache(lru_cap, "Group"){
 
 }
 

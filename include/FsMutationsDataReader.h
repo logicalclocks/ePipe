@@ -34,7 +34,7 @@ class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn>{
 public:
     FsMutationsDataReader(MConn* connections, const int num_readers, string elastic_ip,
             const bool hopsworks, const string elastic_index, const string elastic_inode_type,
-            ProjectDatasetINodeCache* cache);
+            ProjectDatasetINodeCache* cache, const int lru_cap);
     virtual ~FsMutationsDataReader();
 private:
     Cache<int, string> mUsersCache;

@@ -36,7 +36,7 @@ public:
             const int time_before_issuing_ndb_reqs, const int batch_size, 
             const int poll_maxTimeToWait, const int num_ndb_readers, const string elastic_addr,
             const bool hopsworks, const string elastic_index, const string elasttic_project_type, 
-            const string elastic_dataset_type, const string elastic_inode_type);
+            const string elastic_dataset_type, const string elastic_inode_type, const int lru_cap);
     void start();
     virtual ~Notifier();
     
@@ -56,7 +56,8 @@ private:
     const string mElastticProjectType;
     const string mElasticDatasetType;
     const string mElasticInodeType;
-            
+    const int mLRUCap;
+    
     FsMutationsTableTailer* mFsMutationsTableTailer;
     FsMutationsDataReader* mFsMutationsDataReader;
     FsMutationsBatcher* mFsMutationsBatcher;

@@ -18,7 +18,7 @@
 
 class ProjectDatasetINodeCache {
 public:
-    ProjectDatasetINodeCache();
+    ProjectDatasetINodeCache(const int lru_cap);
     void addINodeToDataset(int inodeId, int datasetId);
     void addDatasetToProject(int datasetId, int projectId);
     void removeINode(int inodeId);

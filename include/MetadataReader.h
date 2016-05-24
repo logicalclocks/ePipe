@@ -53,7 +53,7 @@ class MetadataReader : public NdbDataReader<MetadataEntry, MConn>{
 public:
     MetadataReader(MConn* connections, const int num_readers, string elastic_ip, 
             const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
-            ProjectDatasetINodeCache* cache);
+            ProjectDatasetINodeCache* cache, const int lru_cap);
     virtual ~MetadataReader();
 private:
     virtual ReadTimes readData(MConn connection, Mq* data_batch);

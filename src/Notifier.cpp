@@ -27,10 +27,11 @@
 Notifier::Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
         const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, 
         const int num_ndb_readers, const string elastic_ip, const bool hopsworks, const string elastic_index, 
-        const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type)
+        const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type, const int lru_cap)
 : mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
         mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
-        mElasticIndex(elastic_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), mElasticInodeType(elastic_inode_type){
+        mElasticIndex(elastic_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), 
+        mElasticInodeType(elastic_inode_type), mLRUCap(lru_cap){
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
 }
@@ -55,7 +56,7 @@ void Notifier::start() {
 }
 
 void Notifier::setup() {
-    mPDICache = new ProjectDatasetINodeCache();
+    mPDICache = new ProjectDatasetINodeCache(mLRUCap);
     
     Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
     mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mPDICache);
@@ -67,7 +68,7 @@ void Notifier::setup() {
     }
     
     mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders, 
-            mElasticAddr, mHopsworksEnabled, mElasticIndex, mElasticInodeType, mPDICache);
+            mElasticAddr, mHopsworksEnabled, mElasticIndex, mElasticInodeType, mPDICache, mLRUCap);
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, 
             mTimeBeforeIssuingNDBReqs, mBatchSize);
     
@@ -82,7 +83,7 @@ void Notifier::setup() {
     }
      
     mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr, 
-             mHopsworksEnabled, mElasticIndex, mElasticInodeType, mPDICache);
+             mHopsworksEnabled, mElasticIndex, mElasticInodeType, mPDICache, mLRUCap);
     mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
 
     if (mHopsworksEnabled) {

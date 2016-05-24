@@ -64,8 +64,10 @@ const int DONT_EXIST_INT = -1;
 const char* DONT_EXIST_STR = "-1";
 
 MetadataReader::MetadataReader(MConn* connections, const int num_readers,  string elastic_ip, 
-        const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
-        : NdbDataReader<MetadataEntry, MConn>(connections, num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache) {
+        const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
+        ProjectDatasetINodeCache* cache, const int lru_cap) : NdbDataReader<MetadataEntry, MConn>(connections, 
+        num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache),
+        mFieldsCache(lru_cap, "Field"), mTablesCache(lru_cap, "Table"), mTemplatesCache(lru_cap, "Template"){
 
 }
 

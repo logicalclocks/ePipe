@@ -24,7 +24,9 @@
 
 #include "ProjectDatasetINodeCache.h"
 
-ProjectDatasetINodeCache::ProjectDatasetINodeCache() {
+ProjectDatasetINodeCache::ProjectDatasetINodeCache(const int lru_cap) 
+    : mINodeToDataset(lru_cap, "INodeToDataset"), mDatasetToINodes(lru_cap, "DatasetToINodes"),
+        mDatasetToProject(lru_cap, "DatasetToProject"), mProjectToDataset(lru_cap, "ProjectToDatasets") {
 }
 
 void ProjectDatasetINodeCache::addINodeToDataset(int inodeId, int datasetId) {

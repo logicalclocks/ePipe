@@ -50,7 +50,8 @@ template<typename Data, typename Conn>
 class NdbDataReader {
 public:
     NdbDataReader(Conn* connections, const int num_readers, string elastic_addr,
-            const bool hopsworks, const string elastic_index, const string elastic_inode_type, ProjectDatasetINodeCache* cache);
+            const bool hopsworks, const string elastic_index, const string elastic_inode_type,
+            ProjectDatasetINodeCache* cache);
     void start();
     void processBatch(vector<Data>* data_batch);
     virtual ~NdbDataReader();
@@ -82,9 +83,10 @@ protected:
 template<typename Data, typename Conn>
 NdbDataReader<Data, Conn>::NdbDataReader(Conn* connections, const int num_readers, 
         string elastic_ip, const bool hopsworks, const string elastic_index, 
-        const string elastic_inode_type, ProjectDatasetINodeCache* cache) :  mElasticAddr(elastic_ip), 
-        mNumReaders(num_readers), mNdbConnections(connections), mHopsworksEnalbed(hopsworks), 
-        mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type), mPDICache(cache){
+        const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
+        :  mElasticAddr(elastic_ip), mNumReaders(num_readers), mNdbConnections(connections), 
+        mHopsworksEnalbed(hopsworks), mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type),
+        mPDICache(cache){
     mStarted = false;
     mElasticBulkUrl = getElasticSearchBulkUrl(mElasticAddr);
     mBatchedQueue = new ConcurrentQueue<vector<Data>*>();
