@@ -34,11 +34,11 @@ namespace sinks = boost::log::sinks;
 namespace keywords = boost::log::keywords;
 
 void init_logging(int level, int log_type) {
-
+    logging::register_simple_formatter_factory< logging::trivial::severity_level, char >("Severity");    
     if (log_type == 0 || log_type == 2) {
         logging::add_console_log(
                 cout,
-                keywords::format = "[%TimeStamp%]: (%ThreadID%) %Message%",
+                keywords::format = "[%TimeStamp%]: (%ThreadID%)[%Severity%] %Message%",
                 keywords::auto_flush = true
                 );
     }
@@ -49,13 +49,13 @@ void init_logging(int level, int log_type) {
                 keywords::file_name = "ePipe_%N.log",
                 keywords::rotation_size = 10 * 1024 * 1024,
                 keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0),
-                keywords::format = "[%TimeStamp%]: (%ThreadID%) %Message%",
+                keywords::format = "[%TimeStamp%]: (%ThreadID%)[%Severity%] %Message%",
                 keywords::auto_flush = true
                 );
     }
 
     logging::add_common_attributes();
-
+    
     switch (level) {
         case 0:
             logging::core::get()->set_filter

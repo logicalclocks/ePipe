@@ -90,9 +90,9 @@ protected:
     const string mElasticIndex;
     const string mElasticInodeType;
     ProjectDatasetINodeCache* mPDICache;
-    Accumulator mQueuingAcc;
-    Accumulator mBatchingAcc;
-    Accumulator mProcessingAcc;
+    //Accumulator mQueuingAcc;
+    //Accumulator mBatchingAcc;
+    //Accumulator mProcessingAcc;
     
     virtual ptime getEventCreationTime(Data row) = 0;
     virtual BatchStats readData(Conn connection, vector<Data>* data_batch) = 0;
@@ -143,16 +143,16 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
         BatchStats rt = readData(mNdbConnections[connIndex], curr);
         ptime endProcessing = getCurrentTime();
         
-        for(unsigned int i=0; i < curr->size(); i++){
+        /*for(unsigned int i=0; i < curr->size(); i++){
             Data data = curr->at(i);
             float queueTime = getTimeDiffInMilliseconds(getEventCreationTime(data), startProcessing);
             mQueuingAcc(queueTime);
-        }
+        }*/
         
         float batch_time = getTimeDiffInMilliseconds(getEventCreationTime(curr->at(0)), getEventCreationTime(curr->at(curr->size() -1 )));
-        mBatchingAcc(batch_time);
+        //mBatchingAcc(batch_time);
         float processing = getTimeDiffInMilliseconds(startProcessing, endProcessing);
-        mProcessingAcc(processing);
+        //mProcessingAcc(processing);
         
         LOG_INFO() << " Batch[" << curr->size() << "]=" << (processing + batch_time) 
                 << " msec --> Processing = " << rt.str() << ", Batching = " << batch_time << " msec";
