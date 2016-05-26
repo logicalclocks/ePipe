@@ -96,7 +96,7 @@ protected:
     
     virtual ptime getEventCreationTime(Data row) = 0;
     virtual BatchStats readData(Conn connection, vector<Data>* data_batch) = 0;
-    string bulkUpdateElasticSearch(string json);
+    void bulkUpdateElasticSearch(string json);
     string getAccString(Accumulator acc);
 };
 
@@ -114,9 +114,10 @@ NdbDataReader<Data, Conn>::NdbDataReader(Conn* connections, const int num_reader
 }
 
 template<typename Data, typename Conn>
-string NdbDataReader<Data, Conn>::bulkUpdateElasticSearch(string json) {
-    //TODO: handle elasticsearch failures
-    return elasticSearchPOST(mElasticBulkUrl, json);
+void NdbDataReader<Data, Conn>::bulkUpdateElasticSearch(string json) {
+    if(!elasticSearchPOST(mElasticBulkUrl, json)){
+        //TODO: handle elasticsearch failures
+    }
 }
 
 template<typename Data, typename Conn>
@@ -149,13 +150,19 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
             mQueuingAcc(queueTime);
         }*/
         
-        float batch_time = getTimeDiffInMilliseconds(getEventCreationTime(curr->at(0)), getEventCreationTime(curr->at(curr->size() -1 )));
+        Data firstElement = curr->at(0);
+        Data lastElement = curr->at(curr->size() -1);
+        
+        float batch_time = getTimeDiffInMilliseconds(getEventCreationTime(firstElement), getEventCreationTime(lastElement));
         //mBatchingAcc(batch_time);
+        float wait_time = getTimeDiffInMilliseconds(getEventCreationTime(lastElement), startProcessing);
         float processing = getTimeDiffInMilliseconds(startProcessing, endProcessing);
         //mProcessingAcc(processing);
         
-        LOG_INFO() << " Batch[" << curr->size() << "]=" << (processing + batch_time) 
-                << " msec --> Processing = " << rt.str() << ", Batching = " << batch_time << " msec";
+        LOG_INFO() << "Stats:: Batch[" << curr->size() << "]=" 
+                << (processing + batch_time + wait_time) << "msec" << endl
+                << "Processing = " << processing << "msec " << rt.str() << endl 
+                << "Batching = " << batch_time << " msec" << "  WaitTime = " << wait_time << " msec";
         //LOG_INFO() << " Processing Acc " << getAccString(mProcessingAcc) 
         //        << ", Batching Acc " << getAccString(mBatchingAcc) << ", Queuing Acc " << getAccString(mQueuingAcc); 
         delete curr;

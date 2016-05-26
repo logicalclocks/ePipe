@@ -58,8 +58,9 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
         
     if(eventType == NdbDictionary::Event::TE_DELETE){
         string deleteDatasetUrl = getElasticSearchUrlOnDoc(mElasticAddr, mElasticIndex, mElasticProjectType, id);
-        string resp = elasticSearchDELETE(deleteDatasetUrl);
-        LOG_INFO() << "Delete Project[" << id << "]: "<< resp;
+        if(elasticSearchDELETE(deleteDatasetUrl)){
+            LOG_INFO() << "Delete Project[" << id << "]: Succeeded";
+        }
         
         string deteteProjectChildren = getElasticSearchDeleteByQueryUrl(mElasticAddr, mElasticIndex, id);
 
@@ -81,8 +82,9 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
         docWriter.EndObject();
         
         //TODO: handle failures in elastic search
-        string resp2 = elasticSearchDELETE(deteteProjectChildren, string(sbDoc.GetString()));
-        LOG_INFO() << "Delete Project[" << id << "] children inodes and datasets : "<< resp2;
+        if(elasticSearchDELETE(deteteProjectChildren, string(sbDoc.GetString()))){
+            LOG_INFO() << "Delete Project[" << id << "] children inodes and datasets : Succeeded";
+        }
 
         mPDICache->removeProject(id);
         
@@ -118,9 +120,9 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     
     string data = string(sbDoc.GetString());
     string url = getElasticSearchUpdateDocUrl(mElasticAddr, mElasticIndex, mElasticProjectType, id);
-    LOG_INFO() << "Project ::  " << data;
-    string resp = elasticSearchPOST(url, data);
-    LOG_INFO() << "Resp :: " << resp;
+    if(elasticSearchPOST(url, data)){
+        LOG_INFO() << "Add Project[" << id << "]: Succeeded";
+    }
 }
 
 ProjectTableTailer::~ProjectTableTailer() {

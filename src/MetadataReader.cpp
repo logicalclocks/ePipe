@@ -85,12 +85,8 @@ BatchStats MetadataReader::readData(MConn connection, Mq* data_batch) {
 
     if (!json.empty()) {
         ptime t1 = getCurrentTime();
-        string resp = bulkUpdateElasticSearch(json);
-
+        bulkUpdateElasticSearch(json);
         ptime t2 = getCurrentTime();
-
-        LOG_DEBUG() << " ES RESP " << resp;
-
         rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
     }
 
@@ -122,9 +118,7 @@ string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, 
     string data = createJSON(tuples, data_batch);
     
     ptime t3 = getCurrentTime();
-    
-    LOG_DEBUG() << " JSON Object :: " << endl << data << endl;
-    
+        
     metaConn->closeTransaction(metaTransaction);
     
     rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);

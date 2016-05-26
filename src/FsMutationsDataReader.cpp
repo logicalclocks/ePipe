@@ -62,9 +62,8 @@ BatchStats FsMutationsDataReader::readData(MConn connection, Fmq* data_batch) {
 
     if (!json.empty()) {
         ptime t1 = getCurrentTime();
-        string resp = bulkUpdateElasticSearch(json);
+        bulkUpdateElasticSearch(json);
         ptime t2 = getCurrentTime();
-        LOG_DEBUG() << " ES RESP " << resp;
         rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
     }
     return rt;
@@ -97,8 +96,6 @@ string FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch
     string data = createJSON(data_batch, inodes);
 
     ptime t3 = getCurrentTime();
-
-    LOG_DEBUG() << " JSON Object :: " << endl << data << endl;
     
     inodeConnection->closeTransaction(ts);
     
