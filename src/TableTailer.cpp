@@ -112,10 +112,13 @@ void TableTailer::waitForEvents() {
     if (op->execute())
         LOG_NDB_API_ERROR(op->getNdbError());
     while (true) {
-        int r = mNdbConnection->pollEvents(mPollMaxTimeToWait);
+        int r = mNdbConnection->pollEvents2(mPollMaxTimeToWait);
         if (r > 0) {
-            while ((op = mNdbConnection->nextEvent())) {
-                NdbDictionary::Event::TableEvent event = op->getEventType();
+            while ((op = mNdbConnection->nextEvent2())) {
+                NdbDictionary::Event::TableEvent event = op->getEventType2();
+                if(event != NdbDictionary::Event::TE_EMPTY){
+                    LOG_TRACE() << "Got Event [" << event << ","  << getEventName(event) << "] Epoch " << op->getEpoch();
+                }
                 switch (event) {
                     case NdbDictionary::Event::TE_INSERT:
                     case NdbDictionary::Event::TE_DELETE:
@@ -138,11 +141,49 @@ void TableTailer::waitForEvents() {
 bool TableTailer::correctResult(NdbDictionary::Event::TableEvent event, NdbRecAttr* values[]){
     for(int col=0; col<mTable.mNoColumns; col++){
         if(values[col]->isNULL() != 0 && event != NdbDictionary::Event::TE_DELETE ){
-            LOG_ERROR() << "Error at column " << mTable.mColumnNames[col] << " " << values[col]->isNULL() << " IsDelete " << event << " || " << NdbDictionary::Event::TE_DELETE;
+            LOG_ERROR() << "Error at column " << mTable.mColumnNames[col] << " " << values[col]->isNULL() << getEventName(event);
             return false;
         }
     }
     return true;
+}
+
+const char* TableTailer::getEventName(NdbDictionary::Event::TableEvent event) {
+    switch (event) {
+        case NdbDictionary::Event::TE_INSERT:
+            return "INSERT";
+        case NdbDictionary::Event::TE_DELETE:
+            return "DELETE";
+        case NdbDictionary::Event::TE_UPDATE:
+            return "UPDATE";
+        case NdbDictionary::Event::TE_DROP:
+            return "DROP";
+        case NdbDictionary::Event::TE_ALTER:
+            return "ALTER";
+        case NdbDictionary::Event::TE_CREATE:
+            return "CREATE";
+        case NdbDictionary::Event::TE_GCP_COMPLETE:
+            return "GCP_COMPLETE";
+        case NdbDictionary::Event::TE_CLUSTER_FAILURE:
+            return "CLUSTER_FAILURE";
+        case NdbDictionary::Event::TE_STOP:
+            return "STOP";
+        case NdbDictionary::Event::TE_NODE_FAILURE:
+            return "NODE_FAILURE";
+        case NdbDictionary::Event::TE_SUBSCRIBE:
+            return "SUBSCRIBE";
+        case NdbDictionary::Event::TE_UNSUBSCRIBE:
+            return "UNSUBSCRIBE";    
+        case NdbDictionary::Event::TE_EMPTY:
+            return "EMPTY";
+        case NdbDictionary::Event::TE_INCONSISTENT:
+            return "INCONSISTENT";
+        case NdbDictionary::Event::TE_OUT_OF_MEMORY:
+            return "OUT_OF_MEMORY";
+        case NdbDictionary::Event::TE_ALL:
+            return "ALL";      
+    }
+    return "UNKOWN";
 }
 
 TableTailer::~TableTailer() {
