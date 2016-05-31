@@ -29,7 +29,9 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 Batcher::Batcher(const int time_before_issuing_ndb_reqs, const int batch_size) 
-    : mBatchSize(batch_size), mTimerProcessing(false), mStarted(false), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs) {
+    : mBatchSize(batch_size), mTimerProcessing(false), mStarted(false), 
+        mFirstTimer(true), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs) {
+    srand(time(NULL));
 }
 
 
@@ -58,7 +60,14 @@ void Batcher::startTimer() {
 void Batcher::timerThread() {
     while (true) {
         boost::asio::io_service io;
-        boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(mTimeBeforeIssuingNDBReqs));
+        int timeout = mTimeBeforeIssuingNDBReqs;
+        if(mFirstTimer){
+            int baseTime = mTimeBeforeIssuingNDBReqs / 4;
+            timeout = rand() % (mTimeBeforeIssuingNDBReqs - baseTime) + baseTime;
+            mFirstTimer = false;
+            LOG_TRACE("fire the first timer after " << timeout << " msec");
+        }
+        boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(timeout));
         timer.async_wait(boost::bind(&Batcher::timerExpired, this));
         io.run();
     }

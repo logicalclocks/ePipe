@@ -318,7 +318,14 @@ namespace Utils {
                                     const rapidjson::Value & opObj = itr->value;
                                     if(opObj.HasMember("error")){
                                         const rapidjson::Value & error = opObj["error"];
-                                        errors << error.GetString() << ", ";
+                                        if(error.IsObject()){
+                                            const rapidjson::Value & errorType = error["type"];
+                                            const rapidjson::Value & errorReason = error["reason"];
+                                            errors << errorType.GetString() << ":" <<  errorReason.GetString();
+                                        }else if(error.IsString()){
+                                            errors << error.GetString();
+                                        }
+                                        errors << ", ";
                                     }
                                 }
                             }
@@ -328,7 +335,13 @@ namespace Utils {
                         }
                     } else if (d.HasMember("error")) {
                         const rapidjson::Value &error = d["error"];
-                        LOG_ERROR(" ES got error: " << error.GetString());
+                        if (error.IsObject()) {
+                            const rapidjson::Value & errorType = error["type"];
+                            const rapidjson::Value & errorReason = error["reason"];
+                            LOG_ERROR(" ES got error: " << errorType.GetString() << ":" <<  errorReason.GetString()); 
+                        } else if (error.IsString()) {
+                            LOG_ERROR(" ES got error: " << error.GetString());
+                        }
                         return false;
                     }
                 }else{

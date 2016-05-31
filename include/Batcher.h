@@ -44,6 +44,7 @@ protected:
 private:
     boost::thread mThread;
     bool mStarted;
+    bool mFirstTimer;
     
     const int mTimeBeforeIssuingNDBReqs;
     boost::thread mTimerThread;
