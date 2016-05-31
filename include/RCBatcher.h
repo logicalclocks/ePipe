@@ -74,7 +74,7 @@ void RCBatcher<DataRow, Conn>::run() {
 template<typename DataRow, typename Conn>
 void RCBatcher<DataRow, Conn>::processBatch() {
     if (mCurrentCount > 0) {
-        LOG_DEBUG() << "process batch";
+        LOG_DEBUG("process batch");
 
         mLock.lock();
         vector<DataRow>* added_deleted_batch = mOperations;

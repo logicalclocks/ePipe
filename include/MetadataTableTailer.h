@@ -38,13 +38,13 @@ struct MetadataEntry {
      ptime mEventCreationTime;
      
      void print(){
-        LOG_TRACE() << "-------------------------";
-        LOG_TRACE() << "Id = " << mId;
-        LOG_TRACE() << "FieldId = " << mFieldId;
-        LOG_TRACE() << "TupleId = " << mTupleId;
-        LOG_TRACE() << "Data = " << mMetadata;
-        LOG_TRACE() << "Operation = " << mOperation;
-        LOG_TRACE() << "-------------------------";
+        LOG_TRACE("-------------------------");
+        LOG_TRACE("Id = " << mId);
+        LOG_TRACE("FieldId = " << mFieldId);
+        LOG_TRACE("TupleId = " << mTupleId);
+        LOG_TRACE("Data = " << mMetadata);
+        LOG_TRACE("Operation = " << mOperation);
+        LOG_TRACE("-------------------------");
      }
 };
 

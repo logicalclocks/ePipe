@@ -28,7 +28,7 @@
 #include "common.h"
 #include<cstdlib>
 #include<cstring>
-#include <boost/network.hpp>
+#include "boost/network.hpp"
 #include "rapidjson/document.h"
 
 typedef boost::posix_time::ptime ptime;
@@ -206,7 +206,7 @@ namespace Utils {
                     NdbRecAttr* col = getNdbOperationValue(op, columns_to_read[c]);
                     res[*it].push_back(col);
                 }
-                LOG_TRACE() << " Read " << table_name << " row for [" << *it << "]";
+                LOG_TRACE(" Read " << table_name << " row for [" << *it << "]");
             }
             return res;
         }
@@ -301,8 +301,8 @@ namespace Utils {
                 }
                 std::string body_ = boost::network::http::body(response_);
                 
-                LOG_TRACE() << opString << " " << elasticUrl << endl 
-                        << json << endl << "Response::" << endl << body_;
+                LOG_TRACE(opString << " " << elasticUrl << endl 
+                        << json << endl << "Response::" << endl << body_);
                 
                 rapidjson::Document d;
                 if (!d.Parse<0>(body_.c_str()).HasParseError()) {
@@ -323,21 +323,21 @@ namespace Utils {
                                 }
                             }
                             string errorsStr = errors.str();
-                            LOG_ERROR() << " ES got errors: " << errorsStr;
+                            LOG_ERROR(" ES got errors: " << errorsStr);
                             return false;
                         }
                     } else if (d.HasMember("error")) {
                         const rapidjson::Value &error = d["error"];
-                        LOG_ERROR() << " ES got error: " << error.GetString();
+                        LOG_ERROR(" ES got error: " << error.GetString());
                         return false;
                     }
                 }else{
-                    LOG_ERROR() << " ES got json error (" << d.GetParseError() << ") while parsing " << body_;
+                    LOG_ERROR(" ES got json error (" << d.GetParseError() << ") while parsing " << body_);
                     return false;
                 }
                    
             } catch (std::exception &e) {
-                LOG_ERROR() << e.what();
+                LOG_ERROR(e.what());
                 return false;
             }
             return true;

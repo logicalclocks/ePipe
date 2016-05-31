@@ -51,7 +51,7 @@ void TableTailer::run() {
     try {
         waitForEvents();
     } catch (boost::thread_interrupted&) {
-        LOG_ERROR() << "Thread is stopped";
+        LOG_ERROR("Thread is stopped");
         return;
     }
 }
@@ -76,7 +76,7 @@ void TableTailer::createListenerEvent() {
         myEvent.print();
     else if (myDict->getNdbError().classification ==
             NdbError::SchemaObjectExists) {
-        LOG_ERROR() << "Event creation failed, event exists, dropping Event...";
+        LOG_ERROR("Event creation failed, event exists, dropping Event...");
         if (myDict->dropEvent(mEventName)) LOG_NDB_API_ERROR(myDict->getNdbError());
         // try again
         // Add event to database
@@ -94,7 +94,7 @@ void TableTailer::removeListenerEvent() {
 
 void TableTailer::waitForEvents() {
     NdbEventOperation* op;
-    LOG_INFO() << "create EventOperation for [" << mEventName << "]";
+    LOG_INFO("create EventOperation for [" << mEventName << "]");
     if ((op = mNdbConnection->createEventOperation(mEventName)) == NULL)
         LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
 
@@ -107,7 +107,7 @@ void TableTailer::waitForEvents() {
         recAttrPre[i] = op->getPreValue(mTable.mColumnNames[i]);
     }
 
-    LOG_INFO() << "Execute";
+    LOG_INFO("Execute");
     // This starts changes to "start flowing"
     if (op->execute())
         LOG_NDB_API_ERROR(op->getNdbError());
@@ -117,7 +117,7 @@ void TableTailer::waitForEvents() {
             while ((op = mNdbConnection->nextEvent2())) {
                 NdbDictionary::Event::TableEvent event = op->getEventType2();
                 if(event != NdbDictionary::Event::TE_EMPTY){
-                    LOG_TRACE() << "Got Event [" << event << ","  << getEventName(event) << "] Epoch " << op->getEpoch();
+                    LOG_TRACE("Got Event [" << event << ","  << getEventName(event) << "] Epoch " << op->getEpoch());
                 }
                 switch (event) {
                     case NdbDictionary::Event::TE_INSERT:
@@ -141,7 +141,7 @@ void TableTailer::waitForEvents() {
 bool TableTailer::correctResult(NdbDictionary::Event::TableEvent event, NdbRecAttr* values[]){
     for(int col=0; col<mTable.mNoColumns; col++){
         if(values[col]->isNULL() != 0 && event != NdbDictionary::Event::TE_DELETE ){
-            LOG_ERROR() << "Error at column " << mTable.mColumnNames[col] << " " << values[col]->isNULL() << getEventName(event);
+            LOG_ERROR("Error at column " << mTable.mColumnNames[col] << " " << values[col]->isNULL() << getEventName(event));
             return false;
         }
     }

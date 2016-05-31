@@ -57,7 +57,7 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
     row.mInodeName = get_string(value[4]);
     row.mOperation = static_cast<Operation>(value[5]->int8_value());
     if (row.mOperation == ADD || row.mOperation == DELETE) {
-        LOG_TRACE() << " push inode [" << row.mInodeId << "] to queue, Op [" << row.mOperation << "]";
+        LOG_TRACE(" push inode [" << row.mInodeId << "] to queue, Op [" << row.mOperation << "]");
         mQueue->push(row);
 
         if (row.mOperation == ADD) {
@@ -66,14 +66,14 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
             mPDICache->removeINode(row.mInodeId);
         }
     } else {
-       LOG_ERROR() << "Unknown Operation [" << row.mOperation << "] for " << " INode [" << row.mInodeId << "]";
+       LOG_ERROR( "Unknown Operation [" << row.mOperation << "] for " << " INode [" << row.mInodeId << "]");
     }
 }
 
 FsMutationRow FsMutationsTableTailer::consume(){
     FsMutationRow row;
     mQueue->wait_and_pop(row);
-    LOG_TRACE() << " pop inode [" << row.mInodeId << "] from queue";
+    LOG_TRACE(" pop inode [" << row.mInodeId << "] from queue");
     return row;
 }
 
@@ -88,8 +88,8 @@ void FsMutationsTableTailer::removeLogs(const NdbDictionary::Dictionary* databas
         op->equal(_mutation_cols[1], row.mInodeId);
         op->equal(_mutation_cols[2], (Int64)row.mTimestamp);
         
-        LOG_TRACE() << "Delete log row: Dataset[" << row.mDatasetId << "], INode[" 
-                << row.mInodeId << "], Timestamp[" << row.mTimestamp << "]";
+        LOG_TRACE("Delete log row: Dataset[" << row.mDatasetId << "], INode[" 
+                << row.mInodeId << "], Timestamp[" << row.mTimestamp << "]");
     }
 }
 

@@ -128,7 +128,7 @@ void NdbDataReader<Data, Conn>::start() {
     
     for(int i=0; i< mNumReaders; i++){
         boost::thread* th = new boost::thread(&NdbDataReader::readerThread, this, i);
-        LOG_DEBUG() << " Reader Thread [" << th->get_id() << "] created"; 
+        LOG_DEBUG(" Reader Thread [" << th->get_id() << "] created"); 
         mThreads.push_back(th);
     }
     mStarted = true;
@@ -139,7 +139,7 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
     while(true){
         vector<Data>* curr;
         mBatchedQueue->wait_and_pop(curr);
-        LOG_DEBUG() << " Process Batch ";
+        LOG_DEBUG(" Process Batch ");
         ptime startProcessing = getCurrentTime();
         BatchStats rt = readData(mNdbConnections[connIndex], curr);
         ptime endProcessing = getCurrentTime();
@@ -159,10 +159,10 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
         float processing = getTimeDiffInMilliseconds(startProcessing, endProcessing);
         //mProcessingAcc(processing);
         
-        LOG_INFO() << "Stats:: Batch[" << curr->size() << "]=" 
+        LOG_INFO("Stats:: Batch[" << curr->size() << "]=" 
                 << (processing + batch_time + wait_time) << "msec" << endl
                 << "Processing = " << processing << "msec " << rt.str() << endl 
-                << "Batching = " << batch_time << " msec" << "  WaitTime = " << wait_time << " msec";
+                << "Batching = " << batch_time << " msec" << "  WaitTime = " << wait_time << " msec");
         //LOG_INFO() << " Processing Acc " << getAccString(mProcessingAcc) 
         //        << ", Batching Acc " << getAccString(mBatchingAcc) << ", Queuing Acc " << getAccString(mQueuingAcc); 
         delete curr;

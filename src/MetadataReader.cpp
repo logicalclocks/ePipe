@@ -174,8 +174,8 @@ UISet MetadataReader::readFields(const NdbDictionary::Dictionary* database, NdbT
         int fieldId = it->second[FIELD_ID_COL]->int32_value();
         if(it->first != fieldId){
             // TODO: update elastic?!            
-            LOG_ERROR() << "Field " << it->first << " doesn't exist, got fieldId " 
-                    << fieldId << " was expecting " << it->first;
+            LOG_ERROR("Field " << it->first << " doesn't exist, got fieldId " 
+                    << fieldId << " was expecting " << it->first);
             continue;
         }
         
@@ -211,8 +211,8 @@ UISet MetadataReader::readTables(const NdbDictionary::Dictionary* database, NdbT
         int tableId = it->second[TABLE_ID_COL]->int32_value();
         if(it->first != tableId){
             //TODO: update elastic?!
-            LOG_ERROR() << "Table " << it->first << " doesn't exist, got tableId " 
-                    << tableId << " was expecting " << it->first;
+            LOG_ERROR("Table " << it->first << " doesn't exist, got tableId " 
+                    << tableId << " was expecting " << it->first);
             continue;
         }
         
@@ -244,8 +244,8 @@ void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, Nd
         int templateId = it->second[TEMPLATE_ID_COL]->int32_value(); 
         if(it->first != templateId){
             //TODO: update elastic?!
-            LOG_ERROR() << "Template " << it->first << " doesn't exist, got templateId " 
-                    << templateId << " was expecting " << it->first;
+            LOG_ERROR("Template " << it->first << " doesn't exist, got templateId " 
+                    << templateId << " was expecting " << it->first);
             continue;
         }
         
@@ -265,8 +265,8 @@ UISet MetadataReader::readINodeToDatasetLookup(Ndb* inode_connection, UIRowMap t
         int tupleId = it->second[TUPLE_ID_COL]->int32_value();
         if (it->first != tupleId) {
             //TODO: update elastic?!
-            LOG_ERROR() << "Tuple " << it->first << " doesn't exist, got tupleId " 
-                    << tupleId << " was expecting " << it->first;
+            LOG_ERROR("Tuple " << it->first << " doesn't exist, got tupleId " 
+                    << tupleId << " was expecting " << it->first);
             continue;
         }
 
@@ -310,8 +310,8 @@ void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* i
         int inodeId = it->second[INODE_DATASET_LOOKUP_INODE_ID_COL]->int32_value();
         if (it->first != inodeId) {
             //TODO: update elastic?!
-             LOG_ERROR() << "INodeToDataset " << it->first << " doesn't exist, got inodeId " 
-                    << inodeId << " was expecting " << it->first;
+             LOG_ERROR("INodeToDataset " << it->first << " doesn't exist, got inodeId " 
+                    << inodeId << " was expecting " << it->first);
             continue;
         }
 
@@ -332,7 +332,7 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
         boost::optional<Field> _fres = mFieldsCache.get(entry.mFieldId);
         
         if(!_fres){
-            LOG_ERROR() << " Field " << entry.mFieldId << " is not in the cache";
+            LOG_ERROR(" Field " << entry.mFieldId << " is not in the cache");
             continue;
         }
         
@@ -340,7 +340,7 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
         boost::optional<Table> _tres = mTablesCache.get(field.mTableId);
         
         if (!_tres) {
-            LOG_ERROR() << " Table " << field.mTableId << " is not in the cache";
+            LOG_ERROR(" Table " << field.mTableId << " is not in the cache");
             continue;
         }
 
@@ -349,7 +349,7 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
         boost::optional<string> _ttres = mTemplatesCache.get(table.mTemplateId);
 
         if (!_ttres) {
-            LOG_ERROR() << " Template " << table.mTemplateId << " is not in the cache";
+            LOG_ERROR(" Template " << table.mTemplateId << " is not in the cache");
             continue;
         }
         
@@ -420,7 +420,7 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
                     int intVal = entry.mOperation == DELETE ? DONT_EXIST_INT : boost::lexical_cast<int>(entry.mMetadata);
                     docWriter.Int(intVal);
                 } catch (boost::bad_lexical_cast &e) {
-                    LOG_ERROR() << "Error while casting [" << entry.mMetadata << "] to int" << e.what();
+                    LOG_ERROR("Error while casting [" << entry.mMetadata << "] to int" << e.what());
                 }
 
                 break;
@@ -431,7 +431,7 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
                     double doubleVal = entry.mOperation == DELETE ? DONT_EXIST_INT : boost::lexical_cast<double>(entry.mMetadata);
                     docWriter.Double(doubleVal);
                 } catch (boost::bad_lexical_cast &e) {
-                    LOG_ERROR() << "Error while casting [" << entry.mMetadata << "] to double" << e.what();
+                    LOG_ERROR("Error while casting [" << entry.mMetadata << "] to double" << e.what());
                 }
 
                 break;

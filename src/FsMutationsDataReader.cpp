@@ -131,7 +131,7 @@ void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database
             inodes[i][c] = col;
         }
         
-        LOG_TRACE() << " Read INode row for [" << row.mParentId << " , "  << row.mInodeName << "]";       
+        LOG_TRACE(" Read INode row for [" << row.mParentId << " , "  << row.mInodeName << "]");       
     }
     
     executeTransaction(transaction, NdbTransaction::NoCommit);
@@ -160,7 +160,7 @@ void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* d
     }
     
     if(user_ids.empty() && group_ids.empty()){
-        LOG_DEBUG() << "All required users and groups are already in the cache";
+        LOG_DEBUG("All required users and groups are already in the cache");
         return;
     }
     
@@ -172,24 +172,24 @@ void FsMutationsDataReader::getUsersAndGroups(const NdbDictionary::Dictionary* d
     for(UIRowMap::iterator it = users.begin(); it != users.end(); ++it){
         int userId = it->second[UG_ID_COL]->int32_value();
         if(it->first != userId){
-            LOG_ERROR() << "User " << it->first << " doesn't exist, got userId " 
-                    << userId << " was expecting " << it->first;
+            LOG_ERROR("User " << it->first << " doesn't exist, got userId " 
+                    << userId << " was expecting " << it->first);
             continue;
         }
         string userName = get_string(it->second[UG_NAME_COL]);
-        LOG_DEBUG() << "ADD User [" << it->first << ", " << userName << "] to the Cache";
+        LOG_DEBUG("ADD User [" << it->first << ", " << userName << "] to the Cache");
         mUsersCache.put(it->first, userName);
     }
     
      for(UIRowMap::iterator it = groups.begin(); it != groups.end(); ++it){
          int groupId = it->second[UG_ID_COL]->int32_value();
          if(it->first != groupId){
-            LOG_ERROR() << "Group " << it->first << " doesn't exist, got groupId " 
-                    << groupId << " was expecting " << it->first;
+            LOG_ERROR("Group " << it->first << " doesn't exist, got groupId " 
+                    << groupId << " was expecting " << it->first);
             continue;
         }
         string groupName = get_string(it->second[UG_NAME_COL]);
-        LOG_DEBUG() << "ADD Group [" << it->first << ", " << groupName << "] to the Cache";
+        LOG_DEBUG("ADD Group [" << it->first << ", " << groupName << "] to the Cache");
         mGroupsCache.put(it->first, groupName);
     }
 }
@@ -266,8 +266,8 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
         
         int inodeId = inodes[i][INODE_ID_COL]->int32_value();
         if (row.mInodeId != inodeId) {
-            LOG_ERROR() << " Data for " << row.mParentId << ", " << row.mInodeName 
-                    << " not found, got inode id " << inodeId << " was expecting " << row.mInodeId;
+            LOG_ERROR(" Data for " << row.mParentId << ", " << row.mInodeName 
+                    << " not found, got inode id " << inodeId << " was expecting " << row.mInodeId);
             continue;
         }
         

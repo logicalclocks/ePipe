@@ -61,14 +61,14 @@ void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType
         entry.mOperation = DELETE;
     }
     
-    LOG_TRACE() << " push metadata [" << entry.mId  << "," << entry.mTupleId << "," << entry.mFieldId << "] to queue, Op [" << entry.mOperation << "]";
+    LOG_TRACE(" push metadata [" << entry.mId  << "," << entry.mTupleId << "," << entry.mFieldId << "] to queue, Op [" << entry.mOperation << "]");
     mQueue->push(entry);
 }
 
 MetadataEntry MetadataTableTailer::consume() {
     MetadataEntry res;
     mQueue->wait_and_pop(res);
-    LOG_TRACE() << " pop metadata [" << res.mId  << "," << res.mTupleId << "," << res.mFieldId << "] to queue, Op [" << res.mOperation << "]";
+    LOG_TRACE(" pop metadata [" << res.mId  << "," << res.mTupleId << "," << res.mFieldId << "] to queue, Op [" << res.mOperation << "]");
     return res;
 }
 

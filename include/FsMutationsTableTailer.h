@@ -40,14 +40,14 @@ struct FsMutationRow {
      ptime mEventCreationTime;
      
      void print(){
-        LOG_TRACE() << "-------------------------";
-        LOG_TRACE() << "DatasetId = " << mDatasetId;
-        LOG_TRACE() << "InodeId = " << mInodeId;
-        LOG_TRACE() << "ParentId = " << mParentId;
-        LOG_TRACE() << "InodeName = " << mInodeName;
-        LOG_TRACE() << "Timestamp = " << mTimestamp;
-        LOG_TRACE() << "Operation = " << mOperation;
-        LOG_TRACE() << "-------------------------";
+        LOG_TRACE("-------------------------");
+        LOG_TRACE("DatasetId = " << mDatasetId);
+        LOG_TRACE("InodeId = " << mInodeId);
+        LOG_TRACE("ParentId = " << mParentId);
+        LOG_TRACE("InodeName = " << mInodeName);
+        LOG_TRACE("Timestamp = " << mTimestamp);
+        LOG_TRACE("Operation = " << mOperation);
+        LOG_TRACE("-------------------------");
      }
 };
 

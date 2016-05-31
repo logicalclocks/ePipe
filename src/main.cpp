@@ -22,79 +22,9 @@
  *
  */
 #include "Notifier.h"
-#include <boost/log/utility/setup/console.hpp>
-#include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
-namespace logging = boost::log;
-namespace trivial = boost::log::trivial;
-namespace sinks = boost::log::sinks;
-namespace keywords = boost::log::keywords;
-
-void init_logging(int level, int log_type) {
-    logging::register_simple_formatter_factory< logging::trivial::severity_level, char >("Severity");    
-    if (log_type == 0 || log_type == 2) {
-        logging::add_console_log(
-                cout,
-                keywords::format = "[%TimeStamp%]: (%ThreadID%)[%Severity%] %Message%",
-                keywords::auto_flush = true
-                );
-    }
-
-    if (log_type == 1 || log_type == 2) {
-        logging::add_file_log
-                (
-                keywords::file_name = "ePipe_%N.log",
-                keywords::rotation_size = 10 * 1024 * 1024,
-                keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0),
-                keywords::format = "[%TimeStamp%]: (%ThreadID%)[%Severity%] %Message%",
-                keywords::auto_flush = true
-                );
-    }
-
-    logging::add_common_attributes();
-    
-    switch (level) {
-        case 0:
-            logging::core::get()->set_filter
-                    (
-                    trivial::severity >= trivial::trace
-                    );
-            break;
-        case 1:
-            logging::core::get()->set_filter
-                    (
-                    trivial::severity >= trivial::debug
-                    );
-            break;
-        case 2:
-            logging::core::get()->set_filter
-                    (
-                    trivial::severity >= trivial::info
-                    );
-            break;
-        case 3:
-            logging::core::get()->set_filter
-                    (
-                    trivial::severity >= trivial::warning
-                    );
-            break;
-        case 4:
-            logging::core::get()->set_filter
-                    (
-                    trivial::severity >= trivial::error
-                    );
-            break;
-        case 5:
-            logging::core::get()->set_filter
-                    (
-                    trivial::severity >= trivial::fatal
-                    );
-            break;
-    }
-}
 
 int main(int argc, char** argv) {
     po::options_description desc("Allowed options");
@@ -115,7 +45,6 @@ int main(int argc, char** argv) {
             ("inode_type", po::value<string>(), "Elastic type for inodes. Default: inode")
             ("lru_cap", po::value<int>(), "LRU Cache max capacity")
             ("log_level", po::value<int>(), "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
-            ("log_type", po::value<int>(), "log type console=0, file=1, both=2")
             ;
 
     string connection_string;
@@ -127,7 +56,6 @@ int main(int argc, char** argv) {
     int num_ndb_readers = 5;
     string elastic_addr = "localhost:9200";
     int log_level = 1;
-    int log_type = 0;
     
     bool hopsworks = true;
     string elastic_index = "projects";
@@ -161,10 +89,6 @@ int main(int argc, char** argv) {
         log_level = vm["log_level"].as<int>();
     }
 
-    if (vm.count("log_type")) {
-        log_type = vm["log_type"].as<int>();
-    }
-    
     if (vm.count("wait_time")) {
         wait_time = vm["wait_time"].as<int>();
     }
@@ -209,8 +133,13 @@ int main(int argc, char** argv) {
         lru_cap = vm["lru_cap"].as<int>();
     }
     
-    init_logging(log_level, log_type);
-    
+    Logger::setLoggerLevel(log_level);
+            
+    if(connection_string.empty() || database_name.empty() || meta_database_name.empty()){
+        LOG_ERROR("you should provide at least connection, database, meta_database");
+        return EXIT_FAILURE;
+    }
+        
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), meta_database_name.c_str(),
             wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers, elastic_addr, hopsworks, elastic_index,
             elastic_project_type, elastic_dataset_type, elastic_inode_type, lru_cap);

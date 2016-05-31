@@ -35,7 +35,7 @@ Batcher::Batcher(const int time_before_issuing_ndb_reqs, const int batch_size)
 
 void Batcher::start() {
     if(mStarted){
-        LOG_INFO() << "Batcher is already started";
+        LOG_INFO( "Batcher is already started");
         return;
     }
     
@@ -51,7 +51,7 @@ void Batcher::waitToFinish() {
 }
 
 void Batcher::startTimer() {
-   LOG_DEBUG() << "start timer";
+   LOG_DEBUG("start timer");
    mTimerThread = boost::thread(&Batcher::timerThread, this);
 }
 
@@ -65,7 +65,7 @@ void Batcher::timerThread() {
 }
 
 void Batcher::timerExpired() {
-    LOG_TRACE() << "time expired before reaching the batch size";
+    LOG_TRACE("time expired before reaching the batch size");
     mTimerProcessing=true;
     processBatch();
     mTimerProcessing=false;

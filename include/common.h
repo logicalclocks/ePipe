@@ -33,10 +33,6 @@
 #include <ostream>
 #include <string>
 #include <NdbApi.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/support/date_time.hpp>
-#include <boost/log/expressions.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/pthread/mutex.hpp>
 #include <boost/thread/pthread/condition_variable_fwd.hpp>
@@ -45,6 +41,7 @@
 #include "vector"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#include "Logger.h"
 
 using namespace std;
 
@@ -58,21 +55,6 @@ typedef boost::unordered_map<int, int> UIMap;
 #define VERBOSE 0
 #define WAIT_UNTIL_READY 30
 #define DEFAULT_MAX_CAPACITY 10000
-
-#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-
-#define LOG(severity) \
-    BOOST_LOG_TRIVIAL(severity) << "(" << __FILENAME__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") "
-
-#define LOG_TRACE() LOG(trace)
-#define LOG_DEBUG() LOG(debug)
-#define LOG_INFO() LOG(info)
-#define LOG_WARN() LOG(warning)
-#define LOG_ERROR() LOG(error)
-#define LOG_FATAL() LOG(fatal)
-
-#define LOG_NDB_API_ERROR(error) \
-        LOG_FATAL() << "code:" << error.code << ", msg: " << error.message << "."
 
 #endif /* COMMON_H */
 
