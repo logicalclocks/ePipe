@@ -28,14 +28,15 @@ using namespace Utils::NdbC;
 using namespace Utils::ElasticSearch;
 
 const char* _dataset_table= "dataset";
-const int _dataset_noCols= 6;
+const int _dataset_noCols= 7;
 const char* _dataset_cols[_dataset_noCols]=
     {"inode_id",
      "inode_pid",
      "inode_name",
      "projectId",
      "description",
-     "public_ds"
+     "public_ds",
+     "searchable"
     };
 
 const int _dataset_noEvents = 3; 
@@ -105,7 +106,7 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.String("parent_id");
     docWriter.Int(value[1]->int32_value());
     
-    docWriter.String("inode_name");
+    docWriter.String("name");
     docWriter.String(get_string(value[2]).c_str());
     
     docWriter.String("project_id");
@@ -118,6 +119,11 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     
     docWriter.String("public_ds");
     docWriter.Bool(public_ds);
+    
+    bool searchable = value[6]->int8_value() == 1;
+    
+    docWriter.String("searchable");
+    docWriter.Bool(searchable);
     
     docWriter.EndObject();
     docWriter.String("doc_as_upsert");

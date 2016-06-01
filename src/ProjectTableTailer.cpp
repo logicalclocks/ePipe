@@ -100,7 +100,7 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.String("parent_id");
     docWriter.Int(value[1]->int32_value());
     
-    docWriter.String("inode_name");
+    docWriter.String("name");
     docWriter.String(get_string(value[2]).c_str());
     
     docWriter.String("user");
