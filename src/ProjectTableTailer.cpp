@@ -28,12 +28,11 @@ using namespace Utils::NdbC;
 using namespace Utils::ElasticSearch;
 
 const char* _project_table= "project";
-const int _project_noCols= 6;
+const int _project_noCols= 5;
 const char* _project_cols[_project_noCols]=
     {"id",
      "inode_pid",
      "inode_name",
-     "projectname",
      "username",
      "description"
     };
@@ -104,14 +103,11 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.String("inode_name");
     docWriter.String(get_string(value[2]).c_str());
     
-    docWriter.String("project_name");
+    docWriter.String("user");
     docWriter.String(get_string(value[3]).c_str());
     
-    docWriter.String("user");
-    docWriter.String(get_string(value[4]).c_str());
-    
     docWriter.String("description");
-    docWriter.String(get_string(value[5]).c_str());
+    docWriter.String(get_string(value[4]).c_str());
     
     docWriter.EndObject();
     docWriter.String("doc_as_upsert");

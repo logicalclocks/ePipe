@@ -53,7 +53,7 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
     row.mDatasetId = value[0]->int32_value();
     row.mInodeId =  value[1]->int32_value();
     row.mTimestamp = value[2]->int64_value();
-    row.mParentId = value[3]->int8_value();
+    row.mParentId = value[3]->int32_value();
     row.mInodeName = get_string(value[4]);
     row.mOperation = static_cast<Operation>(value[5]->int8_value());
     if (row.mOperation == ADD || row.mOperation == DELETE) {
@@ -74,6 +74,7 @@ FsMutationRow FsMutationsTableTailer::consume(){
     FsMutationRow row;
     mQueue->wait_and_pop(row);
     LOG_TRACE(" pop inode [" << row.mInodeId << "] from queue");
+    row.print();
     return row;
 }
 
