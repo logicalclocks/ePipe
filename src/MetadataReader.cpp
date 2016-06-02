@@ -64,9 +64,9 @@ const int DONT_EXIST_INT = -1;
 const char* DONT_EXIST_STR = "-1";
 
 MetadataReader::MetadataReader(MConn* connections, const int num_readers,  string elastic_ip, 
-        const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
+        const bool hopsworks, const string elastic_index, const string elastic_inode_type, const string elastic_ds_type, 
         ProjectDatasetINodeCache* cache, const int lru_cap) : NdbDataReader<MetadataEntry, MConn>(connections, 
-        num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache),
+        num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache), mElasticDatasetType(elastic_ds_type),
         mFieldsCache(lru_cap, "Field"), mTablesCache(lru_cap, "Table"), mTemplatesCache(lru_cap, "Template"){
 
 }
@@ -369,9 +369,6 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
         opWriter.String("_index");
         opWriter.String(mElasticIndex.c_str());
 
-        opWriter.String("_type");
-        opWriter.String(mElasticInodeType.c_str());
-
         if(mHopsworksEnalbed){
             int datasetId = mPDICache->getDatasetId(inodeId);
             // set project (rounting) and dataset (parent) ids 
@@ -380,6 +377,14 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
 
             opWriter.String("_routing");
             opWriter.Int(mPDICache->getProjectId(datasetId));  
+            
+            const char* type = (datasetId == inodeId) ? mElasticDatasetType.c_str() : mElasticInodeType.c_str();
+            opWriter.String("_type");
+            opWriter.String(type);
+            
+        }else{
+            opWriter.String("_type");
+            opWriter.String(mElasticInodeType.c_str());
         }
 
         opWriter.String("_id");

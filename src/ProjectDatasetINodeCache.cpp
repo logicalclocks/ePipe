@@ -31,6 +31,7 @@ ProjectDatasetINodeCache::ProjectDatasetINodeCache(const int lru_cap)
 
 void ProjectDatasetINodeCache::addINodeToDataset(int inodeId, int datasetId) {
     mINodeToDataset.put(inodeId, datasetId);
+    mINodeToDataset.put(datasetId, datasetId);
     
     if(!mDatasetToINodes.contains(datasetId)){
         mDatasetToINodes.put(datasetId, new UISet());
@@ -41,6 +42,7 @@ void ProjectDatasetINodeCache::addINodeToDataset(int inodeId, int datasetId) {
 
 void ProjectDatasetINodeCache::addDatasetToProject(int datasetId, int projectId) {
     mDatasetToProject.put(datasetId, projectId);
+    mINodeToDataset.put(datasetId, datasetId);
     
     if(!mProjectToDataset.contains(projectId)){
         mProjectToDataset.put(projectId, new UISet());

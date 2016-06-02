@@ -53,7 +53,7 @@ class MetadataReader : public NdbDataReader<MetadataEntry, MConn>{
 public:
     MetadataReader(MConn* connections, const int num_readers, string elastic_ip, 
             const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
-            ProjectDatasetINodeCache* cache, const int lru_cap);
+            const string elastic_ds_type, ProjectDatasetINodeCache* cache, const int lru_cap);
     virtual ~MetadataReader();
 private:
     virtual ptime getEventCreationTime(MetadataEntry entry);
@@ -74,7 +74,8 @@ private:
         NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read);
     
     string createJSON(UIRowMap tuples, Mq* data_batch);
-            
+    
+    const string mElasticDatasetType;
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;
     Cache<int, string> mTemplatesCache;

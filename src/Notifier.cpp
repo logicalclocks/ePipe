@@ -83,7 +83,7 @@ void Notifier::setup() {
     }
      
     mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, mElasticAddr, 
-             mHopsworksEnabled, mElasticIndex, mElasticInodeType, mPDICache, mLRUCap);
+             mHopsworksEnabled, mElasticIndex, mElasticInodeType, mElasticDatasetType, mPDICache, mLRUCap);
     mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
 
     if (mHopsworksEnabled) {
