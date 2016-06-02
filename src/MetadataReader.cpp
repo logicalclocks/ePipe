@@ -27,7 +27,7 @@
 
 const char* META_FIELDS = "meta_fields";
 const int NUM_FIELDS_COLS = 5;
-const char* FIELDS_COLS_TO_READ[] = {"fieldid", "name", "tableid", "searchable", "type"};
+const char* FIELDS_COLS_TO_READ[] = {"fieldid", "name", "tableid", "searchable", "ftype"};
 const int FIELD_ID_COL = 0;
 const int FIELD_NAME_COL = 1;
 const int FIELD_TABLE_ID_COL = 2;
