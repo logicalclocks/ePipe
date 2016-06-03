@@ -1,6 +1,12 @@
 project (ePipe)
 
 cmake_minimum_required (VERSION 2.8)
+
+set(EPIPE_VERSION_MAJOR 0)
+set(EPIPE_VERSION_MINOR 0)
+set(EPIPE_VERSION_BUILD 1)
+configure_file(Version.h.in ${CMAKE_SOURCE_DIR}/include/Version.h)
+
 set(Boost_USE_STATIC_LIBS ON)
 
 find_package(Boost 1.54 REQUIRED COMPONENTS system date_time program_options thread)

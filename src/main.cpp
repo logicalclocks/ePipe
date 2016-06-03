@@ -23,6 +23,7 @@
  */
 #include "Notifier.h"
 #include <boost/program_options.hpp>
+#include "Version.h"
 
 namespace po = boost::program_options;
 
@@ -45,6 +46,7 @@ int main(int argc, char** argv) {
             ("inode_type", po::value<string>()->default_value("inode"), "Elastic type for inodes.")
             ("lru_cap", po::value<int>()->default_value(DEFAULT_MAX_CAPACITY), "LRU Cache max capacity")
             ("log_level", po::value<int>()->default_value(2), "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
+            ("version", "ePipe version")
             ;
 
     
@@ -70,10 +72,16 @@ int main(int argc, char** argv) {
     po::notify(vm);
 
     if (vm.count("help")) {
-        cout << desc << "\n";
+        cout << desc << endl;
         return EXIT_SUCCESS;
     }
 
+    if (vm.count("version")) {
+        cout << "ePipe " << EPIPE_VERSION_MAJOR << "."  << EPIPE_VERSION_MINOR 
+                << "." << EPIPE_VERSION_BUILD << endl;
+        return EXIT_SUCCESS;
+    }
+    
     if (vm.count("connection")) {
         connection_string = vm["connection"].as<string>();
     }
