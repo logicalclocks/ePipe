@@ -28,45 +28,46 @@
 namespace po = boost::program_options;
 
 int main(int argc, char** argv) { 
+    
+    string connection_string;
+    string database_name = "hops";
+    string meta_database_name = "hopsworks";
+    int wait_time = 1000;
+    int ndb_batch = 5;
+    int poll_maxTimeToWait = 10000;
+    int num_ndb_readers = 5;
+    string elastic_addr = "localhost:9200";
+    int log_level = 2;
+    
+    bool hopsworks = true;
+    string elastic_index = "projects";
+    string elastic_project_type = "proj";
+    string elastic_dataset_type = "ds";
+    string elastic_inode_type = "inode";
+    int lru_cap = DEFAULT_MAX_CAPACITY;
+    
     po::options_description desc("Allowed options");
     desc.add_options()
             ("help", "produce help message")
             ("connection", po::value<string>(), "connection string/ ndb host")
-            ("database", po::value<string>()->default_value("hops"), "database name.")
-            ("meta_database", po::value<string>()->default_value("hopsworks"), "database name for metadata")
-            ("poll_maxTimeToWait", po::value<int>()->default_value(1000), "max time to wait in miliseconds while waiting for events in pollEvents")
-            ("wait_time", po::value<int>()->default_value(10000), "time to wait in miliseconds before issuing the ndb request or the batch size reached")
-            ("ndb_batch", po::value<int>()->default_value(5), "batch size for reading from ndb")
-            ("num_ndb_readers", po::value<int>()->default_value(5), "num of ndb reader threads")
-            ("elastic_addr", po::value<string>()->default_value("localhost:9200"), "ip and port of the elasticsearch server")
-            ("hopsworks", po::value<bool>()->default_value(true), "enable or disable hopsworks, which will use grandparents to index inodes and metadata")
-            ("index", po::value<string>()->default_value("projects"), "Elastic index to add the data to.")
-            ("project_type", po::value<string>()->default_value("proj"), "Elastic type for projects, only used when hopsworks is enabled.")
-            ("dataset_type", po::value<string>()->default_value("ds"), "Elastic type for datasets, only used when hopsworks is enabled.")
-            ("inode_type", po::value<string>()->default_value("inode"), "Elastic type for inodes.")
-            ("lru_cap", po::value<int>()->default_value(DEFAULT_MAX_CAPACITY), "LRU Cache max capacity")
-            ("log_level", po::value<int>()->default_value(2), "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
+            ("database", po::value<string>()->default_value(database_name), "database name.")
+            ("meta_database", po::value<string>()->default_value(meta_database_name), "database name for metadata")
+            ("poll_maxTimeToWait", po::value<int>()->default_value(wait_time), "max time to wait in miliseconds while waiting for events in pollEvents")
+            ("wait_time", po::value<int>()->default_value(poll_maxTimeToWait), "time to wait in miliseconds before issuing the ndb request or the batch size reached")
+            ("ndb_batch", po::value<int>()->default_value(ndb_batch), "batch size for reading from ndb")
+            ("num_ndb_readers", po::value<int>()->default_value(num_ndb_readers), "num of ndb reader threads")
+            ("elastic_addr", po::value<string>()->default_value(elastic_addr), "ip and port of the elasticsearch server")
+            ("hopsworks", po::value<bool>()->default_value(hopsworks), "enable or disable hopsworks, which will use grandparents to index inodes and metadata")
+            ("index", po::value<string>()->default_value(elastic_index), "Elastic index to add the data to.")
+            ("project_type", po::value<string>()->default_value(elastic_project_type), "Elastic type for projects, only used when hopsworks is enabled.")
+            ("dataset_type", po::value<string>()->default_value(elastic_dataset_type), "Elastic type for datasets, only used when hopsworks is enabled.")
+            ("inode_type", po::value<string>()->default_value(elastic_inode_type), "Elastic type for inodes.")
+            ("lru_cap", po::value<int>()->default_value(lru_cap), "LRU Cache max capacity")
+            ("log_level", po::value<int>()->default_value(log_level), "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
             ("version", "ePipe version")
             ;
 
-    
-    string connection_string;
-    string database_name;
-    string meta_database_name;
-    int wait_time;
-    int ndb_batch;
-    int poll_maxTimeToWait;
-    int num_ndb_readers;
-    string elastic_addr;
-    int log_level;
-    
-    bool hopsworks;
-    string elastic_index;
-    string elastic_project_type;
-    string elastic_dataset_type;
-    string elastic_inode_type;
-    int lru_cap;
-    
+   
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
