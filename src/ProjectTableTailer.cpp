@@ -25,7 +25,6 @@
 #include "ProjectTableTailer.h"
 
 using namespace Utils::NdbC;
-using namespace Utils::ElasticSearch;
 
 const char* _project_table= "project";
 const int _project_noCols= 5;
@@ -46,23 +45,19 @@ const NdbDictionary::Event::TableEvent _project_events[_project_noEvents] =
 
 const WatchTable ProjectTableTailer::TABLE = {_project_table, _project_cols, _project_noCols , _project_events, _project_noEvents};
 
-ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
-        const string elastic_index, const string elastic_project_type, ProjectDatasetINodeCache* cache) 
-    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticAddr(elastic_addr), mElasticIndex(elastic_index), 
-        mElasticProjectType(elastic_project_type), mPDICache(cache){
+ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, 
+        ElasticSearch* elastic, ProjectDatasetINodeCache* cache) 
+    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticSearch(elastic), mPDICache(cache){
 }
 
 void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
     int id = value[0]->int32_value();
         
     if(eventType == NdbDictionary::Event::TE_DELETE){
-        string deleteDatasetUrl = getElasticSearchUrlOnDoc(mElasticAddr, mElasticIndex, mElasticProjectType, id);
-        if(elasticSearchDELETE(deleteDatasetUrl)){
+        if(mElasticSearch->deleteProject(id)){
             LOG_INFO("Delete Project[" << id << "]: Succeeded");
         }
         
-        string deteteProjectChildren = getElasticSearchDeleteByQueryUrl(mElasticAddr, mElasticIndex, id);
-
         rapidjson::StringBuffer sbDoc;
         rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
         docWriter.StartObject();
@@ -81,7 +76,7 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
         docWriter.EndObject();
         
         //TODO: handle failures in elastic search
-        if(elasticSearchDELETE(deteteProjectChildren, string(sbDoc.GetString()))){
+        if(mElasticSearch->deleteProjectChildren(id, string(sbDoc.GetString()))){
             LOG_INFO("Delete Project[" << id << "] children inodes and datasets : Succeeded");
         }
 
@@ -115,8 +110,7 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.EndObject();
     
     string data = string(sbDoc.GetString());
-    string url = getElasticSearchUpdateDocUrl(mElasticAddr, mElasticIndex, mElasticProjectType, id);
-    if(elasticSearchPOST(url, data)){
+    if(mElasticSearch->addProject(id, data)){
         LOG_INFO("Add Project[" << id << "]: Succeeded");
     }
 }

@@ -25,10 +25,9 @@
 #include "DatasetTableTailer.h"
 
 using namespace Utils::NdbC;
-using namespace Utils::ElasticSearch;
 
 const char* _dataset_table= "dataset";
-const int _dataset_noCols= 7;
+const int _dataset_noCols= 8;
 const char* _dataset_cols[_dataset_noCols]=
     {"inode_id",
      "inode_pid",
@@ -36,7 +35,8 @@ const char* _dataset_cols[_dataset_noCols]=
      "projectId",
      "description",
      "public_ds",
-     "searchable"
+     "searchable",
+     "shared"
     };
 
 const int _dataset_noEvents = 3; 
@@ -49,23 +49,26 @@ const NdbDictionary::Event::TableEvent _dataset_events[_dataset_noEvents] =
 const WatchTable DatasetTableTailer::TABLE = {_dataset_table, _dataset_cols, _dataset_noCols , _dataset_events, _dataset_noEvents};
 
 
-DatasetTableTailer::DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
-        const string elastic_index, const string elastic_dataset_type,ProjectDatasetINodeCache* cache) 
-    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticAddr(elastic_addr), mElasticIndex(elastic_index), 
-        mElasticDatasetType(elastic_dataset_type), mPDICache(cache){
+DatasetTableTailer::DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, 
+        ElasticSearch* elastic,ProjectDatasetINodeCache* cache) 
+    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticSearch(elastic), mPDICache(cache){
 }
 
 void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
     int id = value[0]->int32_value();
     int projectId = value[3]->int32_value();
+    bool originalDS = value[7]->int8_value() == 0;
+    
+    if(!originalDS){
+        LOG_DEBUG("Ignore shared Dataset [" << id << "] in Project [" << projectId << "]");
+        return;
+    }
     
     if(eventType == NdbDictionary::Event::TE_DELETE){
-        string deleteDatasetUrl = getElasticSearchDeleteDocUrl(mElasticAddr, mElasticIndex, mElasticDatasetType, id, projectId);
-        if(elasticSearchDELETE(deleteDatasetUrl)){
+        if(mElasticSearch->deleteDataset(projectId, id)){
             LOG_INFO("Delete Dataset[" << id << "]: Succeeded");
         }
         
-        string deteteDatasetChildren = getElasticSearchDeleteByQueryUrl(mElasticAddr, mElasticIndex, id, projectId);
 
         rapidjson::StringBuffer sbDoc;
         rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -85,7 +88,7 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
         docWriter.EndObject();
         
         //TODO: handle failures in elastic search
-        if(elasticSearchDELETE(deteteDatasetChildren, string(sbDoc.GetString()))){
+        if(mElasticSearch->deleteDatasetChildren(projectId, id, string(sbDoc.GetString()))){
             LOG_INFO("Delete Dataset[" << id << "] children inodes: Succeeded");
         }
 
@@ -131,8 +134,7 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     docWriter.EndObject();
     
     string data = string(sbDoc.GetString());
-    string url = getElasticSearchUpdateDocUrl(mElasticAddr, mElasticIndex, mElasticDatasetType, id, projectId);
-    if(elasticSearchPOST(url, data)){
+    if(mElasticSearch->addDataset(projectId, id, data)){
         LOG_INFO("Add Dataset[" << id << "]: Succeeded");
     }
 }
@@ -140,30 +142,55 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
 void DatasetTableTailer::updateProjectIds(const NdbDictionary::Dictionary* database,
         NdbTransaction* transaction, UISet dataset_ids, ProjectDatasetINodeCache* cache) {    
 
-    const NdbDictionary::Index * index= database->getIndex(Utils::concat(_dataset_cols[0], "$unique"), TABLE.mTableName);
+    const NdbDictionary::Index * index= database->getIndex(_dataset_cols[0], TABLE.mTableName);
     
+    vector<NdbIndexScanOperation*> indexScanOps;
     UIRowMap rows;
     for (UISet::iterator it = dataset_ids.begin(); it != dataset_ids.end(); ++it) {
-        NdbIndexOperation* op = getNdbIndexOperation(transaction, index);
-        op->readTuple(NdbOperation::LM_CommittedRead);
+        NdbIndexScanOperation* op = getNdbIndexScanOperation(transaction, index);
+        op->readTuples(NdbOperation::LM_CommittedRead);
+       
         op->equal(_dataset_cols[0], *it);
         
         NdbRecAttr* id_col = getNdbOperationValue(op, _dataset_cols[0]);
         NdbRecAttr* proj_id_col = getNdbOperationValue(op, _dataset_cols[3]);
+        NdbRecAttr* shared_col = getNdbOperationValue(op, _dataset_cols[7]);
         rows[*it].push_back(id_col);
         rows[*it].push_back(proj_id_col);
+        rows[*it].push_back(shared_col);
+        indexScanOps.push_back(op);
     }
 
     executeTransaction(transaction, NdbTransaction::NoCommit);
 
-    for (UIRowMap::iterator it = rows.begin(); it != rows.end(); ++it) {
-        if (it->first != it->second[0]->int32_value()) {
-            LOG_ERROR("Dataset [" << it->first << "] doesn't exists");
-            continue;
+    int i = 0;
+    for (UIRowMap::iterator it = rows.begin(); it != rows.end(); ++it, i++) {
+        
+        stringstream projs;
+        int res=0;
+        while (indexScanOps[i]->nextResult(true) == 0) {
+            if (it->first != it->second[0]->int32_value()) {
+                LOG_ERROR("Dataset [" << it->first << "] doesn't exists");
+                continue;
+            }
+            
+            bool originalDs = it->second[2]->int8_value() == 0;
+            
+            if(!originalDs){
+                continue;
+            }
+            
+            int projectId = it->second[1]->int32_value();
+            if(res == 0){
+                cache->addDatasetToProject(it->first, projectId);
+            }
+            projs << projectId << ",";
+            res++;
         }
-
-        int projectId = it->second[1]->int32_value();
-        cache->addDatasetToProject(it->first, projectId);
+        
+        if(res > 1){
+            LOG_FATAL("Got " << res << " rows of the original Dataset [" << it->first << "] in projects [" << projs.str() << "], only one was expected");
+        }
     }
 }
 

@@ -30,6 +30,7 @@
 #include "Cache.h"
 #include "Utils.h"
 #include "ProjectDatasetINodeCache.h"
+#include "ElasticSearch.h"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
@@ -42,7 +43,6 @@ namespace bc = boost::accumulators;
 typedef bc::accumulator_set<double, bc::stats<bc::tag::mean, bc::tag::min, bc::tag::max> >  Accumulator;
 
 using namespace Utils;
-using namespace Utils::ElasticSearch;
 using namespace Utils::NdbC;
 
 struct BatchStats{
@@ -65,17 +65,13 @@ struct MConn{
 template<typename Data, typename Conn>
 class NdbDataReader {
 public:
-    NdbDataReader(Conn* connections, const int num_readers, string elastic_addr,
-            const bool hopsworks, const string elastic_index, const string elastic_inode_type,
-            ProjectDatasetINodeCache* cache);
+    NdbDataReader(Conn* connections, const int num_readers, const bool hopsworks, 
+            ElasticSearch* elastic, ProjectDatasetINodeCache* cache);
     void start();
     void processBatch(vector<Data>* data_batch);
     virtual ~NdbDataReader();
 
 private:
-    const string mElasticAddr;
-    string mElasticBulkUrl;
-    
     bool mStarted;
     std::vector<boost::thread* > mThreads;
     
@@ -87,8 +83,7 @@ protected:
     const int mNumReaders;
     Conn* mNdbConnections;
     const bool mHopsworksEnalbed;
-    const string mElasticIndex;
-    const string mElasticInodeType;
+    ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
     //Accumulator mQueuingAcc;
     //Accumulator mBatchingAcc;
@@ -96,28 +91,17 @@ protected:
     
     virtual ptime getEventCreationTime(Data row) = 0;
     virtual BatchStats readData(Conn connection, vector<Data>* data_batch) = 0;
-    void bulkUpdateElasticSearch(string json);
     string getAccString(Accumulator acc);
 };
 
 
 template<typename Data, typename Conn>
 NdbDataReader<Data, Conn>::NdbDataReader(Conn* connections, const int num_readers, 
-        string elastic_ip, const bool hopsworks, const string elastic_index, 
-        const string elastic_inode_type, ProjectDatasetINodeCache* cache) 
-        :  mElasticAddr(elastic_ip), mNumReaders(num_readers), mNdbConnections(connections), 
-        mHopsworksEnalbed(hopsworks), mElasticIndex(elastic_index), mElasticInodeType(elastic_inode_type),
-        mPDICache(cache){
+        const bool hopsworks,ElasticSearch* elastic, ProjectDatasetINodeCache* cache) 
+        :  mNumReaders(num_readers), mNdbConnections(connections), 
+        mHopsworksEnalbed(hopsworks), mElasticSearch(elastic), mPDICache(cache){
     mStarted = false;
-    mElasticBulkUrl = getElasticSearchBulkUrl(mElasticAddr);
     mBatchedQueue = new ConcurrentQueue<vector<Data>*>();
-}
-
-template<typename Data, typename Conn>
-void NdbDataReader<Data, Conn>::bulkUpdateElasticSearch(string json) {
-    if(!elasticSearchPOST(mElasticBulkUrl, json)){
-        //TODO: handle elasticsearch failures
-    }
 }
 
 template<typename Data, typename Conn>

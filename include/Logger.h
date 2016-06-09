@@ -69,6 +69,7 @@ public:
     static void error(const char* msg);
     static void fatal(const char* msg);
     
+    static bool isTrace();
 private:
     static Logger* mInstance;
     static int mLoggerLevel;

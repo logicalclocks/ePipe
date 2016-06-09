@@ -51,9 +51,8 @@ struct Table{
 
 class MetadataReader : public NdbDataReader<MetadataEntry, MConn>{
 public:
-    MetadataReader(MConn* connections, const int num_readers, string elastic_ip, 
-            const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
-            const string elastic_ds_type, ProjectDatasetINodeCache* cache, const int lru_cap);
+    MetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
+            ElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap);
     virtual ~MetadataReader();
 private:
     virtual ptime getEventCreationTime(MetadataEntry entry);
@@ -75,7 +74,6 @@ private:
     
     string createJSON(UIRowMap tuples, Mq* data_batch);
     
-    const string mElasticDatasetType;
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;
     Cache<int, string> mTemplatesCache;

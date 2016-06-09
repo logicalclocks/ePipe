@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     string meta_database_name = "hopsworks";
     int wait_time = 1000;
     int ndb_batch = 5;
-    int poll_maxTimeToWait = 10000;
+    int poll_maxTimeToWait = 2000;
     int num_ndb_readers = 5;
     string elastic_addr = "localhost:9200";
     int log_level = 2;
@@ -44,6 +44,9 @@ int main(int argc, char** argv) {
     string elastic_project_type = "proj";
     string elastic_dataset_type = "ds";
     string elastic_inode_type = "inode";
+    int elastic_batch_size = 5000;
+    int elastic_issue_time = 5000;
+    
     int lru_cap = DEFAULT_MAX_CAPACITY;
     
     po::options_description desc("Allowed options");
@@ -53,7 +56,7 @@ int main(int argc, char** argv) {
             ("database", po::value<string>()->default_value(database_name), "database name.")
             ("meta_database", po::value<string>()->default_value(meta_database_name), "database name for metadata")
             ("poll_maxTimeToWait", po::value<int>()->default_value(wait_time), "max time to wait in miliseconds while waiting for events in pollEvents")
-            ("wait_time", po::value<int>()->default_value(poll_maxTimeToWait), "time to wait in miliseconds before issuing the ndb request or the batch size reached")
+            ("wait_time", po::value<int>()->default_value(poll_maxTimeToWait), "time to wait in miliseconds before issuing the ndb request if the batch size wasn't reached")
             ("ndb_batch", po::value<int>()->default_value(ndb_batch), "batch size for reading from ndb")
             ("num_ndb_readers", po::value<int>()->default_value(num_ndb_readers), "num of ndb reader threads")
             ("elastic_addr", po::value<string>()->default_value(elastic_addr), "ip and port of the elasticsearch server")
@@ -62,6 +65,8 @@ int main(int argc, char** argv) {
             ("project_type", po::value<string>()->default_value(elastic_project_type), "Elastic type for projects, only used when hopsworks is enabled.")
             ("dataset_type", po::value<string>()->default_value(elastic_dataset_type), "Elastic type for datasets, only used when hopsworks is enabled.")
             ("inode_type", po::value<string>()->default_value(elastic_inode_type), "Elastic type for inodes.")
+            ("elastic_batch", po::value<int>()->default_value(elastic_batch_size), "Elastic batch size in bytes for bulk requests")
+            ("ewait_time", po::value<int>()->default_value(elastic_issue_time), "time to wait in miliseconds before issuing a bulk request to Elasticsearch if the batch size wasn't reached")
             ("lru_cap", po::value<int>()->default_value(lru_cap), "LRU Cache max capacity")
             ("log_level", po::value<int>()->default_value(log_level), "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
             ("version", "ePipe version")
@@ -139,6 +144,14 @@ int main(int argc, char** argv) {
         elastic_inode_type = vm["inode_type"].as<string>();
     }
     
+    if (vm.count("elastic_batch")) {
+        elastic_batch_size = vm["elastic_batch"].as<int>();
+    }
+    
+    if (vm.count("ewait_time")) {
+        elastic_issue_time = vm["ewait_time"].as<int>();
+    }
+    
     if (vm.count("lru_cap")) {
         lru_cap = vm["lru_cap"].as<int>();
     }
@@ -152,7 +165,7 @@ int main(int argc, char** argv) {
         
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), meta_database_name.c_str(),
             wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers, elastic_addr, hopsworks, elastic_index,
-            elastic_project_type, elastic_dataset_type, elastic_inode_type, lru_cap);
+            elastic_project_type, elastic_dataset_type, elastic_inode_type, elastic_batch_size, elastic_issue_time, lru_cap);
     notifer->start();
 
     return EXIT_SUCCESS;

@@ -60,6 +60,10 @@ void Logger::fatal(const char* msg){
     }
 }
 
+bool Logger::isTrace() {
+    return mLoggerLevel ==  LOG_LEVEL_TRACE;
+}
+
 void Logger::log(const char* level, const char* msg){
     cout << getTimestamp() << " <" << level << "> " << msg << endl;
 }

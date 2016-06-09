@@ -28,9 +28,9 @@
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-Batcher::Batcher(const int time_before_issuing_ndb_reqs, const int batch_size) 
+Batcher::Batcher(const int time_to_wait, const int batch_size) 
     : mBatchSize(batch_size), mTimerProcessing(false), mStarted(false), 
-        mFirstTimer(true), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs) {
+        mFirstTimer(true), mTimeToWait(time_to_wait) {
     srand(time(NULL));
 }
 
@@ -60,10 +60,10 @@ void Batcher::startTimer() {
 void Batcher::timerThread() {
     while (true) {
         boost::asio::io_service io;
-        int timeout = mTimeBeforeIssuingNDBReqs;
+        int timeout = mTimeToWait;
         if(mFirstTimer){
-            int baseTime = mTimeBeforeIssuingNDBReqs / 4;
-            timeout = rand() % (mTimeBeforeIssuingNDBReqs - baseTime) + baseTime;
+            int baseTime = mTimeToWait / 4;
+            timeout = rand() % (mTimeToWait - baseTime) + baseTime;
             mFirstTimer = false;
             LOG_TRACE("fire the first timer after " << timeout << " msec");
         }

@@ -41,9 +41,9 @@ const int UG_ID_COL = 0;
 const int UG_NAME_COL = 1;
 
 FsMutationsDataReader::FsMutationsDataReader(MConn* connections, const int num_readers,
-        string elastic_ip, const bool hopsworks, const string elastic_index, const string elastic_inode_type, 
-        ProjectDatasetINodeCache* cache, const int lru_cap) : NdbDataReader<FsMutationRow,MConn>(connections, 
-        num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache), mUsersCache(lru_cap, "User"), 
+        const bool hopsworks, ElasticSearch* elastic ,ProjectDatasetINodeCache* cache, 
+        const int lru_cap) : NdbDataReader<FsMutationRow,MConn>(connections, num_readers, 
+        hopsworks, elastic, cache), mUsersCache(lru_cap, "User"), 
         mGroupsCache(lru_cap, "Group"){
 
 }
@@ -62,7 +62,7 @@ BatchStats FsMutationsDataReader::readData(MConn connection, Fmq* data_batch) {
 
     if (!json.empty()) {
         ptime t1 = getCurrentTime();
-        bulkUpdateElasticSearch(json);
+        mElasticSearch->addBulk(json);
         ptime t2 = getCurrentTime();
         rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
     }
@@ -238,12 +238,6 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
             opWriter.String("delete");
             opWriter.StartObject();
 
-            opWriter.String("_index");
-            opWriter.String(mElasticIndex.c_str());
-
-            opWriter.String("_type");
-            opWriter.String(mElasticInodeType.c_str());
-
             if (mHopsworksEnalbed) {
                 // set project (rounting) and dataset (parent) ids 
                 opWriter.String("_parent");
@@ -283,12 +277,6 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
         
         opWriter.String("update");
         opWriter.StartObject();
-
-        opWriter.String("_index");
-        opWriter.String(mElasticIndex.c_str());
-        
-        opWriter.String("_type");
-        opWriter.String(mElasticInodeType.c_str());
         
         int projectId = -1;
         if(mHopsworksEnalbed){

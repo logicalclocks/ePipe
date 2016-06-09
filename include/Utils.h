@@ -28,11 +28,8 @@
 #include "common.h"
 #include<cstdlib>
 #include<cstring>
-#include "boost/network.hpp"
-#include "rapidjson/document.h"
 
 typedef boost::posix_time::ptime ptime;
-typedef boost::network::http::client httpclient;
 
 typedef vector<NdbRecAttr*> Row;
 typedef boost::unordered_map<int, Row> UIRowMap;
@@ -64,9 +61,9 @@ namespace Utils {
             if (!col) LOG_NDB_API_ERROR(op->getNdbError());
             return col;
         }
-        
-        inline static NdbIndexOperation* getNdbIndexOperation(NdbTransaction* transaction, const NdbDictionary::Index* index) {
-            NdbIndexOperation* op = transaction->getNdbIndexOperation(index);
+             
+        inline static NdbIndexScanOperation* getNdbIndexScanOperation(NdbTransaction* transaction, const NdbDictionary::Index* index) {
+            NdbIndexScanOperation* op = transaction->getNdbIndexScanOperation(index);
             if (!op) LOG_NDB_API_ERROR(transaction->getNdbError());
             return op;
         }
@@ -210,164 +207,6 @@ namespace Utils {
             }
             return res;
         }
-    }
-
-
-    namespace ElasticSearch {
-
-        inline static string _getElasticSearchBaseUrl(string elasticUrl) {
-            string url = "http://" + elasticUrl;
-            return url;
-        }
-
-        inline static string getElasticSearchBulkUrl(string elasticUrl) {
-            string bulkUrl = _getElasticSearchBaseUrl(elasticUrl) + "/_bulk";
-            return bulkUrl;
-        }
-
-        inline static string _getElasticSearchUrlonIndex(string elasticUrl, string index) {
-            string str = _getElasticSearchBaseUrl(elasticUrl) + "/" + index;
-            return str;
-        }
-
-        inline static string getElasticSearchUrlOnDoc(string elasticUrl, string index, string type, int doc) {
-            stringstream out;
-            out << _getElasticSearchUrlonIndex(elasticUrl, index) << "/" << type << "/" << doc;
-            return out.str();
-        }
-
-        inline static string getElasticSearchUpdateDocUrl(string elasticUrl, string index, string type, int doc) {
-            string str = getElasticSearchUrlOnDoc(elasticUrl, index, type, doc) + "/_update";
-            return str;
-        }
-
-        inline static string getElasticSearchUpdateDocUrl(string elasticUrl, string index, string type, int doc, int parent) {
-            stringstream out;
-            out << getElasticSearchUpdateDocUrl(elasticUrl, index, type, doc) << "?parent=" << parent;
-            return out.str();
-        }
-
-        inline static string getElasticSearchDeleteDocUrl(string elasticUrl, string index, string type, int doc, int parent) {
-            stringstream out;
-            out << getElasticSearchUrlOnDoc(elasticUrl, index, type, doc) << "?parent=" << parent;
-            return out.str();
-        }
-
-        inline static string getElasticSearchDeleteByQueryUrl(string elasticUrl, string index, int routing) {
-            stringstream out;
-            out << _getElasticSearchUrlonIndex(elasticUrl, index) << "/_query" << "?routing=" << routing;
-            return out.str();
-        }
-        
-        inline static string getElasticSearchDeleteByQueryUrl(string elasticUrl, string index, int parent, int routing) {
-            stringstream out;
-            out << getElasticSearchDeleteByQueryUrl(elasticUrl, index, routing) << "&parent=" << parent;
-            return out.str();
-        }
-
-        enum HttpOp {
-            HTTP_POST,
-            HTTP_DELETE
-        };
-
-        inline static bool elasticSearchHttpRequest(HttpOp op, string elasticUrl, string json) {
-            //TODO: support retry if server is down
-            try {
-                httpclient::request request_(elasticUrl);
-                request_ << boost::network::header("Connection", "close");
-
-                if (!json.empty()) {
-                    request_ << boost::network::header("Content-Type", "application/json");
-
-                    char body_str_len[8];
-                    sprintf(body_str_len, "%lu", json.length());
-
-                    request_ << boost::network::header("Content-Length", body_str_len);
-                    request_ << boost::network::body(json);
-                }
-                
-                string opString;
-                httpclient client_;
-                httpclient::response response_;
-                switch (op) {
-                    case HTTP_POST:
-                        response_ = client_.post(request_);
-                        opString = "POST";
-                        break;
-                    case HTTP_DELETE:
-                        response_ = client_.delete_(request_);
-                        opString = "DELETE";
-                        break;
-                }
-                std::string body_ = boost::network::http::body(response_);
-                
-                LOG_TRACE(opString << " " << elasticUrl << endl 
-                        << json << endl << "Response::" << endl << body_);
-                
-                rapidjson::Document d;
-                if (!d.Parse<0>(body_.c_str()).HasParseError()) {
-                    if (d.HasMember("errors")) {
-                        const rapidjson::Value &bulkErrors = d["errors"];
-                        if (bulkErrors.IsBool() && bulkErrors.GetBool()) {
-                            const rapidjson::Value &items = d["items"];
-                            stringstream errors;
-                            for (rapidjson::SizeType i = 0; i < items.Size(); ++i) {
-                                const rapidjson::Value &obj = items[i];
-                                for (rapidjson::Value::ConstMemberIterator itr = obj.MemberBegin(); itr != obj.MemberEnd(); ++itr)
-                                {
-                                    const rapidjson::Value & opObj = itr->value;
-                                    if(opObj.HasMember("error")){
-                                        const rapidjson::Value & error = opObj["error"];
-                                        if(error.IsObject()){
-                                            const rapidjson::Value & errorType = error["type"];
-                                            const rapidjson::Value & errorReason = error["reason"];
-                                            errors << errorType.GetString() << ":" <<  errorReason.GetString();
-                                        }else if(error.IsString()){
-                                            errors << error.GetString();
-                                        }
-                                        errors << ", ";
-                                    }
-                                }
-                            }
-                            string errorsStr = errors.str();
-                            LOG_ERROR(" ES got errors: " << errorsStr);
-                            return false;
-                        }
-                    } else if (d.HasMember("error")) {
-                        const rapidjson::Value &error = d["error"];
-                        if (error.IsObject()) {
-                            const rapidjson::Value & errorType = error["type"];
-                            const rapidjson::Value & errorReason = error["reason"];
-                            LOG_ERROR(" ES got error: " << errorType.GetString() << ":" <<  errorReason.GetString()); 
-                        } else if (error.IsString()) {
-                            LOG_ERROR(" ES got error: " << error.GetString());
-                        }
-                        return false;
-                    }
-                }else{
-                    LOG_ERROR(" ES got json error (" << d.GetParseError() << ") while parsing " << body_);
-                    return false;
-                }
-                   
-            } catch (std::exception &e) {
-                LOG_ERROR(e.what());
-                return false;
-            }
-            return true;
-        }
-
-        inline static bool elasticSearchPOST(string elasticUrl, string json) {
-            return elasticSearchHttpRequest(HTTP_POST, elasticUrl, json);
-        }
-
-        inline static bool elasticSearchDELETE(string elasticUrl) {
-            return elasticSearchHttpRequest(HTTP_DELETE, elasticUrl, string());
-        }
-
-        inline static bool elasticSearchDELETE(string elasticUrl, string json) {
-            return elasticSearchHttpRequest(HTTP_DELETE, elasticUrl, json);
-        }
-
     }
 
     inline static ptime getCurrentTime() {

@@ -63,10 +63,9 @@ const int INODE_DATASET_LOOKUO_DATASET_ID_COL = 1;
 const int DONT_EXIST_INT = -1;
 const char* DONT_EXIST_STR = "-1";
 
-MetadataReader::MetadataReader(MConn* connections, const int num_readers,  string elastic_ip, 
-        const bool hopsworks, const string elastic_index, const string elastic_inode_type, const string elastic_ds_type, 
-        ProjectDatasetINodeCache* cache, const int lru_cap) : NdbDataReader<MetadataEntry, MConn>(connections, 
-        num_readers, elastic_ip, hopsworks, elastic_index, elastic_inode_type, cache), mElasticDatasetType(elastic_ds_type),
+MetadataReader::MetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
+        ElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap) 
+            : NdbDataReader<MetadataEntry, MConn>(connections, num_readers, hopsworks, elastic, cache), 
         mFieldsCache(lru_cap, "Field"), mTablesCache(lru_cap, "Table"), mTemplatesCache(lru_cap, "Template"){
 
 }
@@ -85,7 +84,7 @@ BatchStats MetadataReader::readData(MConn connection, Mq* data_batch) {
 
     if (!json.empty()) {
         ptime t1 = getCurrentTime();
-        bulkUpdateElasticSearch(json);
+        mElasticSearch->addBulk(json);
         ptime t2 = getCurrentTime();
         rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
     }
@@ -366,8 +365,6 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
         opWriter.String("update");
         opWriter.StartObject();
 
-        opWriter.String("_index");
-        opWriter.String(mElasticIndex.c_str());
 
         if(mHopsworksEnalbed){
             int datasetId = mPDICache->getDatasetId(inodeId);
@@ -378,13 +375,11 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
             opWriter.String("_routing");
             opWriter.Int(mPDICache->getProjectId(datasetId));  
             
-            const char* type = (datasetId == inodeId) ? mElasticDatasetType.c_str() : mElasticInodeType.c_str();
-            opWriter.String("_type");
-            opWriter.String(type);
+            if(datasetId == inodeId){
+                opWriter.String("_type");
+                opWriter.String(mElasticSearch->getDatasetType());
+            }
             
-        }else{
-            opWriter.String("_type");
-            opWriter.String(mElasticInodeType.c_str());
         }
 
         opWriter.String("_id");

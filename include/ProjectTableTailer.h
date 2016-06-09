@@ -27,20 +27,20 @@
 
 #include "TableTailer.h"
 #include "ProjectDatasetINodeCache.h"
+#include "ElasticSearch.h"
 
 class ProjectTableTailer : public TableTailer{
 public:
-    ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, string elastic_addr, 
-            const string elastic_index, const string elastic_project_type, ProjectDatasetINodeCache* cache);
+    ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ElasticSearch* elastic,
+            ProjectDatasetINodeCache* cache);
     virtual ~ProjectTableTailer();
         
 private:
     static const WatchTable TABLE;
     
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    string mElasticAddr;
-    const string mElasticIndex;
-    const string mElasticProjectType;
+
+    ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
 };
 

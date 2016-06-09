@@ -29,7 +29,7 @@
 
 class Batcher {
 public:
-    Batcher(const int time_before_issuing_ndb_reqs, const int batch_size);
+    Batcher(const int time_to_wait, const int batch_size);
     void start();
     void waitToFinish();
     virtual ~Batcher();
@@ -46,7 +46,7 @@ private:
     bool mStarted;
     bool mFirstTimer;
     
-    const int mTimeBeforeIssuingNDBReqs;
+    const int mTimeToWait;
     boost::thread mTimerThread;
     
     void startTimer();

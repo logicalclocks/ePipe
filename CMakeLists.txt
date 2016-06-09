@@ -3,19 +3,19 @@ project (ePipe)
 cmake_minimum_required (VERSION 2.8)
 
 set(EPIPE_VERSION_MAJOR 0)
-set(EPIPE_VERSION_MINOR 0)
+set(EPIPE_VERSION_MINOR 1)
 set(EPIPE_VERSION_BUILD 1)
 configure_file(Version.h.in ${CMAKE_SOURCE_DIR}/include/Version.h)
 
 set(Boost_USE_STATIC_LIBS ON)
 
 find_package(Boost 1.54 REQUIRED COMPONENTS system date_time program_options thread)
-find_package(cppnetlib 0.11.1 REQUIRED uri client-connections)
+find_package(CURL 7.35.0)
 find_package(RapidJSON 1.0.2)
 
 include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${CPPNETLIB_INCLUDE_DIRS})
 include_directories(${RAPIDJSON_INCLUDE_DIRS})
+include_directories(${CURL_INCLUDE_DIRS})
 include_directories (${CMAKE_SOURCE_DIR}/include)
 
 if(NOT NDB_DIR)
@@ -32,4 +32,4 @@ file(GLOB SOURCE ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
 add_executable(ePipe ${SOURCE})
 
-target_link_libraries(ePipe ${Boost_LIBRARIES} ${CPPNETLIB_LIBRARIES} ndbclient pthread)
+target_link_libraries(ePipe ${Boost_LIBRARIES} ${CURL_LIBRARIES} ndbclient pthread)
