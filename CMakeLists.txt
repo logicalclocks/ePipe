@@ -9,8 +9,8 @@ configure_file(Version.h.in ${CMAKE_SOURCE_DIR}/include/Version.h)
 
 set(Boost_USE_STATIC_LIBS ON)
 
-find_package(Boost 1.54 REQUIRED COMPONENTS system date_time program_options thread)
-find_package(CURL 7.35.0)
+find_package(Boost 1.53 REQUIRED COMPONENTS system date_time program_options thread)
+find_package(CURL 7.29.0)
 find_package(RapidJSON 1.0.2)
 
 include_directories(${Boost_INCLUDE_DIRS})
