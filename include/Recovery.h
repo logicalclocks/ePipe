@@ -28,7 +28,7 @@ public:
     static void checkpointDataset(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int datasetId);
     static void checkpointMetadata(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int metadataId);
 private:
-    static void checkpoint(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Int8 colId, int value);
+    static void checkpoint(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int colId, int value);
 };
 
 #endif /* RECOVERY_H */

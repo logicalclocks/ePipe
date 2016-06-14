@@ -27,16 +27,16 @@
 
 using namespace Utils::NdbC;
 
-const Int8 ER_PROJECT_ID = 1;
-const Int8 ER_DATASET_ID = 2;
-const Int8 ER_METADATA_ID = 3;
+const int ER_PROJECT_ID = 1;
+const int ER_DATASET_ID = 2;
+const int ER_METADATA_ID = 3;
 
 const char* ER_TABLE = "epipe_recovery";
 const char* ER_TABLE_ID = "table";
 const char* ER_LAST_USED_ID = "last_used_id";
 
 const int ER_MODES_COUNT = 3;
-const Int8 MODES_ARR[ER_MODES_COUNT] = {ER_PROJECT_ID, ER_DATASET_ID, ER_METADATA_ID};
+const int MODES_ARR[ER_MODES_COUNT] = {ER_PROJECT_ID, ER_DATASET_ID, ER_METADATA_ID};
 
 
 RecoveryIndeces Recovery::getRecoveryIndeces(Ndb* connection) {
@@ -50,7 +50,7 @@ RecoveryIndeces Recovery::getRecoveryIndeces(Ndb* connection) {
     for(int i=0; i<ER_MODES_COUNT; i++){
         NdbOperation* op = getNdbOperation(transaction, recovery_table);
         op->readTuple(NdbOperation::LM_Read);
-        Int8 id = MODES_ARR[i];
+        int id = MODES_ARR[i];
         op->equal(ER_TABLE_ID, id);
         
         NdbRecAttr* id_col = getNdbOperationValue(op, ER_TABLE_ID);
@@ -94,14 +94,14 @@ void Recovery::checkpointMetadata(const NdbDictionary::Dictionary* database, Ndb
 }
 
 
-void Recovery::checkpoint(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Int8 colId, int value) {
+void Recovery::checkpoint(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int colId, int value) {
     ptime t1 = Utils::getCurrentTime();
     const NdbDictionary::Table* recovery_table = getTable(database, ER_TABLE);
     NdbOperation* op = getNdbOperation(transaction, recovery_table);
     op->updateTuple();
     op->equal(ER_TABLE_ID, colId);
     op->setValue(ER_LAST_USED_ID, value);
-    executeTransaction(transaction, NdbTransaction::NoCommit);
+    executeTransaction(transaction, NdbTransaction::Commit);
     ptime t2 = Utils::getCurrentTime();
     LOG_TRACE("Checkpoint: [" << colId << "] --> (" << value << ") in " << Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
 }
