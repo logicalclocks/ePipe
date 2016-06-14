@@ -46,9 +46,6 @@ void Notifier::start() {
     mFsMutationsDataReader->start();
     mMetadataReader->start();
     
-    mFsMutationsBatcher->start();
-    mMetadataBatcher->start();
-    
     mElasticSearch->start();
     
     if (mHopsworksEnabled) {
@@ -57,7 +54,10 @@ void Notifier::start() {
     }
     
     mFsMutationsTableTailer->start();
+    mFsMutationsBatcher->start();
+    
     mMetadataTableTailer->start(ri.mMetadataIndex);
+    mMetadataBatcher->start();
     
     ptime t2 = getCurrentTime();
     LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");

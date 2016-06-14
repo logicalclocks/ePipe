@@ -49,7 +49,28 @@ void TableTailer::start(int recoverFromId) {
 }
 
 void TableTailer::recover(int recoverFromId) {
+    const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
+    const NdbDictionary::Index* index = getIndex(database, mTable.mTableName, "PRIMARY");
+    
+    NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
+    NdbIndexScanOperation* scanOp = getNdbIndexScanOperation(transaction, index);
+    
+    scanOp->readTuples(NdbOperation::LM_CommittedRead);
+    scanOp->setBound("id", NdbIndexScanOperation::BoundLT, (char*) & recoverFromId);
+    
+    NdbRecAttr * row[mTable.mNoColumns];
+    
+    for (int i = 0; i < mTable.mNoColumns; i++) {
+        row[i] = scanOp->getValue(mTable.mColumnNames[i]);
+    }
 
+    executeTransaction(transaction, NdbTransaction::Commit);
+    
+    while (scanOp->nextResult(true) == 0) {
+        handleEvent(NdbDictionary::Event::TE_INSERT, NULL, row);
+    }
+    
+    transaction->close();
 }
 
 void TableTailer::recoverAll() {
