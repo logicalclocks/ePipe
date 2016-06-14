@@ -39,7 +39,7 @@ private:
     static const WatchTable TABLE;
     
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-
+    
     ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
 };

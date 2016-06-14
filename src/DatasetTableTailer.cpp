@@ -142,7 +142,7 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
 void DatasetTableTailer::updateProjectIds(const NdbDictionary::Dictionary* database,
         NdbTransaction* transaction, UISet dataset_ids, ProjectDatasetINodeCache* cache) {    
 
-    const NdbDictionary::Index * index= database->getIndex(_dataset_cols[0], TABLE.mTableName);
+    const NdbDictionary::Index * index= getIndex(database, TABLE.mTableName, _dataset_cols[0]);
     
     vector<NdbIndexScanOperation*> indexScanOps;
     UIRowMap rows;

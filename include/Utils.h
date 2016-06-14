@@ -50,12 +50,24 @@ namespace Utils {
             return table;
         }
 
+        inline static const NdbDictionary::Index* getIndex(const NdbDictionary::Dictionary* database, const char* table_name, const char* index_name) {
+            const NdbDictionary::Index* index = database->getIndex(index_name, table_name);
+            if (!index) LOG_NDB_API_ERROR(database->getNdbError());
+            return index;
+        }
+        
         inline static NdbOperation* getNdbOperation(NdbTransaction* transaction, const NdbDictionary::Table* table) {
             NdbOperation* op = transaction->getNdbOperation(table);
             if (!op) LOG_NDB_API_ERROR(transaction->getNdbError());
             return op;
         }
 
+        inline static NdbScanOperation* getNdbScanOperation(NdbTransaction* transaction, const NdbDictionary::Table* table) {
+            NdbScanOperation* op = transaction->getNdbScanOperation(table);
+            if (!op) LOG_NDB_API_ERROR(transaction->getNdbError());
+            return op;
+        }
+         
         inline static NdbRecAttr* getNdbOperationValue(NdbOperation* op, const char* column_name) {
             NdbRecAttr* col = op->getValue(column_name);
             if (!col) LOG_NDB_API_ERROR(op->getNdbError());

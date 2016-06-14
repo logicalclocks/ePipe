@@ -23,22 +23,57 @@
  */
 
 #include "TableTailer.h"
-#include "Utils.h"
 
 using namespace Utils;
+using namespace Utils::NdbC;
 
 TableTailer::TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait) :  mStarted(false), mNdbConnection(ndb),
         mEventName(concat("tail-", table.mTableName)), mTable(table), mPollMaxTimeToWait(poll_maxTimeToWait){
 }
 
-void TableTailer::start() {
+void TableTailer::start(int recoverFromId) {
     if (mStarted) {
         return;
     }
-
+    
+    LOG_INFO("start with recovery from Id " << recoverFromId);
+    if(recoverFromId == -1){
+        recoverAll();
+    }else{
+        recover(recoverFromId);
+    }
+    
     createListenerEvent();
     mThread = boost::thread(&TableTailer::run, this);
     mStarted = true;
+}
+
+void TableTailer::recover(int recoverFromId) {
+
+}
+
+void TableTailer::recoverAll() {
+    const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
+    const NdbDictionary::Table* table = getTable(database, mTable.mTableName);
+    
+    NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
+    NdbScanOperation* scanOp = getNdbScanOperation(transaction, table);
+    
+    scanOp->readTuples(NdbOperation::LM_CommittedRead);
+    
+    NdbRecAttr * row[mTable.mNoColumns];
+    
+    for (int i = 0; i < mTable.mNoColumns; i++) {
+        row[i] = scanOp->getValue(mTable.mColumnNames[i]);
+    }
+    
+    executeTransaction(transaction, NdbTransaction::Commit);
+    
+    while (scanOp->nextResult(true) == 0) {
+        handleEvent(NdbDictionary::Event::TE_INSERT, NULL, row);
+    }
+    
+    transaction->close();
 }
 
 void TableTailer::waitToFinish(){

@@ -26,6 +26,7 @@
 #define TABLETAILER_H
 
 #include "Utils.h"
+#include "Recovery.h"
 
 enum Operation{
     ADD = 0,
@@ -44,7 +45,7 @@ class TableTailer {
 public:
     TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait);
     
-    void start();
+    void start(int recoverFromId = -1);
     void waitToFinish();
     virtual ~TableTailer();
 
@@ -52,6 +53,8 @@ protected:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) = 0;
 
 private:
+    void recover(int recoverFromId);
+    void recoverAll();
     void createListenerEvent();
     void removeListenerEvent();
     void waitForEvents();

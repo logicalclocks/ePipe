@@ -38,22 +38,29 @@ Notifier::Notifier(const char* connection_string, const char* database_name, con
 }
 
 void Notifier::start() {
+    LOG_INFO("ePipe starting...");
+    ptime t1 = getCurrentTime();
+    Ndb* recovery = create_ndb_connection(mMetaDatabaseName);
+    RecoveryIndeces ri = Recovery::getRecoveryIndeces(recovery);
+    
     mFsMutationsDataReader->start();
     mMetadataReader->start();
     
-    mFsMutationsTableTailer->start();
-    mMetadataTableTailer->start();
-    
     mFsMutationsBatcher->start();
     mMetadataBatcher->start();
-
-    if (mHopsworksEnabled) {
-        mProjectTableTailer->start();
-        mDatasetTableTailer->start();
-    }
     
     mElasticSearch->start();
     
+    if (mHopsworksEnabled) {
+        mProjectTableTailer->start(ri.mProjectIndex);
+        mDatasetTableTailer->start(ri.mDatasetIndex);
+    }
+    
+    mFsMutationsTableTailer->start();
+    mMetadataTableTailer->start(ri.mMetadataIndex);
+    
+    ptime t2 = getCurrentTime();
+    LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");
     mFsMutationsBatcher->waitToFinish();
     mMetadataBatcher->waitToFinish();
     mElasticSearch->waitToFinish();
