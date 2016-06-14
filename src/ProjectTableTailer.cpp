@@ -113,6 +113,11 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     if(mElasticSearch->addProject(id, data)){
         LOG_INFO("Add Project[" << id << "]: Succeeded");
     }
+    
+    const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
+    NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
+    Recovery::checkpointProject(database, transaction, id);
+    transaction->close();
 }
 
 ProjectTableTailer::~ProjectTableTailer() {

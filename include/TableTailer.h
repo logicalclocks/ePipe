@@ -51,7 +51,8 @@ public:
 
 protected:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) = 0;
-
+    Ndb* mNdbConnection;
+    
 private:
     void recover(int recoverFromId);
     void recoverAll();
@@ -65,7 +66,6 @@ private:
     bool mStarted;
     boost::thread mThread;
     
-    Ndb* mNdbConnection;
     const char* mEventName;
     const WatchTable mTable;
     const int mPollMaxTimeToWait;

@@ -112,6 +112,9 @@ string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, 
         }
     }
     
+    int last_used_id = data_batch->at(data_batch->size() - 1).mId;
+    Recovery::checkpointMetadata(metaDatabase, metaTransaction, last_used_id);
+    
     ptime t2 = getCurrentTime();
     
     string data = createJSON(tuples, data_batch);

@@ -137,6 +137,11 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     if(mElasticSearch->addDataset(projectId, id, data)){
         LOG_INFO("Add Dataset[" << id << "]: Succeeded");
     }
+    
+    const NdbDictionary::Dictionary*  database = getDatabase(mNdbConnection);
+    NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
+    Recovery::checkpointDataset(database, transaction, id);
+    transaction->close();
 }
 
 void DatasetTableTailer::updateProjectIds(const NdbDictionary::Dictionary* database,

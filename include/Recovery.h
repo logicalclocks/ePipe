@@ -24,9 +24,11 @@ struct RecoveryIndeces{
 class Recovery {
 public:
     static RecoveryIndeces getRecoveryIndeces(Ndb* connection);
-    
+    static void checkpointProject(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int projectId);
+    static void checkpointDataset(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int datasetId);
+    static void checkpointMetadata(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int metadataId);
 private:
-
+    static void checkpoint(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Int8 colId, int value);
 };
 
 #endif /* RECOVERY_H */

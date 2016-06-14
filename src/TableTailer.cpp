@@ -27,7 +27,7 @@
 using namespace Utils;
 using namespace Utils::NdbC;
 
-TableTailer::TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait) :  mStarted(false), mNdbConnection(ndb),
+TableTailer::TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait) : mNdbConnection(ndb), mStarted(false),
         mEventName(concat("tail-", table.mTableName)), mTable(table), mPollMaxTimeToWait(poll_maxTimeToWait){
 }
 
