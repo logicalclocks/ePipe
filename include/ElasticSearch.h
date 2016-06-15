@@ -79,6 +79,8 @@ private:
     bool elasticSearchHttpRequest(HttpOp op, string elasticUrl, string json);
     bool elasticSearchHttpRequestInternal(HttpOp op, string elasticUrl, string json);
     bool parseResponse(string response);
+    CURLcode perform(HttpOp op, string elasticUrl, string json, string &response);
+    CURL* getCurlHandle();
 };
 
 #endif /* ELASTICSEARCH_H */

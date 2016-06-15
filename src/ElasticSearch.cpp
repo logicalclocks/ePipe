@@ -50,7 +50,7 @@ ElasticSearch::ElasticSearch(string elastic_addr, string index, string proj_type
     mElasticBulkAddr = mElasticAddr + "/" + mIndex + "/" + mInodeType + "/_bulk";
     
     curl_global_init(CURL_GLOBAL_ALL); 
-    mHttpHandle = curl_easy_init();
+    mHttpHandle = NULL;
 }
 
 void ElasticSearch::addBulk(string json) {
@@ -189,52 +189,78 @@ bool ElasticSearch::elasticSearchHttpRequest(HttpOp op, string elasticUrl, strin
 }
 
 bool ElasticSearch::elasticSearchHttpRequestInternal(HttpOp op, string elasticUrl, string json) {
-    //TODO: support retry if server is down
-    if (!mHttpHandle) {
-        mHttpHandle = curl_easy_init();
-    }
 
-    string opString;
+    bool retry = false;
+    const int MAX_RETRY_COUNT = 3;
+    int retryCount = MAX_RETRY_COUNT;
+    CURLcode res;
     string response;
-
-    if (Logger::isTrace()) {
-        curl_easy_setopt(mHttpHandle, CURLOPT_VERBOSE, 1L);
-    }
-
-    curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPALIVE, 1L);
-    curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPIDLE, 120L);
-    curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPINTVL, 60L);
-  
-    curl_easy_setopt(mHttpHandle, CURLOPT_URL, elasticUrl.c_str());
-    curl_easy_setopt(mHttpHandle, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(mHttpHandle, CURLOPT_WRITEDATA, &response);
     
-    switch (op) {
-        case HTTP_POST:
-            curl_easy_setopt(mHttpHandle, CURLOPT_POST, 1);
-            opString = "POST";
-            break;
-        case HTTP_DELETE:
-            curl_easy_setopt(mHttpHandle, CURLOPT_CUSTOMREQUEST, "DELETE");
-            opString = "DELETE";
-            break;
-    }
+    do {
+        response.clear();
+        res = perform(op, elasticUrl, json, response);
 
-    if (!json.empty()) {
-        curl_easy_setopt(mHttpHandle, CURLOPT_POSTFIELDS, json.c_str());
-        curl_easy_setopt(mHttpHandle, CURLOPT_POSTFIELDSIZE, json.length());
-    }
-
-    CURLcode res = curl_easy_perform(mHttpHandle);
+        if (res == CURLE_FAILED_INIT) {
+            curl_easy_cleanup(mHttpHandle);
+            mHttpHandle = NULL;
+            if(!retry){
+                retry = true;
+                retryCount = 1;
+            }else{
+                retryCount++;
+            }
+            LOG_WARN("CURL Failed: " << curl_easy_strerror(res) << " retry " << retryCount << "/" << MAX_RETRY_COUNT);
+        }
+    } while (retry && retryCount < MAX_RETRY_COUNT);
+    
     if (res != CURLE_OK) {
         LOG_ERROR("CURL Failed: " << curl_easy_strerror(res));
         return false;
     }
 
-    LOG_TRACE(opString << " " << elasticUrl << endl
+    LOG_TRACE(getStr(op) << " " << elasticUrl << endl
             << json << endl << "Response::" << endl << response);
     
     return parseResponse(response);
+}
+
+CURLcode ElasticSearch::perform(HttpOp op, string elasticUrl, string json, string &response) {
+    CURL* curl = getCurlHandle();
+    curl_easy_setopt(curl, CURLOPT_URL, elasticUrl.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    
+    switch (op) {
+        case HTTP_POST:
+            curl_easy_setopt(curl, CURLOPT_POST, 1);
+            break;
+        case HTTP_DELETE:
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+            break;
+    }
+
+    if (!json.empty()) {
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json.length());
+    }
+    
+    return curl_easy_perform(curl);
+}
+
+CURL* ElasticSearch::getCurlHandle() {
+    if (!mHttpHandle) {
+        mHttpHandle = curl_easy_init();
+
+        if (Logger::isTrace()) {
+            curl_easy_setopt(mHttpHandle, CURLOPT_VERBOSE, 1L);
+        }
+
+        curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPALIVE, 1L);
+        curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPIDLE, 120L);
+        curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPINTVL, 60L);
+    }
+    
+    return mHttpHandle;
 }
 
 bool ElasticSearch::parseResponse(string response) {

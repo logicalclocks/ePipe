@@ -74,7 +74,6 @@ void Batcher::timerThread() {
 }
 
 void Batcher::timerExpired() {
-    LOG_TRACE("time expired before reaching the batch size");
     mTimerProcessing=true;
     processBatch();
     mTimerProcessing=false;
