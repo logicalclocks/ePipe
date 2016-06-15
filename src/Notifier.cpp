@@ -58,11 +58,11 @@ void Notifier::start() {
         mDatasetTableTailer->start(ri.mDatasetIndex);
     }
     
-    mFsMutationsTableTailer->start();
     mFsMutationsBatcher->start();
+    mFsMutationsTableTailer->start();
     
-    mMetadataTableTailer->start(ri.mMetadataIndex);
     mMetadataBatcher->start();
+    mMetadataTableTailer->start(ri.mMetadataIndex);
     
     ptime t2 = getCurrentTime();
     LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");

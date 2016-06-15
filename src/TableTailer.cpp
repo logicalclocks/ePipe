@@ -37,9 +37,7 @@ void TableTailer::start(int recoverFromId) {
     }
     
     LOG_INFO("start with recovery from Id " << recoverFromId);
-    if(recoverFromId == -1){
-        recoverAll();
-    }else{
+    if(recoverFromId >= 0){
         recover(recoverFromId);
     }
     
@@ -55,7 +53,7 @@ void TableTailer::recover(int recoverFromId) {
     NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
     NdbIndexScanOperation* scanOp = getNdbIndexScanOperation(transaction, index);
     
-    scanOp->readTuples(NdbOperation::LM_CommittedRead);
+    scanOp->readTuples(NdbOperation::LM_CommittedRead, NdbScanOperation::SF_OrderBy);
     scanOp->setBound(mTable.mRecoveryColumn, NdbIndexScanOperation::BoundLT, (char*) & recoverFromId);
     
     NdbRecAttr * row[mTable.mNoColumns];
@@ -64,30 +62,6 @@ void TableTailer::recover(int recoverFromId) {
         row[i] = scanOp->getValue(mTable.mColumnNames[i]);
     }
 
-    executeTransaction(transaction, NdbTransaction::Commit);
-    
-    while (scanOp->nextResult(true) == 0) {
-        handleEvent(NdbDictionary::Event::TE_INSERT, NULL, row);
-    }
-    
-    transaction->close();
-}
-
-void TableTailer::recoverAll() {
-    const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
-    const NdbDictionary::Table* table = getTable(database, mTable.mTableName);
-    
-    NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
-    NdbScanOperation* scanOp = getNdbScanOperation(transaction, table);
-    
-    scanOp->readTuples(NdbOperation::LM_CommittedRead);
-    
-    NdbRecAttr * row[mTable.mNoColumns];
-    
-    for (int i = 0; i < mTable.mNoColumns; i++) {
-        row[i] = scanOp->getValue(mTable.mColumnNames[i]);
-    }
-    
     executeTransaction(transaction, NdbTransaction::Commit);
     
     while (scanOp->nextResult(true) == 0) {

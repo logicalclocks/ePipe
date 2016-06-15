@@ -47,7 +47,7 @@ class TableTailer {
 public:
     TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait);
     
-    void start(int recoverFromId = -1);
+    void start(int recoverFromId = 0);
     void waitToFinish();
     virtual ~TableTailer();
 
