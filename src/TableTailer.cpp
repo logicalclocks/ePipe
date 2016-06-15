@@ -50,13 +50,13 @@ void TableTailer::start(int recoverFromId) {
 
 void TableTailer::recover(int recoverFromId) {
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
-    const NdbDictionary::Index* index = getIndex(database, mTable.mTableName, "PRIMARY");
+    const NdbDictionary::Index* index = getIndex(database, mTable.mTableName, mTable.mRecoveryIndex);
     
     NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
     NdbIndexScanOperation* scanOp = getNdbIndexScanOperation(transaction, index);
     
     scanOp->readTuples(NdbOperation::LM_CommittedRead);
-    scanOp->setBound("id", NdbIndexScanOperation::BoundLT, (char*) & recoverFromId);
+    scanOp->setBound(mTable.mRecoveryColumn, NdbIndexScanOperation::BoundLT, (char*) & recoverFromId);
     
     NdbRecAttr * row[mTable.mNoColumns];
     

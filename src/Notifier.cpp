@@ -48,6 +48,11 @@ void Notifier::start() {
     
     mElasticSearch->start();
     
+    //TODO: ePipe cannot capture project/dataset/metadata deletion events
+    //      when it is down.
+    //      new projects/datasets/metadata/files that 
+    //      were created while ePipe was starting are not captured as well. 
+    //      
     if (mHopsworksEnabled) {
         mProjectTableTailer->start(ri.mProjectIndex);
         mDatasetTableTailer->start(ri.mDatasetIndex);

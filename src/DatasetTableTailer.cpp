@@ -46,7 +46,7 @@ const NdbDictionary::Event::TableEvent _dataset_events[_dataset_noEvents] =
       NdbDictionary::Event::TE_DELETE
     };
 
-const WatchTable DatasetTableTailer::TABLE = {_dataset_table, _dataset_cols, _dataset_noCols , _dataset_events, _dataset_noEvents};
+const WatchTable DatasetTableTailer::TABLE = {_dataset_table, _dataset_cols, _dataset_noCols , _dataset_events, _dataset_noEvents, "inode_id", "inode_id"};
 
 
 DatasetTableTailer::DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, 

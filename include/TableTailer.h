@@ -39,6 +39,8 @@ struct WatchTable{
     const int mNoColumns;
     const NdbDictionary::Event::TableEvent* mWatchEvents;
     const int mNoEvents;
+    const char* mRecoveryIndex;
+    const char* mRecoveryColumn;
 };
 
 class TableTailer {

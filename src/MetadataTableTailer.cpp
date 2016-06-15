@@ -42,7 +42,7 @@ const NdbDictionary::Event::TableEvent _metadata_events[_metadata_noEvents] =
       NdbDictionary::Event::TE_DELETE
     };
 
-const WatchTable MetadataTableTailer::TABLE = {_metadata_table, _metadata_cols, _metadata_noCols , _metadata_events, _metadata_noEvents};
+const WatchTable MetadataTableTailer::TABLE = {_metadata_table, _metadata_cols, _metadata_noCols , _metadata_events, _metadata_noEvents, "PRIMARY", _metadata_cols[0]};
 
 MetadataTableTailer::MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait)
     : RCTableTailer<MetadataEntry> (ndb, TABLE, poll_maxTimeToWait) {

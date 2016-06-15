@@ -43,7 +43,7 @@ const NdbDictionary::Event::TableEvent _project_events[_project_noEvents] =
       NdbDictionary::Event::TE_DELETE
     };
 
-const WatchTable ProjectTableTailer::TABLE = {_project_table, _project_cols, _project_noCols , _project_events, _project_noEvents};
+const WatchTable ProjectTableTailer::TABLE = {_project_table, _project_cols, _project_noCols , _project_events, _project_noEvents, "PRIMARY", _project_cols[0]};
 
 ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, 
         ElasticSearch* elastic, ProjectDatasetINodeCache* cache) 
