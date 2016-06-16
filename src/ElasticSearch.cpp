@@ -189,29 +189,9 @@ bool ElasticSearch::elasticSearchHttpRequest(HttpOp op, string elasticUrl, strin
 }
 
 bool ElasticSearch::elasticSearchHttpRequestInternal(HttpOp op, string elasticUrl, string json) {
-
-    bool retry = false;
-    const int MAX_RETRY_COUNT = 3;
-    int retryCount = MAX_RETRY_COUNT;
-    CURLcode res;
+    //TODO: handle different failure scenarios
     string response;
-    
-    do {
-        response.clear();
-        res = perform(op, elasticUrl, json, response);
-
-        if (res == CURLE_FAILED_INIT) {
-            curl_easy_cleanup(mHttpHandle);
-            mHttpHandle = NULL;
-            if(!retry){
-                retry = true;
-                retryCount = 1;
-            }else{
-                retryCount++;
-            }
-            LOG_WARN("CURL Failed: " << curl_easy_strerror(res) << " retry " << retryCount << "/" << MAX_RETRY_COUNT);
-        }
-    } while (retry && retryCount < MAX_RETRY_COUNT);
+    CURLcode res = perform(op, elasticUrl, json, response);
     
     if (res != CURLE_OK) {
         LOG_ERROR("CURL Failed: " << curl_easy_strerror(res));
