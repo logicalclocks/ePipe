@@ -54,9 +54,6 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     int id = value[0]->int32_value();
         
     if(eventType == NdbDictionary::Event::TE_DELETE){
-        if(mElasticSearch->deleteProject(id)){
-            LOG_INFO("Delete Project[" << id << "]: Succeeded");
-        }
         
         rapidjson::StringBuffer sbDoc;
         rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -78,6 +75,10 @@ void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
         //TODO: handle failures in elastic search
         if(mElasticSearch->deleteProjectChildren(id, string(sbDoc.GetString()))){
             LOG_INFO("Delete Project[" << id << "] children inodes and datasets : Succeeded");
+        }
+
+        if (mElasticSearch->deleteProject(id)) {
+            LOG_INFO("Delete Project[" << id << "]: Succeeded");
         }
 
         mPDICache->removeProject(id);

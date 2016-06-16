@@ -65,11 +65,7 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
     }
     
     if(eventType == NdbDictionary::Event::TE_DELETE){
-        if(mElasticSearch->deleteDataset(projectId, id)){
-            LOG_INFO("Delete Dataset[" << id << "]: Succeeded");
-        }
         
-
         rapidjson::StringBuffer sbDoc;
         rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
         docWriter.StartObject();
@@ -90,6 +86,10 @@ void DatasetTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
         //TODO: handle failures in elastic search
         if(mElasticSearch->deleteDatasetChildren(projectId, id, string(sbDoc.GetString()))){
             LOG_INFO("Delete Dataset[" << id << "] children inodes: Succeeded");
+        }
+        
+        if(mElasticSearch->deleteDataset(projectId, id)){
+            LOG_INFO("Delete Dataset[" << id << "]: Succeeded");
         }
 
         mPDICache->removeDataset(id);
