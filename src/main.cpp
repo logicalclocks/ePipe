@@ -48,6 +48,7 @@ int main(int argc, char** argv) {
     int elastic_issue_time = 5000;
     
     int lru_cap = DEFAULT_MAX_CAPACITY;
+    bool recovery = true;
     
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -69,6 +70,7 @@ int main(int argc, char** argv) {
             ("ewait_time", po::value<int>()->default_value(elastic_issue_time), "time to wait in miliseconds before issuing a bulk request to Elasticsearch if the batch size wasn't reached")
             ("lru_cap", po::value<int>()->default_value(lru_cap), "LRU Cache max capacity")
             ("log_level", po::value<int>()->default_value(log_level), "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
+            ("recovery", po::value<bool>()->default_value(recovery), "enable or disable startup recovery")
             ("version", "ePipe version")
             ;
 
@@ -156,6 +158,10 @@ int main(int argc, char** argv) {
         lru_cap = vm["lru_cap"].as<int>();
     }
     
+    if(vm.count("recovery")){
+        recovery = vm["recovery"].as<bool>();
+    }
+    
     Logger::setLoggerLevel(log_level);
             
     if(connection_string.empty() || database_name.empty() || meta_database_name.empty()){
@@ -165,7 +171,7 @@ int main(int argc, char** argv) {
         
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), meta_database_name.c_str(),
             wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers, elastic_addr, hopsworks, elastic_index,
-            elastic_project_type, elastic_dataset_type, elastic_inode_type, elastic_batch_size, elastic_issue_time, lru_cap);
+            elastic_project_type, elastic_dataset_type, elastic_inode_type, elastic_batch_size, elastic_issue_time, lru_cap, recovery);
     notifer->start();
 
     return EXIT_SUCCESS;

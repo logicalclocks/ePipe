@@ -38,7 +38,7 @@ public:
             const int poll_maxTimeToWait, const int num_ndb_readers, const string elastic_addr,
             const bool hopsworks, const string elastic_index, const string elasttic_project_type, 
             const string elastic_dataset_type, const string elastic_inode_type, const int elastic_batch_size,
-            const int elastic_issue_time, const int lru_cap);
+            const int elastic_issue_time, const int lru_cap, const bool recovery);
     void start();
     virtual ~Notifier();
     
@@ -61,6 +61,7 @@ private:
     const int mElasticBatchsize;
     const int mElasticIssueTime;
     const int mLRUCap;
+    const bool mRecovery;
     
     ElasticSearch* mElasticSearch;
     

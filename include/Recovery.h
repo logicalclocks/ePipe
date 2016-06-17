@@ -19,6 +19,14 @@ struct RecoveryIndeces{
     int mProjectIndex;
     int mDatasetIndex;
     int mMetadataIndex;
+    int mMutationsIndex;
+    
+    RecoveryIndeces(){
+        mProjectIndex = -1;
+        mDatasetIndex = -1;
+        mMetadataIndex= -1;
+        mMutationsIndex = -1;
+    }
 };
 
 class Recovery {

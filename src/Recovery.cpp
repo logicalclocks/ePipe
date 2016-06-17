@@ -76,6 +76,7 @@ RecoveryIndeces Recovery::getRecoveryIndeces(Ndb* connection) {
             ri.mMetadataIndex = last_used_id;
         }
     }
+    ri.mMutationsIndex = 0;
     transaction->close();
     
     return ri;
