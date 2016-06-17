@@ -38,11 +38,8 @@ public:
 private:    
     Cache<int, string> mUsersCache;
     Cache<int, string> mGroupsCache;
-    
-    virtual ptime getEventCreationTime(FsMutationRow row);
-    
-    virtual BatchStats readData(MConn connection, Fmq* data_batch);
-    string processAddedandDeleted(MConn connection, Fmq* data_batch, BatchStats& rt);
+        
+    virtual void processAddedandDeleted(MConn connection, Fmq* data_batch, Bulk& bulk);
     void updateProjectIds(Ndb* metaConnection, Fmq* data_batch);
     
     void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch, Rows& inodes);
@@ -50,7 +47,7 @@ private:
     UIRowMap getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
     UIRowMap getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
     
-    string createJSON(Fmq* pending, Rows& inodes);
+    void createJSON(Fmq* pending, Rows& inodes, Bulk& bulk);
 };
 
 #endif /* FSMUTATIONSDATAREADER_H */

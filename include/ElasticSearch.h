@@ -1,8 +1,21 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (C) 2016 Hops.io
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+
 
 /* 
  * File:   ElasticSearch.h
@@ -17,10 +30,32 @@
 #include "ConcurrentQueue.h"
 #include <curl/curl.h>
 #include "rapidjson/document.h"
+#include "Utils.h"
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/min.hpp>
+#include <boost/accumulators/statistics/max.hpp>
+
+namespace bc = boost::accumulators;
+
+typedef bc::accumulator_set<double, bc::stats<bc::tag::mean, bc::tag::min, bc::tag::max> >  Accumulator;
 
 enum HttpOp {
     HTTP_POST,
     HTTP_DELETE
+};
+
+struct Bulk{
+    string mJSON;
+    vector<ptime> mArrivalTimes;
+    ptime mStartProcessing;
+    ptime mEndProcessing;
+};
+
+struct ESResponse{
+    string mResponse;
+    CURLcode mCode;
 };
 
 class ElasticSearch : public Batcher{
@@ -28,7 +63,7 @@ public:
     ElasticSearch(string elastic_addr, string index, string proj_type, string ds_type,
             string inode_type, int time_to_wait_before_inserting, int bulk_size);
     
-    void addBulk(string json);
+    void addBulk(Bulk data);
     
     bool addProject(int projectId, string json);
     bool deleteProject(int projectId);
@@ -53,17 +88,11 @@ private:
     string mElasticAddr;
     string mElasticBulkAddr;
     
-    ConcurrentQueue<string> mQueue;
+    ConcurrentQueue<Bulk> mQueue;
     
-    mutable boost::mutex mLock;
-    stringstream mToProcess;
+    vector<Bulk> mToProcess;
     int mToProcessLength;
-    
-    CURL* mHttpHandle;
-    
-    void addToProcess(string str);
-    string resetToProcess();
-    
+          
     virtual void run();
     virtual void processBatch();
     
@@ -79,8 +108,7 @@ private:
     bool elasticSearchHttpRequest(HttpOp op, string elasticUrl, string json);
     bool elasticSearchHttpRequestInternal(HttpOp op, string elasticUrl, string json);
     bool parseResponse(string response);
-    CURLcode perform(HttpOp op, string elasticUrl, string json, string &response);
-    CURL* getCurlHandle();
+    ESResponse perform(HttpOp op, string elasticUrl, string json);
 };
 
 #endif /* ELASTICSEARCH_H */

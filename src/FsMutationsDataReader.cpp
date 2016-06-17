@@ -48,30 +48,8 @@ FsMutationsDataReader::FsMutationsDataReader(MConn* connections, const int num_r
 
 }
 
-ptime FsMutationsDataReader::getEventCreationTime(FsMutationRow row) {
-    return row.mEventCreationTime;
-}
-
-BatchStats FsMutationsDataReader::readData(MConn connection, Fmq* data_batch) {
-    BatchStats rt;
+void FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch, Bulk& bulk) {
     
-    string json;
-    if (!data_batch->empty()) {
-        json = processAddedandDeleted(connection, data_batch, rt);
-    }
-
-    if (!json.empty()) {
-        ptime t1 = getCurrentTime();
-        mElasticSearch->addBulk(json);
-        ptime t2 = getCurrentTime();
-        rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
-    }
-    return rt;
-}
-
-string FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch, BatchStats& rt) {
-    ptime t1 = getCurrentTime();
-
     Ndb* inodeConnection = conn.inodeConnection;
     const NdbDictionary::Dictionary* database = getDatabase(inodeConnection);
 
@@ -91,18 +69,9 @@ string FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch
         updateProjectIds(conn.metadataConnection, data_batch);
     }
     
-    ptime t2 = getCurrentTime();
+    createJSON(data_batch, inodes, bulk);
 
-    string data = createJSON(data_batch, inodes);
-
-    ptime t3 = getCurrentTime();
-    
     inodeConnection->closeTransaction(ts);
-    
-    rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);
-    rt.mJSONCreationTime = getTimeDiffInMilliseconds(t2, t3);
-    
-    return data;
 }
 
 void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database, 
@@ -220,12 +189,14 @@ void FsMutationsDataReader::updateProjectIds(Ndb* metaConnection, Fmq* data_batc
     }
 }
 
-string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
+void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
     
+    vector<ptime> arrivalTimes(pending->size());
     stringstream out;
     int i=0;
     for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it, i++) {
         FsMutationRow row = *it;
+        arrivalTimes[i] = row.mEventCreationTime;
         
         if(row.mOperation == DELETE){
             //Handle the delete
@@ -348,8 +319,9 @@ string FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes) {
         out << sbDoc.GetString() << endl;
                 
     }
-
-    return out.str();
+    
+    bulk.mArrivalTimes = arrivalTimes;
+    bulk.mJSON = out.str();
 }
 
 FsMutationsDataReader::~FsMutationsDataReader() {

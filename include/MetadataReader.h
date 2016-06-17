@@ -54,12 +54,8 @@ public:
     MetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
             ElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap);
     virtual ~MetadataReader();
-private:
-    virtual ptime getEventCreationTime(MetadataEntry entry);
-
-    virtual BatchStats readData(MConn connection, Mq* data_batch);
-    
-    string processAddedandDeleted(MConn connection, Mq* data_batch, BatchStats& rt);
+private:    
+    virtual void processAddedandDeleted(MConn connection, Mq* data_batch, Bulk& bulk);
     
     UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, Mq* added);
@@ -72,7 +68,7 @@ private:
     void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
         NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read);
     
-    string createJSON(UIRowMap tuples, Mq* data_batch);
+    void createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk);
     
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;

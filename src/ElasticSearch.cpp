@@ -23,7 +23,8 @@
  */
 
 #include "ElasticSearch.h"
-#include "Utils.h"
+
+using namespace Utils;
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -41,6 +42,13 @@ static const char* getStr(HttpOp op) {
     return "UNKOWN";
 }
 
+
+static string getAccString(Accumulator acc){
+    stringstream out;
+    out << "[" << bc::min(acc) << "," << bc::mean(acc) << "," << bc::max(acc) << "]";
+    return out.str();
+}
+
 ElasticSearch::ElasticSearch(string elastic_addr, string index, string proj_type,
         string ds_type, string inode_type, int time_to_wait_before_inserting, 
         int bulk_size) : Batcher(time_to_wait_before_inserting, bulk_size),
@@ -50,20 +58,21 @@ ElasticSearch::ElasticSearch(string elastic_addr, string index, string proj_type
     mElasticBulkAddr = mElasticAddr + "/" + mIndex + "/" + mInodeType + "/_bulk";
     
     curl_global_init(CURL_GLOBAL_ALL); 
-    mHttpHandle = NULL;
 }
 
-void ElasticSearch::addBulk(string json) {
-    LOG_TRACE("Add Bulk JSON:" << endl << json << endl); 
-    mQueue.push(json);
+void ElasticSearch::addBulk(Bulk data) {
+    LOG_TRACE("Add Bulk JSON:" << endl << data.mJSON << endl); 
+    mQueue.push(data);
 }
 
 void ElasticSearch::run() {
     while(true){
-        string msg;
+        Bulk msg;
         mQueue.wait_and_pop(msg);
         
-        addToProcess(msg);
+        mToProcess.push_back(msg);
+        mToProcessLength += msg.mJSON.length();
+    
         if (mToProcessLength >= mBatchSize && !mTimerProcessing) {
             processBatch();
         }
@@ -73,25 +82,20 @@ void ElasticSearch::run() {
 void ElasticSearch::processBatch() {
     if(mToProcessLength > 0){
        LOG_TRACE("Process Bulk JSONs [" << mToProcessLength << "]");
-       string batch = resetToProcess();
+       string batch;
+       for(vector<Bulk>::iterator it = mToProcess.begin(); it != mToProcess.end(); ++it){
+           Bulk bulk = *it;
+           batch.append(bulk.mJSON);
+       }
+       
        //TODO: handle failures
        elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch);
+              
+       //TODO: print different stats
+
+       mToProcessLength = 0;
+       mToProcess.clear();
     }
-}
-
-void ElasticSearch::addToProcess(string str) {
-    boost::mutex::scoped_lock lock(mLock);
-    mToProcess << str;
-    mToProcessLength += str.length();
-}
-
-string ElasticSearch::resetToProcess() {
-   boost::mutex::scoped_lock lock(mLock);
-   string res = mToProcess.str();
-   mToProcess.clear();
-   mToProcess.str(string());
-   mToProcessLength = 0;
-   return res;
 }
 
 const char* ElasticSearch::getIndex() {
@@ -190,25 +194,31 @@ bool ElasticSearch::elasticSearchHttpRequest(HttpOp op, string elasticUrl, strin
 
 bool ElasticSearch::elasticSearchHttpRequestInternal(HttpOp op, string elasticUrl, string json) {
     //TODO: handle different failure scenarios
-    string response;
-    CURLcode res = perform(op, elasticUrl, json, response);
+    ESResponse res = perform(op, elasticUrl, json);
     
-    if (res != CURLE_OK) {
-        LOG_ERROR("CURL Failed: " << curl_easy_strerror(res));
+    if (res.mCode != CURLE_OK) {
+        LOG_ERROR("CURL Failed: " << curl_easy_strerror(res.mCode));
         return false;
     }
 
     LOG_TRACE(getStr(op) << " " << elasticUrl << endl
-            << json << endl << "Response::" << endl << response);
+            << json << endl << "Response::" << endl << res.mResponse);
     
-    return parseResponse(response);
+    return parseResponse(res.mResponse);
 }
 
-CURLcode ElasticSearch::perform(HttpOp op, string elasticUrl, string json, string &response) {
-    CURL* curl = getCurlHandle();
+ESResponse ElasticSearch::perform(HttpOp op, string elasticUrl, string json) {
+    ESResponse response;
+    
+    CURL* curl = curl_easy_init();
+
+    if (Logger::isTrace()) {
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    }
+     
     curl_easy_setopt(curl, CURLOPT_URL, elasticUrl.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response.mResponse);
     
     switch (op) {
         case HTTP_POST:
@@ -224,23 +234,11 @@ CURLcode ElasticSearch::perform(HttpOp op, string elasticUrl, string json, strin
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json.length());
     }
     
-    return curl_easy_perform(curl);
-}
-
-CURL* ElasticSearch::getCurlHandle() {
-    if (!mHttpHandle) {
-        mHttpHandle = curl_easy_init();
-
-        if (Logger::isTrace()) {
-            curl_easy_setopt(mHttpHandle, CURLOPT_VERBOSE, 1L);
-        }
-
-        curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPALIVE, 1L);
-        curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPIDLE, 120L);
-        curl_easy_setopt(mHttpHandle, CURLOPT_TCP_KEEPINTVL, 60L);
-    }
+    response.mCode = curl_easy_perform(curl);
     
-    return mHttpHandle;
+    curl_easy_cleanup(curl);
+    
+    return response;
 }
 
 bool ElasticSearch::parseResponse(string response) {
@@ -285,7 +283,7 @@ bool ElasticSearch::parseResponse(string response) {
                 return false;
             }
         } else {
-            LOG_ERROR(" ES got json error (" << d.GetParseError() << ") while parsing " << response);
+            LOG_ERROR(" ES got json error (" << d.GetParseError() << ") while parsing (" << response << ")");
             return false;
         }
 

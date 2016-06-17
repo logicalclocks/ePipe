@@ -70,32 +70,9 @@ MetadataReader::MetadataReader(MConn* connections, const int num_readers, const 
 
 }
 
-ptime MetadataReader::getEventCreationTime(MetadataEntry entry) {
-    return entry.mEventCreationTime;
-}
 
-BatchStats MetadataReader::readData(MConn connection, Mq* data_batch) {
-
-    BatchStats rt;
-    string json;
-    if (!data_batch->empty()) {
-        json = processAddedandDeleted(connection, data_batch, rt);
-    }
-
-    if (!json.empty()) {
-        ptime t1 = getCurrentTime();
-        mElasticSearch->addBulk(json);
-        ptime t2 = getCurrentTime();
-        rt.mElasticSearchTime = getTimeDiffInMilliseconds(t1, t2);
-    }
-
-    return rt;
-}
-
-string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, BatchStats& rt) {
-    
-    ptime t1 = getCurrentTime();
-    
+void MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, Bulk& bulk) {
+        
     Ndb* metaConn = connection.metadataConnection;
     
     const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConn);
@@ -114,19 +91,10 @@ string MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, 
     
     int last_used_id = data_batch->at(data_batch->size() - 1).mId;
     Recovery::checkpointMetadata(metaDatabase, metaTransaction, last_used_id);
-    
-    ptime t2 = getCurrentTime();
-    
-    string data = createJSON(tuples, data_batch);
-    
-    ptime t3 = getCurrentTime();
         
+    createJSON(tuples, data_batch, bulk);
+            
     metaConn->closeTransaction(metaTransaction);
-    
-    rt.mNdbReadTime = getTimeDiffInMilliseconds(t1, t2);
-    rt.mJSONCreationTime = getTimeDiffInMilliseconds(t2, t3);
-    
-    return data;
 }
 
 UIRowMap MetadataReader::readMetadataColumns(const NdbDictionary::Dictionary* database,
@@ -326,11 +294,15 @@ void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* i
     }
 }
 
-string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
-    stringstream out;
-    for(Mq::iterator it=data_batch->begin(); it != data_batch->end(); ++it){
-        MetadataEntry entry = *it;
+void MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk) {
 
+    vector<ptime> arrivalTimes(data_batch->size());
+    stringstream out;
+    int i=0;
+    for(Mq::iterator it=data_batch->begin(); it != data_batch->end(); ++it, i++){
+        MetadataEntry entry = *it;
+        arrivalTimes[i] = entry.mEventCreationTime;
+        
         boost::optional<Field> _fres = mFieldsCache.get(entry.mFieldId);
         
         if(!_fres){
@@ -461,7 +433,8 @@ string MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch) {
         out << sbDoc.GetString() << endl;
     }
     
-    return out.str();
+    bulk.mArrivalTimes = arrivalTimes;
+    bulk.mJSON = out.str();
 }
 
 MetadataReader::~MetadataReader() {

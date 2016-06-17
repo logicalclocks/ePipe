@@ -32,16 +32,6 @@
 #include "ProjectDatasetINodeCache.h"
 #include "ElasticSearch.h"
 
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/min.hpp>
-#include <boost/accumulators/statistics/max.hpp>
-
-namespace bc = boost::accumulators;
-
-typedef bc::accumulator_set<double, bc::stats<bc::tag::mean, bc::tag::min, bc::tag::max> >  Accumulator;
-
 using namespace Utils;
 using namespace Utils::NdbC;
 
@@ -78,20 +68,16 @@ private:
     ConcurrentQueue<vector<Data>*>* mBatchedQueue;
     
     void readerThread(int connectionId);
-    
+    void readData(Conn connection, vector<Data>* data_batch);
+
 protected:
     const int mNumReaders;
     Conn* mNdbConnections;
     const bool mHopsworksEnalbed;
     ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
-    //Accumulator mQueuingAcc;
-    //Accumulator mBatchingAcc;
-    //Accumulator mProcessingAcc;
     
-    virtual ptime getEventCreationTime(Data row) = 0;
-    virtual BatchStats readData(Conn connection, vector<Data>* data_batch) = 0;
-    string getAccString(Accumulator acc);
+    virtual void processAddedandDeleted(Conn conn, vector<Data>* data_batch, Bulk& bulk) = 0;
 };
 
 
@@ -124,45 +110,35 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
         vector<Data>* curr;
         mBatchedQueue->wait_and_pop(curr);
         LOG_DEBUG(" Process Batch ");
-        ptime startProcessing = getCurrentTime();
-        BatchStats rt = readData(mNdbConnections[connIndex], curr);
-        ptime endProcessing = getCurrentTime();
+        readData(mNdbConnections[connIndex], curr);
         
-        /*for(unsigned int i=0; i < curr->size(); i++){
-            Data data = curr->at(i);
-            float queueTime = getTimeDiffInMilliseconds(getEventCreationTime(data), startProcessing);
-            mQueuingAcc(queueTime);
-        }*/
-        
-        Data firstElement = curr->at(0);
-        Data lastElement = curr->at(curr->size() -1);
-        
-        float batch_time = getTimeDiffInMilliseconds(getEventCreationTime(firstElement), getEventCreationTime(lastElement));
-        //mBatchingAcc(batch_time);
-        float wait_time = getTimeDiffInMilliseconds(getEventCreationTime(lastElement), startProcessing);
-        float processing = getTimeDiffInMilliseconds(startProcessing, endProcessing);
-        //mProcessingAcc(processing);
-        
-        LOG_INFO("Stats:: Batch[" << curr->size() << "]=" 
-                << (processing + batch_time + wait_time) << "msec" << endl
-                << "Processing = " << processing << "msec " << rt.str() << endl 
-                << "Batching = " << batch_time << " msec" << "  WaitTime = " << wait_time << " msec");
-        //LOG_INFO() << " Processing Acc " << getAccString(mProcessingAcc) 
-        //        << ", Batching Acc " << getAccString(mBatchingAcc) << ", Queuing Acc " << getAccString(mQueuingAcc); 
         delete curr;
     }
 }
 
 template<typename Data, typename Conn>
-void NdbDataReader<Data, Conn>::processBatch(vector<Data>* data_batch) {
-    mBatchedQueue->push(data_batch);
+void NdbDataReader<Data, Conn>::readData(Conn connection, vector<Data>* data_batch) {    
+    Bulk bulk;
+    bulk.mStartProcessing = getCurrentTime();
+    
+    if (!data_batch->empty()) {
+        processAddedandDeleted(connection, data_batch, bulk);
+    }
+    
+    bulk.mEndProcessing = getCurrentTime();
+    
+    if (!bulk.mJSON.empty()) {
+        mElasticSearch->addBulk(bulk);
+    }
+    
+    LOG_INFO("processing batch of size [" << data_batch->size() << "] took " 
+            << getTimeDiffInMilliseconds(bulk.mStartProcessing, bulk.mEndProcessing) << " msec");
 }
 
+
 template<typename Data, typename Conn>
-string NdbDataReader<Data, Conn>::getAccString(Accumulator acc){
-    stringstream out;
-    out << "[" << bc::min(acc) << "," << bc::mean(acc) << "," << bc::max(acc) << "]";
-    return out.str();
+void NdbDataReader<Data, Conn>::processBatch(vector<Data>* data_batch) {
+    mBatchedQueue->push(data_batch);
 }
 
 template<typename Data, typename Conn>
