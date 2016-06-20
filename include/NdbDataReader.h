@@ -68,7 +68,7 @@ private:
     ConcurrentQueue<vector<Data>*>* mBatchedQueue;
     
     void readerThread(int connectionId);
-    void readData(Conn connection, vector<Data>* data_batch);
+    void readData(int connIndex, Conn connection, vector<Data>* data_batch);
 
 protected:
     const int mNumReaders;
@@ -110,14 +110,14 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
         vector<Data>* curr;
         mBatchedQueue->wait_and_pop(curr);
         LOG_DEBUG(" Process Batch ");
-        readData(mNdbConnections[connIndex], curr);
+        readData(connIndex, mNdbConnections[connIndex], curr);
         
         delete curr;
     }
 }
 
 template<typename Data, typename Conn>
-void NdbDataReader<Data, Conn>::readData(Conn connection, vector<Data>* data_batch) {    
+void NdbDataReader<Data, Conn>::readData(int connIndex, Conn connection, vector<Data>* data_batch) {    
     Bulk bulk;
     bulk.mStartProcessing = getCurrentTime();
     
@@ -131,7 +131,7 @@ void NdbDataReader<Data, Conn>::readData(Conn connection, vector<Data>* data_bat
         mElasticSearch->addBulk(bulk);
     }
     
-    LOG_INFO("processing batch of size [" << data_batch->size() << "] took " 
+    LOG_INFO("[thread-" << connIndex << "] processing batch of size [" << data_batch->size() << "] took " 
             << getTimeDiffInMilliseconds(bulk.mStartProcessing, bulk.mEndProcessing) << " msec");
 }
 

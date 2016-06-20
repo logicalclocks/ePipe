@@ -28,11 +28,12 @@ Notifier::Notifier(const char* connection_string, const char* database_name, con
         const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, 
         const int num_ndb_readers, const string elastic_ip, const bool hopsworks, const string elastic_index, 
         const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type,
-        const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery)
+        const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats)
 : mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
         mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
         mElasticIndex(elastic_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), 
-        mElasticInodeType(elastic_inode_type), mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), mRecovery(recovery){
+        mElasticInodeType(elastic_inode_type), mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), 
+        mRecovery(recovery), mStats(stats) {
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
 }
@@ -78,7 +79,7 @@ void Notifier::setup() {
     mPDICache = new ProjectDatasetINodeCache(mLRUCap);
     
     mElasticSearch = new ElasticSearch(mElasticAddr, mElasticIndex, mElastticProjectType,
-            mElasticDatasetType, mElasticInodeType, mElasticIssueTime, mElasticBatchsize);
+            mElasticDatasetType, mElasticInodeType, mElasticIssueTime, mElasticBatchsize, mStats);
     
     Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
     mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mPDICache);

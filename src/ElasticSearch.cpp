@@ -51,11 +51,13 @@ static string getAccString(Accumulator acc){
 
 ElasticSearch::ElasticSearch(string elastic_addr, string index, string proj_type,
         string ds_type, string inode_type, int time_to_wait_before_inserting, 
-        int bulk_size) : Batcher(time_to_wait_before_inserting, bulk_size),
-        mIndex(index), mProjectType(proj_type), mDatasetType(ds_type), mInodeType(inode_type), mToProcessLength(0){
+        int bulk_size, const bool stats) : Batcher(time_to_wait_before_inserting, bulk_size),
+        mIndex(index), mProjectType(proj_type), mDatasetType(ds_type), mInodeType(inode_type),
+        mStats(stats), mToProcessLength(0){
     
     mElasticAddr = "http://" + elastic_addr;
     mElasticBulkAddr = mElasticAddr + "/" + mIndex + "/" + mInodeType + "/_bulk";
+    mToProcess = new vector<Bulk>();
     
     curl_global_init(CURL_GLOBAL_ALL); 
 }
@@ -70,9 +72,11 @@ void ElasticSearch::run() {
         Bulk msg;
         mQueue.wait_and_pop(msg);
         
-        mToProcess.push_back(msg);
+        mLock.lock();
+        mToProcess->push_back(msg);
         mToProcessLength += msg.mJSON.length();
-    
+        mLock.unlock();
+        
         if (mToProcessLength >= mBatchSize && !mTimerProcessing) {
             processBatch();
         }
@@ -80,22 +84,68 @@ void ElasticSearch::run() {
 }
 
 void ElasticSearch::processBatch() {
-    if(mToProcessLength > 0){
-       LOG_TRACE("Process Bulk JSONs [" << mToProcessLength << "]");
-       string batch;
-       for(vector<Bulk>::iterator it = mToProcess.begin(); it != mToProcess.end(); ++it){
-           Bulk bulk = *it;
-           batch.append(bulk.mJSON);
-       }
-       
-       //TODO: handle failures
-       elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch);
-              
-       //TODO: print different stats
+    if (mToProcessLength > 0) {
+        LOG_TRACE("Process Bulk JSONs [" << mToProcessLength << "]");
 
-       mToProcessLength = 0;
-       mToProcess.clear();
+        mLock.lock();
+        vector<Bulk>* bulks = mToProcess;
+        mToProcess = new vector<Bulk>;
+        mToProcessLength = 0;
+        mLock.unlock();
+
+        string batch;
+        for (vector<Bulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
+            Bulk bulk = *it;
+            batch.append(bulk.mJSON);
+        }
+
+        //TODO: handle failures
+        elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch);
+
+        if (mStats) {
+            ptime t_end = getCurrentTime();
+            for (vector<Bulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
+                stats(*it, t_end);
+            }
+            
+            LOG_INFO("Bulks[" << bulks->size() << "] Total=" << getAccString(mTotalTimePerBulkAcc) << ", Total/Event=" << getAccString(mTotalTimePerEventAcc)
+                    << ", Batch=" << getAccString(mBatchingAcc) << ", WaitTime=" << getAccString(mWaitTimeBeforeProcessingAcc)
+                    << ", Processing=" << getAccString(mProcessingAcc) << ", eWaitTime=" << getAccString(mWaitTimeUntillElasticCalledAcc));
+        }
+        delete bulks;
     }
+}
+
+void ElasticSearch::stats(Bulk bulk, ptime t_elastic_done) {
+    
+    int size = bulk.mArrivalTimes.size();
+    float batch_time, wait_time, processing_time, ewait_time, total_time;
+    if(size > 0){
+        batch_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[0], bulk.mArrivalTimes[size-1]);
+        wait_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[size -1], bulk.mStartProcessing); 
+        total_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[0], t_elastic_done);
+    }
+    
+    processing_time = getTimeDiffInMilliseconds(bulk.mStartProcessing, bulk.mEndProcessing);
+    ewait_time = getTimeDiffInMilliseconds(bulk.mEndProcessing, t_elastic_done);
+    
+    Accumulator total_time_acc;
+    for(int i=0; i<size; i++){
+        float total_time_per_event = getTimeDiffInMilliseconds(bulk.mArrivalTimes[i], t_elastic_done);
+        total_time_acc(total_time_per_event);
+        mTotalTimePerEventAcc(total_time_per_event);
+    }
+    
+    
+    LOG_INFO("Bulk[" << size << "] took " << total_time << " msec, Total time per event = " << getAccString(total_time_acc) 
+            <<  ", Batch=" << batch_time << " msec, WaitTime=" << wait_time << " msec, Processing="
+            << processing_time << " msec, eWait=" << ewait_time << " msec");
+    
+    mBatchingAcc(batch_time);
+    mWaitTimeBeforeProcessingAcc(wait_time);    
+    mProcessingAcc(processing_time);
+    mWaitTimeUntillElasticCalledAcc(ewait_time);
+    mTotalTimePerBulkAcc(total_time);
 }
 
 const char* ElasticSearch::getIndex() {

@@ -61,7 +61,8 @@ struct ESResponse{
 class ElasticSearch : public Batcher{
 public:
     ElasticSearch(string elastic_addr, string index, string proj_type, string ds_type,
-            string inode_type, int time_to_wait_before_inserting, int bulk_size);
+            string inode_type, int time_to_wait_before_inserting, int bulk_size,
+            const bool stats);
     
     void addBulk(Bulk data);
     
@@ -84,18 +85,28 @@ private:
     const string mProjectType;
     const string mDatasetType;
     const string mInodeType;
+    const bool mStats;
     
     string mElasticAddr;
     string mElasticBulkAddr;
     
     ConcurrentQueue<Bulk> mQueue;
     
-    vector<Bulk> mToProcess;
+    vector<Bulk>* mToProcess;
     int mToProcessLength;
-          
+    boost::mutex mLock;
+    
+    Accumulator mBatchingAcc;
+    Accumulator mWaitTimeBeforeProcessingAcc;
+    Accumulator mProcessingAcc;
+    Accumulator mWaitTimeUntillElasticCalledAcc;
+    Accumulator mTotalTimePerEventAcc;
+    Accumulator mTotalTimePerBulkAcc;
+    
     virtual void run();
     virtual void processBatch();
     
+    void stats(Bulk bulk, ptime t_elastic_done);
     string getElasticSearchBulkUrl();
     string getElasticSearchUrlonIndex(string index);
     string getElasticSearchUrlOnDoc(string index, string type, int doc);
