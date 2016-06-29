@@ -66,6 +66,7 @@ void RCBatcher<DataRow, Conn>::run() {
         mLock.unlock();
 
         if (mCurrentCount == mBatchSize && !mTimerProcessing) {
+            resetTimer();
             processBatch();
         }
     }

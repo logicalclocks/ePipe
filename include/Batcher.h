@@ -26,6 +26,9 @@
 #define BATCHER_H
 
 #include "common.h"
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 class Batcher {
 public:
@@ -37,6 +40,7 @@ public:
 protected:
     virtual void run() = 0;
     virtual void processBatch() = 0;
+    void resetTimer();
     
     const int mBatchSize;
     bool mTimerProcessing;
@@ -49,9 +53,11 @@ private:
     const int mTimeToWait;
     boost::thread mTimerThread;
     
+    boost::asio::io_service mIOService;
+    
     void startTimer();
     void timerThread();
-    void timerExpired();
+    void timerExpired(const boost::system::error_code& e);
 
 };
 

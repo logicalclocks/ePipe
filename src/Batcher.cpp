@@ -24,10 +24,6 @@
 
 #include "Batcher.h"
 
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-
 Batcher::Batcher(const int time_to_wait, const int batch_size) 
     : mBatchSize(batch_size), mTimerProcessing(false), mStarted(false), 
         mFirstTimer(true), mTimeToWait(time_to_wait) {
@@ -59,7 +55,7 @@ void Batcher::startTimer() {
 
 void Batcher::timerThread() {
     while (true) {
-        boost::asio::io_service io;
+        mIOService.reset();
         int timeout = mTimeToWait;
         if(mFirstTimer){
             int baseTime = mTimeToWait / 4;
@@ -67,13 +63,18 @@ void Batcher::timerThread() {
             mFirstTimer = false;
             LOG_TRACE("fire the first timer after " << timeout << " msec");
         }
-        boost::asio::deadline_timer timer(io, boost::posix_time::milliseconds(timeout));
-        timer.async_wait(boost::bind(&Batcher::timerExpired, this));
-        io.run();
+        boost::asio::deadline_timer timer(mIOService, boost::posix_time::milliseconds(timeout));
+        timer.async_wait(boost::bind(&Batcher::timerExpired, this, boost::asio::placeholders::error));
+        mIOService.run();
     }
 }
 
-void Batcher::timerExpired() {
+void Batcher::resetTimer() {
+    mIOService.stop();
+}
+
+void Batcher::timerExpired(const boost::system::error_code& e) {
+    if(e) return;
     mTimerProcessing=true;
     processBatch();
     mTimerProcessing=false;
