@@ -54,12 +54,12 @@ void TableTailer::recover(int recoverFromId) {
     NdbIndexScanOperation* scanOp = getNdbIndexScanOperation(transaction, index);
     
     scanOp->readTuples(NdbOperation::LM_CommittedRead, NdbScanOperation::SF_OrderBy);
-    scanOp->setBound(mTable.mRecoveryColumn, NdbIndexScanOperation::BoundLT, (char*) & recoverFromId);
+    scanOp->setBound(mTable.mRecoveryColumn.c_str(), NdbIndexScanOperation::BoundLT, (char*) & recoverFromId);
     
     NdbRecAttr * row[mTable.mNoColumns];
     
     for (int i = 0; i < mTable.mNoColumns; i++) {
-        row[i] = scanOp->getValue(mTable.mColumnNames[i]);
+        row[i] = scanOp->getValue(mTable.mColumnNames[i].c_str());
     }
 
     executeTransaction(transaction, NdbTransaction::Commit);
@@ -90,15 +90,19 @@ void TableTailer::createListenerEvent() {
     NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
     if (!myDict) LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
 
-    const NdbDictionary::Table *table = myDict->getTable(mTable.mTableName);
+    const NdbDictionary::Table *table = myDict->getTable(mTable.mTableName.c_str());
     if (!table) LOG_NDB_API_ERROR(myDict->getNdbError());
 
-    NdbDictionary::Event myEvent(mEventName, *table);
+    NdbDictionary::Event myEvent(mEventName.c_str(), *table);
     
     for(int i=0; i< mTable.mNoEvents; i++){
         myEvent.addTableEvent(mTable.mWatchEvents[i]);
     }
-    myEvent.addEventColumns(mTable.mNoColumns, mTable.mColumnNames);
+    const char* columns[mTable.mNoColumns];
+    for(int i=0; i< mTable.mNoColumns; i++){
+        columns[i] = mTable.mColumnNames[i].c_str();
+    }
+    myEvent.addEventColumns(mTable.mNoColumns, columns);
     //myEvent.mergeEvents(merge_events);
 
     // Add event to database
@@ -107,7 +111,7 @@ void TableTailer::createListenerEvent() {
     else if (myDict->getNdbError().classification ==
             NdbError::SchemaObjectExists) {
         LOG_ERROR("Event creation failed, event exists, dropping Event...");
-        if (myDict->dropEvent(mEventName)) LOG_NDB_API_ERROR(myDict->getNdbError());
+        if (myDict->dropEvent(mEventName.c_str())) LOG_NDB_API_ERROR(myDict->getNdbError());
         // try again
         // Add event to database
         if (myDict->createEvent(myEvent)) LOG_NDB_API_ERROR(myDict->getNdbError());
@@ -119,13 +123,13 @@ void TableTailer::removeListenerEvent() {
     NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
     if (!myDict) LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
     // remove event from database
-    if (myDict->dropEvent(mEventName)) LOG_NDB_API_ERROR(myDict->getNdbError());
+    if (myDict->dropEvent(mEventName.c_str())) LOG_NDB_API_ERROR(myDict->getNdbError());
 }
 
 void TableTailer::waitForEvents() {
     NdbEventOperation* op;
     LOG_INFO("create EventOperation for [" << mEventName << "]");
-    if ((op = mNdbConnection->createEventOperation(mEventName)) == NULL)
+    if ((op = mNdbConnection->createEventOperation(mEventName.c_str())) == NULL)
         LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
 
     NdbRecAttr * recAttr[mTable.mNoColumns];
@@ -133,8 +137,8 @@ void TableTailer::waitForEvents() {
 
     // primary keys should always be a part of the result
     for (int i = 0; i < mTable.mNoColumns; i++) {
-        recAttr[i] = op->getValue(mTable.mColumnNames[i]);
-        recAttrPre[i] = op->getPreValue(mTable.mColumnNames[i]);
+        recAttr[i] = op->getValue(mTable.mColumnNames[i].c_str());
+        recAttrPre[i] = op->getPreValue(mTable.mColumnNames[i].c_str());
     }
 
     LOG_INFO("Execute");
@@ -218,6 +222,5 @@ const char* TableTailer::getEventName(NdbDictionary::Event::TableEvent event) {
 
 TableTailer::~TableTailer() {
     delete mNdbConnection;
-    delete mEventName;
 }
 

@@ -44,14 +44,14 @@ namespace Utils {
             return database;
         }
 
-        inline static const NdbDictionary::Table* getTable(const NdbDictionary::Dictionary* database, const char* table_name) {
-            const NdbDictionary::Table* table = database->getTable(table_name);
+        inline static const NdbDictionary::Table* getTable(const NdbDictionary::Dictionary* database, const string& table_name) {
+            const NdbDictionary::Table* table = database->getTable(table_name.c_str());
             if (!table) LOG_NDB_API_ERROR(database->getNdbError());
             return table;
         }
 
-        inline static const NdbDictionary::Index* getIndex(const NdbDictionary::Dictionary* database, const char* table_name, const char* index_name) {
-            const NdbDictionary::Index* index = database->getIndex(index_name, table_name);
+        inline static const NdbDictionary::Index* getIndex(const NdbDictionary::Dictionary* database, const string& table_name, const string& index_name) {
+            const NdbDictionary::Index* index = database->getIndex(index_name.c_str(), table_name.c_str());
             if (!index) LOG_NDB_API_ERROR(database->getNdbError());
             return index;
         }
@@ -68,8 +68,8 @@ namespace Utils {
             return op;
         }
          
-        inline static NdbRecAttr* getNdbOperationValue(NdbOperation* op, const char* column_name) {
-            NdbRecAttr* col = op->getValue(column_name);
+        inline static NdbRecAttr* getNdbOperationValue(NdbOperation* op, const string& column_name) {
+            NdbRecAttr* col = op->getValue(column_name.c_str());
             if (!col) LOG_NDB_API_ERROR(op->getNdbError());
             return col;
         }
@@ -92,8 +92,8 @@ namespace Utils {
             }
         }
 
-        inline static const char* get_ndb_varchar(string str, NdbDictionary::Column::ArrayType array_type) {
-            char* data = NULL;
+        inline static string get_ndb_varchar(string str, NdbDictionary::Column::ArrayType array_type) {
+            stringstream data;
             int len = str.length();
 
             switch (array_type) {
@@ -102,32 +102,26 @@ namespace Utils {
                      No prefix length is stored in aRef. Data starts from aRef's first byte
                      data might be padded with blank or null bytes to fill the whole column
                      */
-                    data = new char[len];
-                    strcpy(data, str.c_str());
+                    data << str;
                     break;
                 case NdbDictionary::Column::ArrayTypeShortVar:
                     /*
                      First byte of aRef has the length of data stored
                      Data starts from second byte of aRef
                      */
-                    data = new char[len + 1];
-                    data[0] = (char) len;
-                    strcpy(data + 1, str.c_str());
+                    data << ((char) len) << str;
                     break;
                 case NdbDictionary::Column::ArrayTypeMediumVar:
                     /*
                      First two bytes of aRef has the length of data stored
                      Data starts from third byte of aRef
                      */
-                    data = new char[len + 2];
                     int m = len / 256;
                     int l = len - (m * 256);
-                    data[0] = (char) l;
-                    data[1] = (char) m;
-                    strcpy(data + 2, str.c_str());
+                    data << ((char) l) << ((char) m) << str;
                     break;
             }
-            return data;
+            return data.str();
         }
 
         /*
@@ -230,12 +224,10 @@ namespace Utils {
         return diff.total_microseconds() / 1000.0;
     }
 
-    inline static const char* concat(const char* a, const char* b) {
-        std::string buf(a);
+    inline static string concat(const char* a, const string b) {
+        string buf(a);
         buf.append(b);
-        char* data = new char[buf.length()];
-        strcpy(data, buf.c_str());
-        return data;
+        return buf;
     }
 }
 

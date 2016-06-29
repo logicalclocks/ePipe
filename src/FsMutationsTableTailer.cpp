@@ -27,9 +27,9 @@
 
 using namespace Utils::NdbC;
 
-const char* _mutation_table= "hdfs_metadata_log";
+const string _mutation_table= "hdfs_metadata_log";
 const int _mutation_noCols= 6;
-const char* _mutation_cols[_mutation_noCols]=
+const string _mutation_cols[_mutation_noCols]=
     {"dataset_id",
      "inode_id",
      "timestamp",
@@ -85,9 +85,9 @@ void FsMutationsTableTailer::removeLogs(const NdbDictionary::Dictionary* databas
         NdbOperation* op = getNdbOperation(transaction, log_table);
         
         op->deleteTuple();
-        op->equal(_mutation_cols[0], row.mDatasetId);
-        op->equal(_mutation_cols[1], row.mInodeId);
-        op->equal(_mutation_cols[2], (Int64)row.mTimestamp);
+        op->equal(_mutation_cols[0].c_str(), row.mDatasetId);
+        op->equal(_mutation_cols[1].c_str(), row.mInodeId);
+        op->equal(_mutation_cols[2].c_str(), (Int64)row.mTimestamp);
         
         LOG_TRACE("Delete log row: Dataset[" << row.mDatasetId << "], INode[" 
                 << row.mInodeId << "], Timestamp[" << row.mTimestamp << "]");

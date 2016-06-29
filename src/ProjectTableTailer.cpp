@@ -26,9 +26,9 @@
 
 using namespace Utils::NdbC;
 
-const char* _project_table= "project";
+const string _project_table= "project";
 const int _project_noCols= 5;
-const char* _project_cols[_project_noCols]=
+const string _project_cols[_project_noCols]=
     {"id",
      "inode_pid",
      "inode_name",

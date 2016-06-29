@@ -92,7 +92,7 @@ void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database
         op->readTuple(NdbOperation::LM_CommittedRead);
         
         op->equal("parent_id", row.mParentId);
-        op->equal("name", get_ndb_varchar(row.mInodeName, name_array_type));
+        op->equal("name", get_ndb_varchar(row.mInodeName, name_array_type).c_str());
         
         inodes[i] = Row(NUM_INODES_COLS);
         for(int c=0; c<NUM_INODES_COLS; c++){
@@ -232,7 +232,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
         int inodeId = inodes[i][INODE_ID_COL]->int32_value();
         if (row.mInodeId != inodeId) {
             LOG_ERROR(" Data for " << row.mParentId << ", " << row.mInodeName 
-                    << " not found, got inode id " << inodeId << " was expecting " << row.mInodeId);
+                   << " not found, got inode id " << inodeId << " was expecting " << row.mInodeId);
             continue;
         }
         

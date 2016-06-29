@@ -34,13 +34,13 @@ enum Operation{
 };
 
 struct WatchTable{
-    const char* mTableName;
-    const char** mColumnNames;
+    const string mTableName;
+    const string* mColumnNames;
     const int mNoColumns;
     const NdbDictionary::Event::TableEvent* mWatchEvents;
     const int mNoEvents;
-    const char* mRecoveryIndex;
-    const char* mRecoveryColumn;
+    const string mRecoveryIndex;
+    const string mRecoveryColumn;
 };
 
 class TableTailer {
@@ -68,7 +68,7 @@ private:
     bool mStarted;
     boost::thread mThread;
     
-    const char* mEventName;
+    const string mEventName;
     const WatchTable mTable;
     const int mPollMaxTimeToWait;
 };

@@ -46,7 +46,7 @@ public:
     Cache(const int max_capacity, const char* trace_prefix);
     void put(Key key, Value value);
     boost::optional<Value> get(Key key);
-    boost::optional<Value> remove(Key key);
+    void remove(Key key);
     bool contains(Key key);
     virtual ~Cache();
         
@@ -112,15 +112,13 @@ boost::optional<Value> Cache<Key,Value>::get(Key key){
 }
 
 template<typename Key, typename Value>
-boost::optional<Value> Cache<Key,Value>::remove(Key key){
+void Cache<Key,Value>::remove(Key key){
     LOG_TRACE("REMOVE " << mTracePrefix << " [" << key << "] " << (mCache.size() - 1) << "/" << mCapacity);
     boost::mutex::scoped_lock lock(mLock);
     const typename CacheContainer::left_iterator it = mCache.left.find(key);
     if(it != mCache.left.end()){
         mCache.left.erase(it);
-        return it->second;
     }
-    return boost::none;
 }
 
 template<typename Key, typename Value>

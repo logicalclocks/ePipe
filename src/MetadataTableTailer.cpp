@@ -26,9 +26,9 @@
 
 using namespace Utils::NdbC;
 
-const char* _metadata_table= "meta_data";
+const string _metadata_table= "meta_data";
 const int _metadata_noCols= 4;
-const char* _metadata_cols[_metadata_noCols]=
+const string _metadata_cols[_metadata_noCols]=
     {"id",
      "fieldid",
      "tupleid",

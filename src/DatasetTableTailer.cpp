@@ -26,9 +26,9 @@
 
 using namespace Utils::NdbC;
 
-const char* _dataset_table= "dataset";
+const string _dataset_table= "dataset";
 const int _dataset_noCols= 8;
-const char* _dataset_cols[_dataset_noCols]=
+const string _dataset_cols[_dataset_noCols]=
     {"inode_id",
      "inode_pid",
      "inode_name",
@@ -155,7 +155,7 @@ void DatasetTableTailer::updateProjectIds(const NdbDictionary::Dictionary* datab
         NdbIndexScanOperation* op = getNdbIndexScanOperation(transaction, index);
         op->readTuples(NdbOperation::LM_CommittedRead);
        
-        op->equal(_dataset_cols[0], *it);
+        op->equal(_dataset_cols[0].c_str(), *it);
         
         NdbRecAttr* id_col = getNdbOperationValue(op, _dataset_cols[0]);
         NdbRecAttr* proj_id_col = getNdbOperationValue(op, _dataset_cols[3]);
