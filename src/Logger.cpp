@@ -58,6 +58,7 @@ void Logger::fatal(const char* msg){
     if(mLoggerLevel <= LOG_LEVEL_FATAL){
         log("fatal", msg);
     }
+    exit(EXIT_FAILURE);
 }
 
 bool Logger::isTrace() {

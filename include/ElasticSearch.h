@@ -102,10 +102,15 @@ private:
     Accumulator mWaitTimeUntillElasticCalledAcc;
     Accumulator mTotalTimePerEventAcc;
     Accumulator mTotalTimePerBulkAcc;
+    long mTotalNumOfEventsProcessed;
+    long mTotalNumOfBulksProcessed;
+    ptime mFirstEventArrived;
+    bool mIsFirstEventArrived;
     
     virtual void run();
     virtual void processBatch();
     
+    void stats(vector<Bulk>* bulks);
     void stats(Bulk bulk, ptime t_elastic_done);
     string getElasticSearchBulkUrl();
     string getElasticSearchUrlonIndex(string index);

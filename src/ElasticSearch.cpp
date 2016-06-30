@@ -53,7 +53,8 @@ ElasticSearch::ElasticSearch(string elastic_addr, string index, string proj_type
         string ds_type, string inode_type, int time_to_wait_before_inserting, 
         int bulk_size, const bool stats) : Batcher(time_to_wait_before_inserting, bulk_size),
         mIndex(index), mProjectType(proj_type), mDatasetType(ds_type), mInodeType(inode_type),
-        mStats(stats), mToProcessLength(0){
+        mStats(stats), mToProcessLength(0), mTotalNumOfEventsProcessed(0),
+        mTotalNumOfBulksProcessed(0), mIsFirstEventArrived(false){
     
     mElasticAddr = "http://" + elastic_addr;
     mElasticBulkAddr = mElasticAddr + "/" + mIndex + "/" + mInodeType + "/_bulk";
@@ -103,17 +104,35 @@ void ElasticSearch::processBatch() {
         elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch);
 
         if (mStats) {
-            ptime t_end = getCurrentTime();
-            for (vector<Bulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
-                stats(*it, t_end);
-            }
-            
-            LOG_INFO("Bulks[" << bulks->size() << "] Total=" << getAccString(mTotalTimePerBulkAcc) << ", Total/Event=" << getAccString(mTotalTimePerEventAcc)
-                    << ", Batch=" << getAccString(mBatchingAcc) << ", WaitTime=" << getAccString(mWaitTimeBeforeProcessingAcc)
-                    << ", Processing=" << getAccString(mProcessingAcc) << ", eWaitTime=" << getAccString(mWaitTimeUntillElasticCalledAcc));
+            stats(bulks);
         }
         delete bulks;
     }
+}
+
+void ElasticSearch::stats(vector<Bulk>* bulks) {
+    ptime t_end = getCurrentTime();
+    
+    ptime firstEventInCurrentBulksArrivalTime = bulks->at(0).mArrivalTimes.at(0);
+    int numOfEvents = 0;    
+    for (vector<Bulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
+        Bulk bulk = *it;
+        stats(bulk, t_end);
+        numOfEvents += bulk.mArrivalTimes.size();
+    }
+
+    float bulksTotalTime = getTimeDiffInMilliseconds(firstEventInCurrentBulksArrivalTime, t_end);
+    float bulksEventPerSecond = (numOfEvents * 1000.0) / bulksTotalTime;
+    
+    LOG_INFO("Bulks[" << numOfEvents << "/" << bulks->size() << "] took " << bulksTotalTime << " msec at Rate=" << bulksEventPerSecond << " events/second");
+
+    float totalTime = getTimeDiffInMilliseconds(mFirstEventArrived, t_end);
+    float totalEventsPerSecond = (mTotalNumOfEventsProcessed * 1000.0) / totalTime;
+
+    LOG_INFO("Bulks[" << mTotalNumOfEventsProcessed << "/" << mTotalNumOfBulksProcessed << "] took " << totalTime << " msec at Rate=" << totalEventsPerSecond << " events/second" << endl
+            << "Total/Bulk=" << getAccString(mTotalTimePerBulkAcc) << ", Total/Event=" << getAccString(mTotalTimePerEventAcc) << endl
+            << "Batch=" << getAccString(mBatchingAcc) << ", WaitTime=" << getAccString(mWaitTimeBeforeProcessingAcc) << endl
+            << "Processing=" << getAccString(mProcessingAcc) << ", eWaitTime=" << getAccString(mWaitTimeUntillElasticCalledAcc));
 }
 
 void ElasticSearch::stats(Bulk bulk, ptime t_elastic_done) {
@@ -121,6 +140,10 @@ void ElasticSearch::stats(Bulk bulk, ptime t_elastic_done) {
     int size = bulk.mArrivalTimes.size();
     float batch_time, wait_time, processing_time, ewait_time, total_time;
     if(size > 0){
+        if(!mIsFirstEventArrived){
+            mFirstEventArrived = bulk.mArrivalTimes[0];
+            mIsFirstEventArrived = true;
+        }
         batch_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[0], bulk.mArrivalTimes[size-1]);
         wait_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[size -1], bulk.mStartProcessing); 
         total_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[0], t_elastic_done);
@@ -137,7 +160,7 @@ void ElasticSearch::stats(Bulk bulk, ptime t_elastic_done) {
     }
     
     
-    LOG_INFO("Bulk[" << size << "] took " << total_time << " msec, Total time per event = " << getAccString(total_time_acc) 
+    LOG_INFO("Bulk[" << size << "] took " << total_time << " msec, TotalTime/Event=" << getAccString(total_time_acc) 
             <<  ", Batch=" << batch_time << " msec, WaitTime=" << wait_time << " msec, Processing="
             << processing_time << " msec, eWait=" << ewait_time << " msec");
     
@@ -146,6 +169,8 @@ void ElasticSearch::stats(Bulk bulk, ptime t_elastic_done) {
     mProcessingAcc(processing_time);
     mWaitTimeUntillElasticCalledAcc(ewait_time);
     mTotalTimePerBulkAcc(total_time);
+    mTotalNumOfEventsProcessed += size;
+    mTotalNumOfBulksProcessed++;
 }
 
 const char* ElasticSearch::getIndex() {

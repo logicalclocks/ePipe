@@ -39,15 +39,17 @@ struct FsMutationRow {
      
      ptime mEventCreationTime;
      
-     void print(){
-        LOG_TRACE("-------------------------");
-        LOG_TRACE("DatasetId = " << mDatasetId);
-        LOG_TRACE("InodeId = " << mInodeId);
-        LOG_TRACE("ParentId = " << mParentId);
-        LOG_TRACE("InodeName = " << mInodeName);
-        LOG_TRACE("Timestamp = " << mTimestamp);
-        LOG_TRACE("Operation = " << mOperation);
-        LOG_TRACE("-------------------------");
+     string to_string(){
+        stringstream stream;
+        stream << "-------------------------" << endl;
+        stream << "DatasetId = " << mDatasetId << endl;
+        stream << "InodeId = " << mInodeId << endl;
+        stream << "ParentId = " << mParentId << endl;
+        stream << "InodeName = " << mInodeName << endl;
+        stream << "Timestamp = " << mTimestamp << endl;
+        stream << "Operation = " << mOperation << endl;
+        stream << "-------------------------" << endl;
+        return stream.str();
      }
 };
 
@@ -95,6 +97,10 @@ private:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     Cpq* mQueue;
     ProjectDatasetINodeCache* mPDICache;
+//    double mTimeTakenForEventsToArrive;
+//    long mNumOfEvents;
+//    int mPrintEveryNEvents;
+    
 };
 
 #endif /* MUTATIONSTABLETAILER_H */

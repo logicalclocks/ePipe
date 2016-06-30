@@ -37,14 +37,16 @@ struct MetadataEntry {
      
      ptime mEventCreationTime;
      
-     void print(){
-        LOG_TRACE("-------------------------");
-        LOG_TRACE("Id = " << mId);
-        LOG_TRACE("FieldId = " << mFieldId);
-        LOG_TRACE("TupleId = " << mTupleId);
-        LOG_TRACE("Data = " << mMetadata);
-        LOG_TRACE("Operation = " << mOperation);
-        LOG_TRACE("-------------------------");
+     string to_string(){
+        stringstream stream;
+        stream << "-------------------------" << endl;
+        stream << "Id = " << mId << endl;
+        stream << "FieldId = " << mFieldId << endl;
+        stream << "TupleId = " << mTupleId << endl;
+        stream << "Data = " << mMetadata << endl;
+        stream << "Operation = " << mOperation << endl;
+        stream << "-------------------------" << endl;
+        return stream.str();
      }
 };
 

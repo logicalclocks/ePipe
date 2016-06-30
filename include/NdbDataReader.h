@@ -128,6 +128,7 @@ void NdbDataReader<Data, Conn>::readData(int connIndex, Conn connection, vector<
     bulk.mEndProcessing = getCurrentTime();
     
     if (!bulk.mJSON.empty()) {
+        sort(bulk.mArrivalTimes.begin(), bulk.mArrivalTimes.end());
         mElasticSearch->addBulk(bulk);
     }
     

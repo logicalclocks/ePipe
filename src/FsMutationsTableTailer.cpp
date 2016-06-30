@@ -43,8 +43,13 @@ const NdbDictionary::Event::TableEvent _mutation_events[_mutation_noEvents] = { 
 
 const WatchTable FsMutationsTableTailer::TABLE = {_mutation_table, _mutation_cols, _mutation_noCols , _mutation_events, _mutation_noEvents, _mutation_cols[2], _mutation_cols[2]};
 
+//const static ptime EPOCH_TIME(boost::gregorian::date(1970,1,1)); 
+
 FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ProjectDatasetINodeCache* cache) : RCTableTailer(ndb, TABLE, poll_maxTimeToWait), mPDICache(cache) {
     mQueue = new Cpq();
+//    mTimeTakenForEventsToArrive = 0;
+//    mNumOfEvents = 0;
+//    mPrintEveryNEvents = 0;
 }
 
 void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
@@ -68,13 +73,22 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
     } else {
        LOG_ERROR( "Unknown Operation [" << row.mOperation << "] for " << " INode [" << row.mInodeId << "]");
     }
+    
+//    ptime t = EPOCH_TIME + boost::posix_time::milliseconds(row.mTimestamp);
+//    mTimeTakenForEventsToArrive += Utils::getTimeDiffInMilliseconds(t, row.mEventCreationTime);
+//    mNumOfEvents++;
+//    mPrintEveryNEvents++;
+//    if(mPrintEveryNEvents>=10000){
+//        double avgArrival = mTimeTakenForEventsToArrive / mNumOfEvents;
+//        LOG_INFO("Average Arrival Time=" << avgArrival << " msec");
+//        mPrintEveryNEvents = 0;
+//    }
 }
 
 FsMutationRow FsMutationsTableTailer::consume(){
     FsMutationRow row;
     mQueue->wait_and_pop(row);
-    LOG_TRACE(" pop inode [" << row.mInodeId << "] from queue");
-    row.print();
+    LOG_TRACE(" pop inode [" << row.mInodeId << "] from queue \n" << row.to_string());
     return row;
 }
 

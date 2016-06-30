@@ -216,6 +216,7 @@ namespace Utils {
     }
 
     inline static ptime getCurrentTime() {
+        //return boost::posix_time::microsec_clock::universal_time()
         return boost::posix_time::microsec_clock::local_time();
     }
 
