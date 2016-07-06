@@ -40,6 +40,10 @@ public:
 private:
     static const WatchTable TABLE;
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
+    void handleDelete(int datasetId, int projectId);
+    void handleAdd(int datasetId, int projectId, NdbRecAttr* value[]);
+    void handleUpdate(NdbRecAttr* value[]);
+    string createJSONUpSert(int projectId, NdbRecAttr* value[]);
     
     ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;

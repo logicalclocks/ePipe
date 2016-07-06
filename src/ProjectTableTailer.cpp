@@ -45,80 +45,116 @@ const NdbDictionary::Event::TableEvent _project_events[_project_noEvents] =
 
 const WatchTable ProjectTableTailer::TABLE = {_project_table, _project_cols, _project_noCols , _project_events, _project_noEvents, "PRIMARY", _project_cols[0]};
 
+const int PR_ID = 0;
+const int PR_INODE_PID = 1;
+const int PR_INODE_NAME = 2;
+const int PR_USER = 3;
+const int PR_DESC = 4;
+
 ProjectTableTailer::ProjectTableTailer(Ndb* ndb, const int poll_maxTimeToWait, 
         ElasticSearch* elastic, ProjectDatasetINodeCache* cache) 
     : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticSearch(elastic), mPDICache(cache){
 }
 
 void ProjectTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
-    int id = value[0]->int32_value();
-        
-    if(eventType == NdbDictionary::Event::TE_DELETE){
-        
-        rapidjson::StringBuffer sbDoc;
-        rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
-        docWriter.StartObject();
-        docWriter.String("query");
+    int projectId = value[PR_ID]->int32_value();
 
-        docWriter.StartObject();
-
-        docWriter.String("match");
-        docWriter.StartObject();
-        docWriter.String("project_id");
-        docWriter.Int(id);
-        docWriter.EndObject();
-
-        docWriter.EndObject();
-
-        docWriter.EndObject();
-        
-        //TODO: handle failures in elastic search
-        if(mElasticSearch->deleteProjectChildren(id, string(sbDoc.GetString()))){
-            LOG_INFO("Delete Project[" << id << "] children inodes and datasets : Succeeded");
-        }
-
-        if (mElasticSearch->deleteProject(id)) {
-            LOG_INFO("Delete Project[" << id << "]: Succeeded");
-        }
-
-        mPDICache->removeProject(id);
-        
-        return;
+    switch (eventType) {
+        case NdbDictionary::Event::TE_INSERT:
+            handleAdd(projectId, value);
+            break;
+        case NdbDictionary::Event::TE_DELETE:
+            handleDelete(projectId);
+            break;
+        case NdbDictionary::Event::TE_UPDATE:
+            handleUpdate(projectId, value);
+            break;
     }
-    
+}
+
+void ProjectTableTailer::handleDelete(int projectId) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
-    
+    docWriter.String("query");
+
+    docWriter.StartObject();
+
+    docWriter.String("match");
+    docWriter.StartObject();
+    docWriter.String("project_id");
+    docWriter.Int(projectId);
+    docWriter.EndObject();
+
+    docWriter.EndObject();
+
+    docWriter.EndObject();
+
+    //TODO: handle failures in elastic search
+    if (mElasticSearch->deleteProjectChildren(projectId, string(sbDoc.GetString()))) {
+        LOG_INFO("Delete Project[" << projectId << "] children inodes and datasets : Succeeded");
+    }
+
+    if (mElasticSearch->deleteProject(projectId)) {
+        LOG_INFO("Delete Project[" << projectId << "]: Succeeded");
+    }
+
+    mPDICache->removeProject(projectId);
+}
+
+void ProjectTableTailer::handleAdd(int projectId, NdbRecAttr* value[]) {
+    string data = createJSONUpSert(value);
+    if (mElasticSearch->addProject(projectId, data)) {
+        LOG_INFO("Add Project[" << projectId << "]: Succeeded");
+    }
+
+    const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
+    NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
+    Recovery::checkpointProject(database, transaction, projectId);
+    transaction->close();
+}
+
+void ProjectTableTailer::handleUpdate(int projectId, NdbRecAttr* value[]) {
+    string data = createJSONUpSert(value);
+    if (mElasticSearch->addProject(projectId, data)) {
+        LOG_INFO("Update Project[" << projectId << "]: Succeeded");
+    }
+}
+
+string ProjectTableTailer::createJSONUpSert(NdbRecAttr* value[]) {
+    rapidjson::StringBuffer sbDoc;
+    rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
+    docWriter.StartObject();
+
     docWriter.String("doc");
     docWriter.StartObject();
-    
-    docWriter.String("parent_id");
-    docWriter.Int(value[1]->int32_value());
-    
-    docWriter.String("name");
-    docWriter.String(get_string(value[2]).c_str());
-    
-    docWriter.String("user");
-    docWriter.String(get_string(value[3]).c_str());
-    
-    docWriter.String("description");
-    docWriter.String(get_string(value[4]).c_str());
-    
+
+    if (value[PR_INODE_PID]->isNULL() != -1) {
+        docWriter.String("parent_id");
+        docWriter.Int(value[PR_INODE_PID]->int32_value());
+    }
+
+    if (value[PR_INODE_NAME]->isNULL() != -1) {
+        docWriter.String("name");
+        docWriter.String(get_string(value[PR_INODE_NAME]).c_str());
+    }
+
+    if (value[PR_USER]->isNULL() != -1) {
+        docWriter.String("user");
+        docWriter.String(get_string(value[PR_USER]).c_str());
+    }
+
+    if (value[PR_DESC]->isNULL() != -1) {
+        docWriter.String("description");
+        docWriter.String(get_string(value[PR_DESC]).c_str());
+    }
+
     docWriter.EndObject();
     docWriter.String("doc_as_upsert");
     docWriter.Bool(true);
     docWriter.EndObject();
-    
-    string data = string(sbDoc.GetString());
-    if(mElasticSearch->addProject(id, data)){
-        LOG_INFO("Add Project[" << id << "]: Succeeded");
-    }
-    
-    const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
-    NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
-    Recovery::checkpointProject(database, transaction, id);
-    transaction->close();
+
+    return string(sbDoc.GetString());
 }
 
 ProjectTableTailer::~ProjectTableTailer() {

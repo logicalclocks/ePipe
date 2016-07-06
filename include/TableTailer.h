@@ -62,7 +62,6 @@ private:
     void removeListenerEvent();
     void waitForEvents();
     void run();
-    bool correctResult(NdbDictionary::Event::TableEvent event, NdbRecAttr* values[]);
     const char* getEventName(NdbDictionary::Event::TableEvent event);
     
     bool mStarted;

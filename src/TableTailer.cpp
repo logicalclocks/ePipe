@@ -157,9 +157,7 @@ void TableTailer::waitForEvents() {
                     case NdbDictionary::Event::TE_INSERT:
                     case NdbDictionary::Event::TE_DELETE:
                     case NdbDictionary::Event::TE_UPDATE:
-                        if(correctResult(event, recAttr)){
-                            handleEvent(event, recAttrPre, recAttr);
-                        }
+                        handleEvent(event, recAttrPre, recAttr);
                         break;
                     default:
                         break;
@@ -170,16 +168,6 @@ void TableTailer::waitForEvents() {
         boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait));
     }
 
-}
-
-bool TableTailer::correctResult(NdbDictionary::Event::TableEvent event, NdbRecAttr* values[]){
-    for(int col=0; col<mTable.mNoColumns; col++){
-        if(values[col]->isNULL() != 0 && event != NdbDictionary::Event::TE_DELETE ){
-            LOG_ERROR("Error at column " << mTable.mColumnNames[col] << " " << values[col]->isNULL() << getEventName(event));
-            return false;
-        }
-    }
-    return true;
 }
 
 const char* TableTailer::getEventName(NdbDictionary::Event::TableEvent event) {
