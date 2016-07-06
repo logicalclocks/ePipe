@@ -48,6 +48,7 @@ public:
     boost::optional<Value> get(Key key);
     void remove(Key key);
     bool contains(Key key);
+    void stats();
     virtual ~Cache();
         
 private:
@@ -55,23 +56,32 @@ private:
     const char* mTracePrefix;
     CacheContainer mCache;
     
+    int mHits;
+    int mMisses;
+    
+    int mEvictions;
+    int mInserts;
+    
     mutable boost::mutex mLock;
     
 };
 
 template<typename Key, typename Value>
-Cache<Key,Value>::Cache() : mCapacity(DEFAULT_MAX_CAPACITY), mTracePrefix(""){
+Cache<Key,Value>::Cache() : mCapacity(DEFAULT_MAX_CAPACITY), mTracePrefix(""),
+        mHits(0), mMisses(0), mEvictions(0), mInserts(0) {
     
 }
 
 template<typename Key, typename Value>
-Cache<Key,Value>::Cache(const int max_capacity) : mCapacity(max_capacity), mTracePrefix(""){
+Cache<Key,Value>::Cache(const int max_capacity) : mCapacity(max_capacity),
+        mTracePrefix(""), mHits(0), mMisses(0), mEvictions(0), mInserts(0){
     
 }
 
 template<typename Key, typename Value>
 Cache<Key,Value>::Cache(const int max_capacity, const char* trace_prefix) 
-    : mCapacity(max_capacity), mTracePrefix(trace_prefix){
+    : mCapacity(max_capacity), mTracePrefix(trace_prefix), mHits(0), mMisses(0),
+        mEvictions(0), mInserts(0){
     
 }
 
@@ -90,8 +100,10 @@ void Cache<Key,Value>::put(Key key, Value value){
         if(mCache.size() == mCapacity){
             LOG_TRACE( "EVICT " << mTracePrefix << " [" << mCache.right.begin()->second << "]");
             mCache.right.erase(mCache.right.begin());
+            mEvictions++;
         }
         mCache.insert(typename CacheContainer::value_type(key, value));
+        mInserts++;
     }else{
         //update to most recent
         mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
@@ -106,8 +118,10 @@ boost::optional<Value> Cache<Key,Value>::get(Key key){
     if(it != mCache.left.end()){
         //update to most recent
         mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+        mHits++;
         return it->second;
     }
+    mMisses++;
     return boost::none;
 }
 
@@ -129,10 +143,22 @@ bool Cache<Key,Value>::contains(Key key){
     if(it != mCache.left.end()){
         //update to most recent
         mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+        mHits++;
         return true;
     }
+    mMisses++;
     return false;
 }
 
+
+template<typename Key, typename Value>
+void Cache<Key,Value>::stats(){
+    float hitsRate = (mHits * 100.0)/ (mHits + mMisses);
+    float missesRate = ( mMisses * 100.0) / (mHits + mMisses);
+    float evictionsRate = (mEvictions * 100.0) / mInserts;
+    
+    LOG_INFO(mTracePrefix << " Cache Stats: Hits=" << hitsRate << ", Misses=" 
+            << missesRate << ", EvictionsRate=" << evictionsRate << ", Size=" << mCache.size() << "/" << mCapacity );
+}
 #endif /* CACHE_H */
 
