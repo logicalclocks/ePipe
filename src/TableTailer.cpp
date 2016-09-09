@@ -165,7 +165,7 @@ void TableTailer::waitForEvents() {
 
             }
         }
-        boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait));
+        //boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait));
     }
 
 }
