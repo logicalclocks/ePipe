@@ -59,6 +59,15 @@ const int DS_SEARCH = 6;
 const int DS_SHARED = 7;
 const int DS_ID_PK = 8;
 
+
+//INode->Dataset Lookup Table
+const char* INODE_DATASET_LOOKUP = "hdfs_inode_dataset_lookup";
+const int NUM_INODE_DATASET_COLS = 2;
+const char* INODE_DATASET_LOOKUP_COLS_TO_READ[] = {"inode_id", "dataset_id"};
+const int INODE_DATASET_LOOKUP_INODE_ID_COL = 0;
+const int INODE_DATASET_LOOKUO_DATASET_ID_COL = 1;
+
+
 DatasetTableTailer::DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, 
         ElasticSearch* elastic,ProjectDatasetINodeCache* cache) 
     : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticSearch(elastic), mPDICache(cache){
@@ -212,7 +221,84 @@ string DatasetTableTailer::createJSONUpSert(int porjectId, NdbRecAttr* value[]) 
     return string(sbDoc.GetString());
 }
 
-void DatasetTableTailer::updateProjectIds(const NdbDictionary::Dictionary* database,
+void DatasetTableTailer::refreshCache(MConn connection, UISet inodes, ProjectDatasetINodeCache* cache){
+    UISet datasets_ids = refreshDatasetIds(connection.inodeConnection, inodes, cache);
+    if(!datasets_ids.empty()){
+        refreshProjectIds(connection.metadataConnection, datasets_ids, cache);
+    }
+}
+
+UISet DatasetTableTailer::refreshDatasetIds(SConn inode_connection, UISet inodes, ProjectDatasetINodeCache* cache) {
+    UISet inodes_ids_to_read;
+    UISet dataset_ids;
+
+    for (UISet::iterator it = inodes.begin(); it != inodes.end(); ++it) {
+
+        int inodeId = *it;
+
+        int datasetId = cache->getDatasetId(inodeId);
+        if (datasetId == -1) {
+            inodes_ids_to_read.insert(inodeId);
+            continue;
+        }
+
+        int projectId = cache->getProjectId(datasetId);
+        if (projectId == -1) {
+            dataset_ids.insert(datasetId);
+        }
+    }
+
+
+    if (!inodes_ids_to_read.empty()) {
+        const NdbDictionary::Dictionary* inodeDatabase = getDatabase(inode_connection);
+        NdbTransaction* inodeTransaction = startNdbTransaction(inode_connection);
+
+        readINodeToDatasetLookup(inodeDatabase, inodeTransaction,
+                inodes_ids_to_read, dataset_ids, cache);
+
+        executeTransaction(inodeTransaction, NdbTransaction::NoCommit);
+        inode_connection->closeTransaction(inodeTransaction);
+    }
+    
+    return dataset_ids;
+}
+
+void DatasetTableTailer::readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase,
+        NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read, ProjectDatasetINodeCache* cache) {
+
+    UIRowMap inodesToDatasets = readTableWithIntPK(inodesDatabase, inodesTransaction,
+            INODE_DATASET_LOOKUP, inodes_ids, INODE_DATASET_LOOKUP_COLS_TO_READ,
+            NUM_INODE_DATASET_COLS, INODE_DATASET_LOOKUP_INODE_ID_COL);
+
+    executeTransaction(inodesTransaction, NdbTransaction::NoCommit);
+
+    for (UIRowMap::iterator it = inodesToDatasets.begin(); it != inodesToDatasets.end(); ++it) {
+        int inodeId = it->second[INODE_DATASET_LOOKUP_INODE_ID_COL]->int32_value();
+        if (it->first != inodeId) {
+            //TODO: update elastic?!
+            LOG_ERROR("INodeToDataset " << it->first << " doesn't exist, got inodeId "
+                    << inodeId << " was expecting " << it->first);
+            continue;
+        }
+
+        int datasetId = it->second[INODE_DATASET_LOOKUO_DATASET_ID_COL]->int32_value();
+
+        cache->addINodeToDataset(it->first, datasetId);
+        if (!cache->containsDataset(datasetId)) {
+            datasets_to_read.insert(datasetId);
+        }
+    }
+
+}
+
+void DatasetTableTailer::refreshProjectIds(SConn connection, UISet datasets, ProjectDatasetINodeCache* cache) {
+    const NdbDictionary::Dictionary* metaDatabase = getDatabase(connection);
+    NdbTransaction* metaTransaction = startNdbTransaction(connection);
+    refreshProjectIds(metaDatabase, metaTransaction, datasets, cache);
+    connection->closeTransaction(metaTransaction);
+}
+
+void DatasetTableTailer::refreshProjectIds(const NdbDictionary::Dictionary* database,
         NdbTransaction* transaction, UISet dataset_ids, ProjectDatasetINodeCache* cache) {    
 
     const NdbDictionary::Index * index= getIndex(database, TABLE.mTableName, _dataset_cols[0]);

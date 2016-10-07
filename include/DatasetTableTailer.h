@@ -30,13 +30,17 @@
 #include "ProjectDatasetINodeCache.h"
 #include "ElasticSearch.h"
 
-class DatasetTableTailer : public TableTailer{
+class DatasetTableTailer : public TableTailer {
 public:
     DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ElasticSearch* elastic,
             ProjectDatasetINodeCache* cache);
     virtual ~DatasetTableTailer();
-    
-    static void updateProjectIds(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet dataset_ids, ProjectDatasetINodeCache* cache);    
+
+    static void refreshCache(MConn connection, UISet inodes, ProjectDatasetINodeCache* cache);
+    static UISet refreshDatasetIds(SConn connection, UISet inodes, ProjectDatasetINodeCache* cache);
+    static void refreshProjectIds(SConn connection, UISet datasets, ProjectDatasetINodeCache* cache);
+    static void refreshProjectIds(const NdbDictionary::Dictionary* database, NdbTransaction* transaction,
+            UISet dataset_ids, ProjectDatasetINodeCache* cache);
 private:
     static const WatchTable TABLE;
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
@@ -44,7 +48,10 @@ private:
     void handleAdd(int datasetId, int projectId, NdbRecAttr* value[]);
     void handleUpdate(NdbRecAttr* value[]);
     string createJSONUpSert(int projectId, NdbRecAttr* value[]);
-    
+
+    static void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase,
+            NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read, ProjectDatasetINodeCache* cache);
+
     ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
 };

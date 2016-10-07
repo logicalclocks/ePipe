@@ -47,11 +47,6 @@ struct BatchStats{
     }
 };
 
-struct MConn{
-    Ndb* inodeConnection;
-    Ndb* metadataConnection;
-};
-
 template<typename Data, typename Conn>
 class NdbDataReader {
 public:
@@ -123,7 +118,7 @@ void NdbDataReader<Data, Conn>::readData(int connIndex, Conn connection, vector<
     
     if (!data_batch->empty()) {
         processAddedandDeleted(connection, data_batch, bulk);
-    }
+        }
     
     bulk.mEndProcessing = getCurrentTime();
     

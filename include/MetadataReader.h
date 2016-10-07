@@ -63,10 +63,8 @@ private:
     UISet readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
-    //Read from the inodes database
-    UISet readINodeToDatasetLookup(Ndb* inode_connection, UIRowMap tuples);  
-    void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
-        NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read);
+    void refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples,
+        const NdbDictionary::Dictionary* metaDatabase, NdbTransaction* metaTransaction);  
     
     void createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk);
     

@@ -68,7 +68,7 @@ void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType
 MetadataEntry MetadataTableTailer::consume() {
     MetadataEntry res;
     mQueue->wait_and_pop(res);
-    LOG_TRACE(" pop metadata [" << res.mId  << "," << res.mTupleId << "," << res.mFieldId << "] to queue, Op [" << res.mOperation << "] \n" << res.to_string());
+    LOG_TRACE(" pop metadata [" << res.mId  << "," << res.mTupleId << "," << res.mFieldId << "] from queue, Op [" << res.mOperation << "] \n" << res.to_string());
     return res;
 }
 

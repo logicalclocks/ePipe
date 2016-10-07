@@ -54,12 +54,6 @@ const char* TUPLES_COLS_TO_READ[] = {"tupleid", "inodeid"};
 const int TUPLE_ID_COL = 0;
 const int TUPLE_INODE_ID_COL = 1;
 
-const char* INODE_DATASET_LOOKUP = "hdfs_inode_dataset_lookup";
-const int NUM_INODE_DATASET_COLS = 2;
-const char* INODE_DATASET_LOOKUP_COLS_TO_READ[] = {"inode_id", "dataset_id"};
-const int INODE_DATASET_LOOKUP_INODE_ID_COL = 0;
-const int INODE_DATASET_LOOKUO_DATASET_ID_COL = 1;
-
 const int DONT_EXIST_INT = -1;
 const char* DONT_EXIST_STR = "-1";
 
@@ -83,10 +77,8 @@ void MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, Bu
     if(mHopsworksEnalbed){
         //read inodes to datasets from inodes datatbase to enable
         //parent/child relationship
-        UISet dataset_ids = readINodeToDatasetLookup(connection.inodeConnection, tuples);
-        if(!dataset_ids.empty()){
-           DatasetTableTailer::updateProjectIds(metaDatabase, metaTransaction, dataset_ids, mPDICache);
-        }
+        refreshProjectDatasetINodeCache(connection.inodeConnection, tuples,
+                metaDatabase, metaTransaction);
     }
     
     int last_used_id = data_batch->at(data_batch->size() - 1).mId;
@@ -225,12 +217,11 @@ void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, Nd
     }
 }
 
-UISet MetadataReader::readINodeToDatasetLookup(Ndb* inode_connection, UIRowMap tuples) {
+void MetadataReader::refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples, 
+        const NdbDictionary::Dictionary* metaDatabase, NdbTransaction* metaTransaction) {
 
-    //read inodes to dataset ids
     UISet inodes_ids;
-    UISet dataset_ids;
-
+    
     for (UIRowMap::iterator it = tuples.begin(); it != tuples.end(); ++it) {
         int tupleId = it->second[TUPLE_ID_COL]->int32_value();
         if (it->first != tupleId) {
@@ -241,56 +232,12 @@ UISet MetadataReader::readINodeToDatasetLookup(Ndb* inode_connection, UIRowMap t
         }
 
         int inodeId = it->second[TUPLE_INODE_ID_COL]->int32_value();
-
-        int datasetId = mPDICache->getDatasetId(inodeId);
-        if (datasetId == -1) {
-            inodes_ids.insert(inodeId);
-            continue;
-        }
-
-        int projectId = mPDICache->getProjectId(datasetId);
-        if (projectId == -1) {
-            dataset_ids.insert(datasetId);
-        }
+        inodes_ids.insert(inodeId);
     }
 
-
-    if (!inodes_ids.empty()) {
-        const NdbDictionary::Dictionary* inodeDatabase = getDatabase(inode_connection);
-        NdbTransaction* inodeTransaction = startNdbTransaction(inode_connection);
-
-        readINodeToDatasetLookup(inodeDatabase, inodeTransaction, inodes_ids, dataset_ids);
-
-        executeTransaction(inodeTransaction, NdbTransaction::NoCommit);
-        inode_connection->closeTransaction(inodeTransaction);
-    }
-    return dataset_ids;
-}
-
-void MetadataReader::readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase, 
-        NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read) {
-    
-    UIRowMap inodesToDatasets = readTableWithIntPK(inodesDatabase, inodesTransaction,
-            INODE_DATASET_LOOKUP, inodes_ids, INODE_DATASET_LOOKUP_COLS_TO_READ,
-            NUM_INODE_DATASET_COLS, INODE_DATASET_LOOKUP_INODE_ID_COL);
-
-    executeTransaction(inodesTransaction, NdbTransaction::NoCommit);
-
-    for (UIRowMap::iterator it = inodesToDatasets.begin(); it != inodesToDatasets.end(); ++it) {
-        int inodeId = it->second[INODE_DATASET_LOOKUP_INODE_ID_COL]->int32_value();
-        if (it->first != inodeId) {
-            //TODO: update elastic?!
-             LOG_ERROR("INodeToDataset " << it->first << " doesn't exist, got inodeId " 
-                    << inodeId << " was expecting " << it->first);
-            continue;
-        }
-
-        int datasetId = it->second[INODE_DATASET_LOOKUO_DATASET_ID_COL]->int32_value();
-
-        mPDICache->addINodeToDataset(it->first, datasetId);
-        if(!mPDICache->containsDataset(datasetId)){
-            datasets_to_read.insert(datasetId);
-        }
+    UISet dataset_ids = DatasetTableTailer::refreshDatasetIds(inode_connection, inodes_ids, mPDICache);
+    if (!dataset_ids.empty()) {
+        DatasetTableTailer::refreshProjectIds(metaDatabase, metaTransaction, dataset_ids, mPDICache);
     }
 }
 

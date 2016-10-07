@@ -182,10 +182,7 @@ void FsMutationsDataReader::updateProjectIds(Ndb* metaConnection, Fmq* data_batc
     }
 
     if (!dataset_ids.empty()) {
-        const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConnection);
-        NdbTransaction* metaTransaction = startNdbTransaction(metaConnection);
-        DatasetTableTailer::updateProjectIds(metaDatabase, metaTransaction, dataset_ids, mPDICache);
-        metaConnection->closeTransaction(metaTransaction);
+        DatasetTableTailer::refreshProjectIds(metaConnection, dataset_ids, mPDICache);
     }
 }
 

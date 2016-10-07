@@ -26,6 +26,7 @@
 #define UTILS_H
 
 #include "common.h"
+#include "ProjectDatasetINodeCache.h"
 #include<cstdlib>
 #include<cstring>
 
@@ -33,6 +34,13 @@ typedef boost::posix_time::ptime ptime;
 
 typedef vector<NdbRecAttr*> Row;
 typedef boost::unordered_map<int, Row> UIRowMap;
+
+typedef Ndb* SConn;
+
+struct MConn{
+    SConn inodeConnection;
+    SConn metadataConnection;
+};
 
 namespace Utils {
 
