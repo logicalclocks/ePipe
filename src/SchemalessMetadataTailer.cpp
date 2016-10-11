@@ -42,7 +42,7 @@ const NdbDictionary::Event::TableEvent _schemaless_metadata_events[_schemaless_m
 NdbDictionary::Event::TE_UPDATE, NdbDictionary::Event::TE_DELETE};
 
 const WatchTable SchemalessMetadataTailer::TABLE = {_schemaless_metadata_table, _schemaless_metadata_cols, 
-_schemaless_metadata_noCols , _schemaless_metadata_events, _schemaless_metadata_noEvents, _schemaless_metadata_cols[0],
+_schemaless_metadata_noCols , _schemaless_metadata_events, _schemaless_metadata_noEvents,"PRIMARY",
 _schemaless_metadata_cols[0]};
 
 
