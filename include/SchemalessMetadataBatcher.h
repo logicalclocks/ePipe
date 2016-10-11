@@ -17,28 +17,28 @@
  */
 
 /* 
- * File:   SchemalessMetadataReader.h
+ * File:   SchemalessMetadataBatcher.h
  * Author: Mahmoud Ismail<maism@kth.se>
  *
  */
 
-#ifndef SCHEMALESSMETADATAREADER_H
-#define SCHEMALESSMETADATAREADER_H
+#ifndef SCHEMALESSMETADATABATCHER_H
+#define SCHEMALESSMETADATABATCHER_H
 
-#include "NdbDataReader.h"
+#include "RCBatcher.h"
 #include "SchemalessMetadataTailer.h"
-#include "DatasetTableTailer.h"
+#include "SchemalessMetadataReader.h"
 
-class SchemalessMetadataReader : public NdbDataReader<SchemalessMetadataEntry, MConn> {
+class SchemalessMetadataBatcher : public RCBatcher<SchemalessMetadataEntry, MConn> {
 public:
-    SchemalessMetadataReader(MConn* connections, const int num_readers, const bool hopsworks,
-            ElasticSearch* elastic, ProjectDatasetINodeCache* cache);
-    virtual ~SchemalessMetadataReader();
-private:
-    virtual void processAddedandDeleted(MConn connection, Smq* data_batch, Bulk& bulk);
-    void createJSON(Smq* data_batch, Bulk& bulk);
-    void mergeDoc(rapidjson::Document& target, rapidjson::Document& source);
+
+    SchemalessMetadataBatcher(SchemalessMetadataTailer* table_tailer,
+            SchemalessMetadataReader* data_reader, const int time_before_issuing_ndb_reqs,
+            const int batch_size) : RCBatcher<SchemalessMetadataEntry, MConn>(table_tailer,
+    data_reader, time_before_issuing_ndb_reqs, batch_size) {
+    }
 };
 
-#endif /* SCHEMALESSMETADATAREADER_H */
+
+#endif /* SCHEMALESSMETADATABATCHER_H */
 

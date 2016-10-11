@@ -56,5 +56,11 @@ typedef boost::unordered_map<int, int> UIMap;
 #define WAIT_UNTIL_READY 30
 #define DEFAULT_MAX_CAPACITY 10000
 
+enum MetadataType{
+    SchemaBased = 0,
+    Schemaless = 1,
+    Both = 2
+};
+
 #endif /* COMMON_H */
 

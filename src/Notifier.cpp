@@ -28,12 +28,13 @@ Notifier::Notifier(const char* connection_string, const char* database_name, con
         const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, 
         const int num_ndb_readers, const string elastic_ip, const bool hopsworks, const string elastic_index, 
         const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type,
-        const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats)
+        const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, 
+        const bool stats, MetadataType metadata_type)
 : mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
         mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
         mElasticIndex(elastic_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), 
         mElasticInodeType(elastic_inode_type), mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), 
-        mRecovery(recovery), mStats(stats) {
+        mRecovery(recovery), mStats(stats), mMetadataType(metadata_type) {
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
 }
@@ -48,8 +49,12 @@ void Notifier::start() {
     }
     
     mFsMutationsDataReader->start();
-    mMetadataReader->start();
-    
+    if(mMetadataType == SchemaBased || mMetadataType == Both){
+        mMetadataReader->start();
+    }
+    if(mMetadataType == Schemaless || mMetadataType == Both){
+        mSchemalessMetadataReader->start();
+    }    
     mElasticSearch->start();
     
     //TODO: ePipe cannot capture project/dataset/metadata deletion events
@@ -64,9 +69,16 @@ void Notifier::start() {
     
     mFsMutationsBatcher->start();
     mFsMutationsTableTailer->start(ri.mMutationsIndex);
-    
-    mMetadataBatcher->start();
-    mMetadataTableTailer->start(ri.mMetadataIndex);
+
+    if (mMetadataType == SchemaBased || mMetadataType == Both) {
+        mMetadataBatcher->start();
+        mMetadataTableTailer->start(ri.mMetadataIndex);
+    }
+
+    if (mMetadataType == Schemaless || mMetadataType == Both) {
+        mSchemalessMetadataBatcher->start();
+        mSchemalessMetadataTailer->start(ri.mSchemalessMetadataIndex);
+    }
     
     ptime t2 = getCurrentTime();
     LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");
@@ -95,20 +107,39 @@ void Notifier::setup() {
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, 
             mTimeBeforeIssuingNDBReqs, mBatchSize);
     
-    
-    Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-    mMetadataTableTailer = new MetadataTableTailer(metadata_tailer_connection, mPollMaxTimeToWait);
-    
-    MConn* metadata_connections = new MConn[mNumNdbReaders];
-    for(int i=0; i< mNumNdbReaders; i++){
-        metadata_connections[i].inodeConnection =  create_ndb_connection(mDatabaseName);
-        metadata_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
-    }
-     
-    mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders, 
-             mHopsworksEnabled, mElasticSearch, mPDICache, mLRUCap);
-    mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
 
+    if (mMetadataType == SchemaBased || mMetadataType == Both) {
+        Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+        mMetadataTableTailer = new MetadataTableTailer(metadata_tailer_connection, mPollMaxTimeToWait);
+
+        MConn* metadata_connections = new MConn[mNumNdbReaders];
+        for (int i = 0; i < mNumNdbReaders; i++) {
+            metadata_connections[i].inodeConnection = create_ndb_connection(mDatabaseName);
+            metadata_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
+        }
+
+        mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders,
+                mHopsworksEnabled, mElasticSearch, mPDICache, mLRUCap);
+        mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader,
+                mTimeBeforeIssuingNDBReqs, mBatchSize);
+    }
+
+    if (mMetadataType == Schemaless || mMetadataType == Both) {
+        Ndb* s_metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+        mSchemalessMetadataTailer = new SchemalessMetadataTailer(s_metadata_tailer_connection, mPollMaxTimeToWait);
+
+        MConn* s_metadata_connections = new MConn[mNumNdbReaders];
+        for (int i = 0; i < mNumNdbReaders; i++) {
+            s_metadata_connections[i].inodeConnection = create_ndb_connection(mDatabaseName);
+            s_metadata_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
+        }
+
+        mSchemalessMetadataReader = new SchemalessMetadataReader(s_metadata_connections, mNumNdbReaders,
+                mHopsworksEnabled, mElasticSearch, mPDICache);
+        mSchemalessMetadataBatcher = new SchemalessMetadataBatcher(mSchemalessMetadataTailer,
+                mSchemalessMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
+    }
+    
     if (mHopsworksEnabled) {
         Ndb* project_tailer_connection = create_ndb_connection(mMetaDatabaseName);
         mProjectTableTailer = new ProjectTableTailer(project_tailer_connection, mPollMaxTimeToWait,
@@ -161,6 +192,8 @@ Notifier::~Notifier() {
     delete mMetadataTableTailer;
     delete mMetadataReader;
     delete mMetadataBatcher;
-    
+    delete mSchemalessMetadataTailer;
+    delete mSchemalessMetadataReader;
+    delete mSchemalessMetadataBatcher;
     ndb_end(2);
 }

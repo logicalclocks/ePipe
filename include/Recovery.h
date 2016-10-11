@@ -20,12 +20,14 @@ struct RecoveryIndeces{
     int mDatasetIndex;
     int mMetadataIndex;
     int mMutationsIndex;
+    int mSchemalessMetadataIndex;
     
     RecoveryIndeces(){
         mProjectIndex = -1;
         mDatasetIndex = -1;
         mMetadataIndex= -1;
         mMutationsIndex = -1;
+        mSchemalessMetadataIndex = -1;
     }
 };
 
@@ -35,6 +37,7 @@ public:
     static void checkpointProject(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int projectId);
     static void checkpointDataset(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int datasetId);
     static void checkpointMetadata(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int metadataId);
+    static void checkpointSchemalessMetadata(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int metadataId);
 private:
     static void checkpoint(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int colId, int value);
 };

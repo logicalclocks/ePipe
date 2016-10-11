@@ -50,7 +50,8 @@ int main(int argc, char** argv) {
     int lru_cap = DEFAULT_MAX_CAPACITY;
     bool recovery = true;
     bool stats = false;
-
+    MetadataType metadata_type = Both;
+    
     po::options_description desc("Allowed options");
     desc.add_options()
             ("help", "produce help message")
@@ -73,6 +74,7 @@ int main(int argc, char** argv) {
             ("log_level", po::value<int>()->default_value(log_level), "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
             ("recovery", po::value<bool>()->default_value(recovery), "enable or disable startup recovery")
             ("stats", po::value<bool>()->default_value(stats), "enable or disable print of accumulators stats")
+            ("metadata_type", po::value<int>()->default_value(metadata_type), "Extended metadata type; SchemaBased=0, Schemaless=1, Both=2")
             ("version", "ePipe version")
             ;
 
@@ -168,16 +170,22 @@ int main(int argc, char** argv) {
         stats = vm["stats"].as<bool>();
     }
     
+    if(vm.count("metadata_type")){
+        metadata_type = static_cast<MetadataType>(vm["metadata_type"].as<int>());
+    }
+    
     Logger::setLoggerLevel(log_level);
             
     if(connection_string.empty() || database_name.empty() || meta_database_name.empty()){
         LOG_ERROR("you should provide at least connection, database, meta_database");
         return EXIT_FAILURE;
     }
-        
-    Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), meta_database_name.c_str(),
-            wait_time, ndb_batch, poll_maxTimeToWait, num_ndb_readers, elastic_addr, hopsworks, elastic_index,
-            elastic_project_type, elastic_dataset_type, elastic_inode_type, elastic_batch_size, elastic_issue_time, lru_cap, recovery, stats);
+
+    Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), 
+            meta_database_name.c_str(), wait_time, ndb_batch, poll_maxTimeToWait, 
+            num_ndb_readers, elastic_addr, hopsworks, elastic_index, elastic_project_type, 
+            elastic_dataset_type, elastic_inode_type, elastic_batch_size, elastic_issue_time,
+            lru_cap, recovery, stats, metadata_type);
     notifer->start();
 
     return EXIT_SUCCESS;

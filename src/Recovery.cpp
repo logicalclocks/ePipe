@@ -30,13 +30,14 @@ using namespace Utils::NdbC;
 const int ER_PROJECT_ID = 1;
 const int ER_DATASET_ID = 2;
 const int ER_METADATA_ID = 3;
+const int ER_SCHEMALESS_METADATA_ID = 4;
 
 const char* ER_TABLE = "epipe_recovery";
 const char* ER_TABLE_ID = "table";
 const char* ER_LAST_USED_ID = "last_used_id";
 
-const int ER_MODES_COUNT = 3;
-const int MODES_ARR[ER_MODES_COUNT] = {ER_PROJECT_ID, ER_DATASET_ID, ER_METADATA_ID};
+const int ER_MODES_COUNT = 4;
+const int MODES_ARR[ER_MODES_COUNT] = {ER_PROJECT_ID, ER_DATASET_ID, ER_METADATA_ID, ER_SCHEMALESS_METADATA_ID};
 
 
 RecoveryIndeces Recovery::getRecoveryIndeces(Ndb* connection) {
@@ -74,6 +75,8 @@ RecoveryIndeces Recovery::getRecoveryIndeces(Ndb* connection) {
             ri.mDatasetIndex = last_used_id;
         }else if(it->first == ER_METADATA_ID){
             ri.mMetadataIndex = last_used_id;
+        }else if(it->first == ER_SCHEMALESS_METADATA_ID){
+            ri.mSchemalessMetadataIndex = last_used_id;
         }
     }
     ri.mMutationsIndex = 0;
@@ -94,12 +97,15 @@ void Recovery::checkpointMetadata(const NdbDictionary::Dictionary* database, Ndb
     checkpoint(database, transaction, ER_METADATA_ID, metadataId);
 }
 
+void Recovery::checkpointSchemalessMetadata(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int metadataId){
+    checkpoint(database, transaction, ER_SCHEMALESS_METADATA_ID, metadataId);
+}
 
 void Recovery::checkpoint(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int colId, int value) {
     ptime t1 = Utils::getCurrentTime();
     const NdbDictionary::Table* recovery_table = getTable(database, ER_TABLE);
     NdbOperation* op = getNdbOperation(transaction, recovery_table);
-    op->updateTuple();
+    op->writeTuple();
     op->equal(ER_TABLE_ID, colId);
     op->setValue(ER_LAST_USED_ID, value);
     executeTransaction(transaction, NdbTransaction::Commit);
