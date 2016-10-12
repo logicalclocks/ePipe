@@ -62,5 +62,40 @@ enum MetadataType{
     Both = 2
 };
 
+struct TableUnitConf {
+    int mWaitTime;
+    int mBatchSize;
+    int mNumReaders;
+
+    TableUnitConf(int wait_time, int batch_size, int num_readers) {
+        mWaitTime = wait_time;
+        mBatchSize = batch_size;
+        mNumReaders = num_readers;
+    }
+
+    vector<int> getVector() {
+        vector<int> d;
+        d.push_back(mWaitTime);
+        d.push_back(mBatchSize);
+        d.push_back(mNumReaders);
+        return d;
+    }
+
+    void update(vector<int> v) {
+        if (v.size() == 3) {
+            mWaitTime = v[0];
+            mBatchSize = v[1];
+            mNumReaders = v[2];
+        }
+    }
+
+    string getString() {
+        stringstream str;
+        str << mWaitTime << " " << mBatchSize << " " << mNumReaders;
+        return str.str();
+    }
+};
+
+
 #endif /* COMMON_H */
 

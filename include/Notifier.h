@@ -37,11 +37,10 @@
 class Notifier {
 public:
     Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
-            const int time_before_issuing_ndb_reqs, const int batch_size, 
-            const int poll_maxTimeToWait, const int num_ndb_readers, const string elastic_addr,
-            const bool hopsworks, const string elastic_index, const string elasttic_project_type, 
-            const string elastic_dataset_type, const string elastic_inode_type, const int elastic_batch_size,
-            const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
+            const TableUnitConf mutations_tu, const TableUnitConf metadata_tu, const TableUnitConf schemaless_tu,
+            const int poll_maxTimeToWait, const string elastic_addr, const bool hopsworks, const string elastic_index,
+            const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type,
+            const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
             MetadataType metadata_type);
     void start();
     virtual ~Notifier();
@@ -52,10 +51,11 @@ private:
     
     Ndb_cluster_connection *mClusterConnection;
     
-    const int mTimeBeforeIssuingNDBReqs;
-    const int mBatchSize;
+    const TableUnitConf mMutationsTU;
+    const TableUnitConf mMetadataTU;
+    const TableUnitConf mSchemalessTU;
+    
     const int mPollMaxTimeToWait;
-    const int mNumNdbReaders;
     const string mElasticAddr;
     const bool mHopsworksEnabled;
     const string mElasticIndex;

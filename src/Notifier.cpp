@@ -25,13 +25,13 @@
 #include "Notifier.h"
 
 Notifier::Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
-        const int time_before_issuing_ndb_reqs, const int batch_size, const int poll_maxTimeToWait, 
-        const int num_ndb_readers, const string elastic_ip, const bool hopsworks, const string elastic_index, 
+        const TableUnitConf mutations_tu, const TableUnitConf metadata_tu, const TableUnitConf schemaless_tu,
+        const int poll_maxTimeToWait, const string elastic_ip, const bool hopsworks, const string elastic_index, 
         const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type,
         const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, 
         const bool stats, MetadataType metadata_type)
-: mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mTimeBeforeIssuingNDBReqs(time_before_issuing_ndb_reqs), mBatchSize(batch_size), 
-        mPollMaxTimeToWait(poll_maxTimeToWait), mNumNdbReaders(num_ndb_readers), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
+: mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mMutationsTU(mutations_tu), mMetadataTU(metadata_tu), 
+        mSchemalessTU(schemaless_tu), mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
         mElasticIndex(elastic_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), 
         mElasticInodeType(elastic_inode_type), mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), 
         mRecovery(recovery), mStats(stats), mMetadataType(metadata_type) {
@@ -96,48 +96,48 @@ void Notifier::setup() {
     Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
     mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mPDICache);
     
-    MConn* mutations_connections = new MConn[mNumNdbReaders];
-    for(int i=0; i< mNumNdbReaders; i++){
+    MConn* mutations_connections = new MConn[mMutationsTU.mNumReaders];
+    for(int i=0; i< mMutationsTU.mNumReaders; i++){
         mutations_connections[i].inodeConnection =  create_ndb_connection(mDatabaseName);
         mutations_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
     }
     
-    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mNumNdbReaders, 
+    mFsMutationsDataReader = new FsMutationsDataReader(mutations_connections, mMutationsTU.mNumReaders, 
            mHopsworksEnabled, mElasticSearch, mPDICache, mLRUCap);
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReader, 
-            mTimeBeforeIssuingNDBReqs, mBatchSize);
+            mMutationsTU.mWaitTime, mMutationsTU.mBatchSize);
     
 
     if (mMetadataType == SchemaBased || mMetadataType == Both) {
         Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
         mMetadataTableTailer = new MetadataTableTailer(metadata_tailer_connection, mPollMaxTimeToWait);
 
-        MConn* metadata_connections = new MConn[mNumNdbReaders];
-        for (int i = 0; i < mNumNdbReaders; i++) {
+        MConn* metadata_connections = new MConn[mMetadataTU.mNumReaders];
+        for (int i = 0; i < mMetadataTU.mNumReaders; i++) {
             metadata_connections[i].inodeConnection = create_ndb_connection(mDatabaseName);
             metadata_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
         }
 
-        mMetadataReader = new MetadataReader(metadata_connections, mNumNdbReaders,
+        mMetadataReader = new MetadataReader(metadata_connections, mMetadataTU.mNumReaders,
                 mHopsworksEnabled, mElasticSearch, mPDICache, mLRUCap);
         mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader,
-                mTimeBeforeIssuingNDBReqs, mBatchSize);
+                mMetadataTU.mWaitTime, mMetadataTU.mBatchSize);
     }
 
     if (mMetadataType == Schemaless || mMetadataType == Both) {
         Ndb* s_metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
         mSchemalessMetadataTailer = new SchemalessMetadataTailer(s_metadata_tailer_connection, mPollMaxTimeToWait);
 
-        MConn* s_metadata_connections = new MConn[mNumNdbReaders];
-        for (int i = 0; i < mNumNdbReaders; i++) {
+        MConn* s_metadata_connections = new MConn[mSchemalessTU.mNumReaders];
+        for (int i = 0; i < mSchemalessTU.mNumReaders; i++) {
             s_metadata_connections[i].inodeConnection = create_ndb_connection(mDatabaseName);
             s_metadata_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
         }
 
-        mSchemalessMetadataReader = new SchemalessMetadataReader(s_metadata_connections, mNumNdbReaders,
+        mSchemalessMetadataReader = new SchemalessMetadataReader(s_metadata_connections, mSchemalessTU.mNumReaders,
                 mHopsworksEnabled, mElasticSearch, mPDICache);
         mSchemalessMetadataBatcher = new SchemalessMetadataBatcher(mSchemalessMetadataTailer,
-                mSchemalessMetadataReader, mTimeBeforeIssuingNDBReqs, mBatchSize);
+                mSchemalessMetadataReader, mSchemalessTU.mWaitTime, mSchemalessTU.mBatchSize);
     }
     
     if (mHopsworksEnabled) {
