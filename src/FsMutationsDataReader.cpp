@@ -93,6 +93,7 @@ void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database
         
         op->equal("parent_id", row.mParentId);
         op->equal("name", get_ndb_varchar(row.mInodeName, name_array_type).c_str());
+        op->equal("partition_id", row.mPartitionId);
         
         inodes[i] = Row(NUM_INODES_COLS);
         for(int c=0; c<NUM_INODES_COLS; c++){

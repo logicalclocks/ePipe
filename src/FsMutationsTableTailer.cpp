@@ -28,12 +28,13 @@
 using namespace Utils::NdbC;
 
 const string _mutation_table= "hdfs_metadata_log";
-const int _mutation_noCols= 6;
+const int _mutation_noCols= 7;
 const string _mutation_cols[_mutation_noCols]=
     {"dataset_id",
      "inode_id",
      "timestamp",
-     "inode_pid",
+     "inode_partition_id",
+     "inode_parent_id",
      "inode_name",
      "operation"
     };
@@ -58,9 +59,10 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
     row.mDatasetId = value[0]->int32_value();
     row.mInodeId =  value[1]->int32_value();
     row.mTimestamp = value[2]->int64_value();
-    row.mParentId = value[3]->int32_value();
-    row.mInodeName = get_string(value[4]);
-    row.mOperation = static_cast<Operation>(value[5]->int8_value());
+    row.mPartitionId = value[3]->int32_value();
+    row.mParentId = value[4]->int32_value();
+    row.mInodeName = get_string(value[5]);
+    row.mOperation = static_cast<Operation>(value[6]->int8_value());
     if (row.mOperation == ADD || row.mOperation == DELETE) {
         LOG_TRACE(" push inode [" << row.mInodeId << "] to queue, Op [" << row.mOperation << "]");
         mQueue->push(row);

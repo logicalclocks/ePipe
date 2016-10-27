@@ -31,8 +31,9 @@
 
 struct FsMutationRow {
      int mDatasetId;
-     int mParentId;
      int mInodeId;
+     int mPartitionId;
+     int mParentId;
      string mInodeName;
      long mTimestamp;
      Operation mOperation;
@@ -44,6 +45,7 @@ struct FsMutationRow {
         stream << "-------------------------" << endl;
         stream << "DatasetId = " << mDatasetId << endl;
         stream << "InodeId = " << mInodeId << endl;
+        stream << "PartitionId = " << mPartitionId << endl;
         stream << "ParentId = " << mParentId << endl;
         stream << "InodeName = " << mInodeName << endl;
         stream << "Timestamp = " << mTimestamp << endl;
@@ -66,6 +68,7 @@ struct FsMutationRowHash {
     std::size_t operator()(const FsMutationRow &a) const {
         std::size_t seed = 0;
         boost::hash_combine(seed, a.mDatasetId);
+        boost::hash_combine(seed, a.mPartitionId);
         boost::hash_combine(seed, a.mParentId);
         boost::hash_combine(seed, a.mInodeName);
         boost::hash_combine(seed, a.mInodeId);
