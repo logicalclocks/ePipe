@@ -125,7 +125,7 @@ namespace Utils {
                      Data starts from third byte of aRef
                      */
                     int m = len / 256;
-                    int l = len - (m * 256);
+                    int l = len % 256;
                     data << ((char) l) << ((char) m) << str;
                     break;
             }
@@ -169,7 +169,7 @@ namespace Utils {
                      Data starts from third byte of aRef
                      */
                     first_byte = aRef + 2;
-                    bytes = (size_t) (aRef[1]) * 256 + (size_t) (aRef[0]);
+                    bytes = (size_t) ((unsigned char)aRef[1]) * 256 + (size_t) ((unsigned char)aRef[0]);
                     return 0;
                 default:
                     first_byte = NULL;
