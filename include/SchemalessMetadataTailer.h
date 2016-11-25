@@ -31,6 +31,7 @@
 struct SchemalessMetadataEntry {
     int mId;
     int mINodeId;
+    int mPartitionId;
     int mParentId;
     string mInodeName;
     string mJSONData;
@@ -42,6 +43,7 @@ struct SchemalessMetadataEntry {
         stream << "-------------------------" << endl;
         stream << "Id = " << mId << endl;
         stream << "INodeId = " << mParentId << endl;
+        stream << "PartitionId = " << mParentId << endl;
         stream << "ParentId = " << mParentId << endl;
         stream << "InodeName = " << mInodeName << endl;
         stream << "Operation = " << mOperation << endl;

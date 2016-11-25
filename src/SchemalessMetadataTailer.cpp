@@ -28,11 +28,12 @@
 using namespace Utils::NdbC;
 
 const string _schemaless_metadata_table= "meta_data_schemaless";
-const int _schemaless_metadata_noCols= 5;
+const int _schemaless_metadata_noCols= 6;
 const string _schemaless_metadata_cols[_schemaless_metadata_noCols]=
     {"id",
      "inode_id",
-     "inode_pid",
+     "inode_partition_id",
+     "inode_parent_id",
      "inode_name",
      "data"
     };
@@ -54,9 +55,10 @@ void SchemalessMetadataTailer::handleEvent(NdbDictionary::Event::TableEvent even
     SchemalessMetadataEntry entry;
     entry.mId = value[0]->int32_value();
     entry.mINodeId = value[1]->int32_value();
-    entry.mParentId = value[2]->int32_value();
-    entry.mInodeName = get_string(value[3]);
-    entry.mJSONData = get_string(value[4]);
+    entry.mPartitionId = value[2]->int32_value();
+    entry.mParentId = value[3]->int32_value();
+    entry.mInodeName = get_string(value[4]);
+    entry.mJSONData = get_string(value[5]);
     entry.mOperation = ADD;
     if(eventType == NdbDictionary::Event::TE_DELETE){
         entry.mOperation = DELETE;
