@@ -23,7 +23,7 @@
  */
 
 #include "MetadataReader.h"
-#include "DatasetTableTailer.h"
+#include "HopsworksOpsLogTailer.h"
 
 const char* META_FIELDS = "meta_fields";
 const int NUM_FIELDS_COLS = 5;
@@ -235,9 +235,9 @@ void MetadataReader::refreshProjectDatasetINodeCache(SConn inode_connection, UIR
         inodes_ids.insert(inodeId);
     }
 
-    UISet dataset_ids = DatasetTableTailer::refreshDatasetIds(inode_connection, inodes_ids, mPDICache);
+    UISet dataset_ids = HopsworksOpsLogTailer::refreshDatasetIds(inode_connection, inodes_ids, mPDICache);
     if (!dataset_ids.empty()) {
-        DatasetTableTailer::refreshProjectIds(metaDatabase, metaTransaction, dataset_ids, mPDICache);
+        HopsworksOpsLogTailer::refreshProjectIds(metaDatabase, metaTransaction, dataset_ids, mPDICache);
     }
 }
 

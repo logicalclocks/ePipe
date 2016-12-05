@@ -63,8 +63,7 @@ void Notifier::start() {
     //      were created while ePipe was starting are not captured as well. 
     //      
     if (mHopsworksEnabled) {
-        mProjectTableTailer->start(ri.mProjectIndex);
-        mDatasetTableTailer->start(ri.mDatasetIndex);
+        mhopsworksOpsLogTailer->start(-1);
     }
     
     mFsMutationsBatcher->start();
@@ -141,12 +140,8 @@ void Notifier::setup() {
     }
     
     if (mHopsworksEnabled) {
-        Ndb* project_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-        mProjectTableTailer = new ProjectTableTailer(project_tailer_connection, mPollMaxTimeToWait,
-                mElasticSearch, mPDICache);
-        
-        Ndb* dataset_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-        mDatasetTableTailer = new DatasetTableTailer(dataset_tailer_connection, mPollMaxTimeToWait,
+        Ndb* ops_log_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+        mhopsworksOpsLogTailer = new HopsworksOpsLogTailer(ops_log_tailer_connection, mPollMaxTimeToWait,
                 mElasticSearch, mPDICache);
     }
     

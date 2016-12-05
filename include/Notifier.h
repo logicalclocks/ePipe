@@ -27,12 +27,11 @@
 
 #include "FsMutationsBatcher.h"
 #include "MetadataBatcher.h"
-#include "ProjectTableTailer.h"
-#include "DatasetTableTailer.h"
 #include "ElasticSearch.h"
 #include "SchemalessMetadataTailer.h"
 #include "SchemalessMetadataReader.h"
 #include "SchemalessMetadataBatcher.h"
+#include "HopsworksOpsLogTailer.h"
 
 class Notifier {
 public:
@@ -84,8 +83,7 @@ private:
     SchemalessMetadataBatcher* mSchemalessMetadataBatcher;
     
     ProjectDatasetINodeCache* mPDICache;
-    ProjectTableTailer* mProjectTableTailer;
-    DatasetTableTailer* mDatasetTableTailer;
+    HopsworksOpsLogTailer* mhopsworksOpsLogTailer;
     
     Ndb* create_ndb_connection(const char* database);
     Ndb_cluster_connection* connect_to_cluster(const char *connection_string);

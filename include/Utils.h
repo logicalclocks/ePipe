@@ -99,7 +99,7 @@ namespace Utils {
                 LOG_NDB_API_ERROR(transaction->getNdbError());
             }
         }
-
+        
         inline static string get_ndb_varchar(string str, NdbDictionary::Column::ArrayType array_type) {
             stringstream data;
             int len = str.length();

@@ -16,45 +16,64 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-
 /* 
- * File:   DatasetTableTailer.h
+ * File:   HopsworksOpsLogTailer.h
  * Author: Mahmoud Ismail<maism@kth.se>
  *
  */
 
-#ifndef DATASETTABLETAILER_H
-#define DATASETTABLETAILER_H
+#ifndef HOPSWORKSOPSLOGTAILER_H
+#define HOPSWORKSOPSLOGTAILER_H
 
 #include "TableTailer.h"
 #include "ProjectDatasetINodeCache.h"
 #include "ElasticSearch.h"
 
-class DatasetTableTailer : public TableTailer {
-public:
-    DatasetTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ElasticSearch* elastic,
-            ProjectDatasetINodeCache* cache);
-    virtual ~DatasetTableTailer();
+enum OpsLogOn{
+    Dataset = 0,
+    Project = 1
+};
 
+enum OpsLogType{
+    Add = 0,
+    Update = 1,
+    Delete = 2
+};
+
+class HopsworksOpsLogTailer : public TableTailer{
+public:
+    HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, ElasticSearch* elastic,
+            ProjectDatasetINodeCache* cache);
+    
     static void refreshCache(MConn connection, UISet inodes, ProjectDatasetINodeCache* cache);
     static UISet refreshDatasetIds(SConn connection, UISet inodes, ProjectDatasetINodeCache* cache);
     static void refreshProjectIds(SConn connection, UISet datasets, ProjectDatasetINodeCache* cache);
     static void refreshProjectIds(const NdbDictionary::Dictionary* database, NdbTransaction* transaction,
             UISet dataset_ids, ProjectDatasetINodeCache* cache);
+    
+    virtual ~HopsworksOpsLogTailer();
 private:
     static const WatchTable TABLE;
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    void handleDelete(int datasetId, int projectId);
-    void handleAdd(int datasetId, int projectId, NdbRecAttr* value[]);
-    void handleUpdate(NdbRecAttr* value[]);
-    string createJSONUpSert(int projectId, NdbRecAttr* value[]);
-
+    
+    void handleDataset(int opId, OpsLogType opType, int datasetId, int projectId);
+    void handleUpsertDataset(int opId, OpsLogType opType, int datasetId, int projectId);
+    void handleDeleteDataset(int datasetId, int projectId);
+    string createDatasetJSONUpSert(int porjectId, NdbRecAttr* value[]);
+    
+    void handleProject(int projectId, OpsLogType opType);
+    void handleDeleteProject(int projectId);
+    void handleUpsertProject(int projectId, OpsLogType opType);
+    string createProjectJSONUpSert(NdbRecAttr* value[]);
+    
     static void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase,
-            NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read, ProjectDatasetINodeCache* cache);
-
+        NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read, ProjectDatasetINodeCache* cache);
+    
+    void checkpoint(int pk);
+    
     ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
 };
 
-#endif /* DATASETTABLETAILER_H */
+#endif /* HOPSWORKSOPSLOGTAILER_H */
 

@@ -23,7 +23,7 @@
  */
 
 #include "FsMutationsDataReader.h"
-#include "DatasetTableTailer.h"
+#include "HopsworksOpsLogTailer.h"
 
 const char* INODES = "hdfs_inodes";
 const int NUM_INODES_COLS = 4;
@@ -183,7 +183,7 @@ void FsMutationsDataReader::updateProjectIds(Ndb* metaConnection, Fmq* data_batc
     }
 
     if (!dataset_ids.empty()) {
-        DatasetTableTailer::refreshProjectIds(metaConnection, dataset_ids, mPDICache);
+        HopsworksOpsLogTailer::refreshProjectIds(metaConnection, dataset_ids, mPDICache);
     }
 }
 

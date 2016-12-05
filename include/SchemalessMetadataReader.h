@@ -27,7 +27,7 @@
 
 #include "NdbDataReader.h"
 #include "SchemalessMetadataTailer.h"
-#include "DatasetTableTailer.h"
+#include "HopsworksOpsLogTailer.h"
 
 class SchemalessMetadataReader : public NdbDataReader<SchemalessMetadataEntry, MConn> {
 public:

@@ -38,7 +38,7 @@ void SchemalessMetadataReader::processAddedandDeleted(MConn connection, Smq* dat
             SchemalessMetadataEntry entry = *it;
             inodes_ids.insert(entry.mINodeId);
         }
-        DatasetTableTailer::refreshCache(connection, inodes_ids, mPDICache);
+        HopsworksOpsLogTailer::refreshCache(connection, inodes_ids, mPDICache);
     }
     
     Ndb* metaConn = connection.metadataConnection;
