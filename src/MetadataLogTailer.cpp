@@ -42,19 +42,49 @@ const NdbDictionary::Event::TableEvent _metalog_events[_metalog_noEvents] = { Nd
 
 const WatchTable MetadataLogTailer::TABLE = {_metalog_table, _metalog_cols, _metalog_noCols , _metalog_events, _metalog_noEvents, "PRIMARY", _metalog_cols[0]};
 
+
+//Common
+const int METADATA_NO_COLS = 4;
+
+//SchemaBased Metadata Table
+const char* SB_METADATA = "meta_data";
+const char* SB_METADATA_COLS[METADATA_NO_COLS]=
+    {"id",
+     "fieldid",
+     "tupleid",
+     "data"
+    };
+
+//Schemaless Metadata Table
+const char* NS_METADATA = "meta_data_schemaless";
+const char* NS_METADATA_COLS[METADATA_NO_COLS]=
+    {"id",
+     "inode_id",
+     "inode_parent_id",
+     "data"
+    };
+
+//Indeces
+const int METADATA_PK1 = 0;
+const int METADATA_PK2 = 1;
+const int METADATA_PK3 = 2;
+const int METADATA_DATA = 3;
+
+
 MetadataLogTailer::MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait)
     : RCTableTailer<MetadataLogEntry> (ndb, TABLE, poll_maxTimeToWait) {
-   mSchemaBasedQueue = new Cmq();
-   mSchemalessQueue = new Cmq();
+   mSchemaBasedQueue = new CMetaQ();
+   mSchemalessQueue = new CMetaQ();
 }
 
 void MetadataLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
     MetadataLogEntry entry;
     entry.mEventCreationTime = Utils::getCurrentTime();
     entry.mId = value[0]->int32_value();
-    entry.mMetaPK1 = value[1]->int32_value();
-    entry.mMetaPK2 = value[2]->int32_value();
-    entry.mMetaPK3 = value[3]->int32_value();
+    int PK1 = value[1]->int32_value();
+    int PK2 = value[2]->int32_value();
+    int PK3 = value[3]->int32_value();
+    entry.mMetaPK = MetadataKey(PK1, PK2, PK3);
     entry.mMetaType = static_cast<MetadataType>(value[4]->int8_value());
     entry.mMetaOpType = static_cast<OperationType>(value[5]->int8_value());
 
@@ -67,8 +97,8 @@ void MetadataLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, 
         return;
     }
 
-    LOG_TRACE(" push metalog [" << entry.mId << "," << entry.mMetaPK1 << "," << entry.mMetaPK2
-            << "," << entry.mMetaPK3 << "] to queue, Op [" << Utils::OperationTypeToStr(entry.mMetaOpType) << "]");
+    LOG_TRACE(" push metalog [" << entry.mId << "," << entry.mMetaPK.mPK1 << "," << entry.mMetaPK.mPK2 
+            << "," << entry.mMetaPK.mPK3 << "] to queue, Op [" << Utils::OperationTypeToStr(entry.mMetaOpType) << "]");
 }
 
 MetadataLogEntry MetadataLogTailer::consumeMultiQueue(int queue_id) {
@@ -90,6 +120,94 @@ MetadataLogEntry MetadataLogTailer::consume() {
     MetadataLogEntry res;
     LOG_FATAL("consume shouldn't be called");
     return res;
+}
+
+SchemaBasedMq* MetadataLogTailer::readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, MetaQ* batch) {
+    UMetadataKeyRowMap rows = readMetadataRows(database, transaction, SB_METADATA, batch, 
+            SB_METADATA_COLS, METADATA_NO_COLS, METADATA_PK1, METADATA_PK2, METADATA_PK3);
+    
+    executeTransaction(transaction, NdbTransaction::NoCommit);
+    
+    SchemaBasedMq* res = NULL;
+    for (MetaQ::iterator it = batch->begin(); it != batch->end(); ++it) {
+        MetadataLogEntry ml = *it;
+        if(ml.mMetaOpType == Delete){
+            res->push_back(SchemaBasedMetadataEntry(ml));
+            continue;
+        }
+        
+        Row row = rows[ml.mMetaPK];
+        if(row[METADATA_PK1]->int32_value() == ml.mMetaPK.mPK1 
+                && row[METADATA_PK2]->int32_value() == ml.mMetaPK.mPK2 
+                && row[METADATA_PK3]->int32_value() == ml.mMetaPK.mPK3){
+            SchemaBasedMetadataEntry entry = SchemaBasedMetadataEntry(ml);
+            entry.mMetadata = get_string(row[METADATA_DATA]);
+            res->push_back(entry);
+        }else{
+            LOG_ERROR("Error while");
+        }
+    }
+    return res;
+}
+
+SchemalessMq* MetadataLogTailer::readSchemalessMetadataRows(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, MetaQ* batch) {
+    UMetadataKeyRowMap rows = readMetadataRows(database, transaction, NS_METADATA, batch, 
+            NS_METADATA_COLS, METADATA_NO_COLS, METADATA_PK1, METADATA_PK2, METADATA_PK3);
+    
+    executeTransaction(transaction, NdbTransaction::NoCommit);
+    
+    SchemalessMq* res = NULL;
+    for (MetaQ::iterator it = batch->begin(); it != batch->end(); ++it) {
+        MetadataLogEntry ml = *it;
+        if(ml.mMetaOpType == Delete){
+            res->push_back(SchemalessMetadataEntry(ml));
+            continue;
+        }
+        
+        Row row = rows[ml.mMetaPK];
+        if(row[METADATA_PK1]->int32_value() == ml.mMetaPK.mPK1 
+                && row[METADATA_PK2]->int32_value() == ml.mMetaPK.mPK2 
+                && row[METADATA_PK3]->int32_value() == ml.mMetaPK.mPK3){
+            SchemalessMetadataEntry entry = SchemalessMetadataEntry(ml);
+            entry.mJSONData = get_string(row[METADATA_DATA]);
+            res->push_back(entry);
+        }else{
+            LOG_ERROR("Error while");
+        }
+    }
+    return res;
+}
+
+UMetadataKeyRowMap MetadataLogTailer::readMetadataRows(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, const char* table_name, MetaQ* batch, const char** columns_to_read, 
+        const int columns_count, const int column_pk1, const int column_pk2, const int column_pk3) {
+
+    UMetadataKeyRowMap res;
+    const NdbDictionary::Table* table = getTable(database, table_name);
+
+    for (MetaQ::iterator it = batch->begin(); it != batch->end(); ++it) {
+        MetadataLogEntry ml = *it;
+        if(ml.mMetaOpType == Delete){
+            continue;
+        }
+        
+        NdbOperation* op = getNdbOperation(transaction, table);
+        op->readTuple(NdbOperation::LM_CommittedRead);
+        
+        op->equal(columns_to_read[column_pk1], ml.mMetaPK.mPK1);
+        op->equal(columns_to_read[column_pk2], ml.mMetaPK.mPK2);
+        op->equal(columns_to_read[column_pk3], ml.mMetaPK.mPK3);
+        
+        for (int c = 0; c < columns_count; c++) {
+            NdbRecAttr* col = getNdbOperationValue(op, columns_to_read[c]);
+            res[ml.mMetaPK].push_back(col);
+        }
+        LOG_TRACE(" Read " << table_name << " row for [" << ml.mMetaPK.mPK1 << "," << ml.mMetaPK.mPK2 << "," << ml.mMetaPK.mPK3 << "]");
+    }
+    return res;
+
 }
 
 MetadataLogTailer::~MetadataLogTailer() {

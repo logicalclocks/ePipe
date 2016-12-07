@@ -30,11 +30,40 @@
 #include "ConcurrentPriorityQueue.h"
 #include "HopsworksOpsLogTailer.h"
 
+struct MetadataKey
+{
+  int mPK1;
+  int mPK2;
+  int mPK3;
+  
+  MetadataKey(){
+  }
+  
+  MetadataKey(int pk1, int pk2, int pk3){
+      mPK1 = pk1;
+      mPK2 = pk2;
+      mPK3 = pk3;
+  }
+  bool operator == (const MetadataKey &other) const {
+    return (mPK1 == other.mPK1) && (mPK2 == other.mPK2)  && (mPK3 == other.mPK3);
+  }
+};
+
+struct MetadataKeyHasher
+{
+  std::size_t operator () (const MetadataKey &key) const 
+  {
+    std::size_t seed = 0;
+    boost::hash_combine(seed, boost::hash_value(key.mPK1));
+    boost::hash_combine(seed, boost::hash_value(key.mPK2));
+    boost::hash_combine(seed, boost::hash_value(key.mPK3));
+    return seed;
+  }
+};
+
 struct MetadataLogEntry {
      int mId;
-     int mMetaPK1;
-     int mMetaPK2;
-     int mMetaPK3;
+     MetadataKey mMetaPK;
      OperationType mMetaOpType;
      MetadataType mMetaType;
      
@@ -45,16 +74,16 @@ struct MetadataLogEntry {
         stream << "-------------------------" << endl;
         stream << "Id = " << mId << endl;
         stream << "MetaType = " << Utils::MetadataTypeToStr(mMetaType) << endl;
-        stream << "MetaPK1 = " << mMetaPK1 << endl;
-        stream << "MetaPK2 = " << mMetaPK2 << endl;
-        stream << "MetaPK3 = " << mMetaPK3 << endl;
+        stream << "MetaPK1 = " << mMetaPK.mPK1 << endl;
+        stream << "MetaPK2 = " << mMetaPK.mPK2 << endl;
+        stream << "MetaPK3 = " << mMetaPK.mPK3 << endl;
         stream << "MetaOpType = " << Utils::OperationTypeToStr(mMetaOpType) << endl;
         stream << "-------------------------" << endl;
         return stream.str();
      }
 };
 
-struct HopsworksMetaLogEntryComparator
+struct MetadataLogEntryComparator
 {
     bool operator()(const MetadataLogEntry &r1, const MetadataLogEntry &r2) const
     {
@@ -62,21 +91,97 @@ struct HopsworksMetaLogEntryComparator
     }
 };
 
-typedef ConcurrentPriorityQueue<MetadataLogEntry, HopsworksMetaLogEntryComparator> Cmq;
-typedef vector<MetadataLogEntry> Mq;
+
+struct SchemaBasedMetadataEntry {
+     int mId;
+     int mFieldId;
+     int mTupleId;
+     string mMetadata;
+     OperationType mOperation;
+     
+     ptime mEventCreationTime;
+     
+     SchemaBasedMetadataEntry(MetadataLogEntry ml){
+         mId = ml.mMetaPK.mPK1;
+         mFieldId = ml.mMetaPK.mPK2;
+         mTupleId =  ml.mMetaPK.mPK3;
+         mOperation = ml.mMetaOpType;
+         mEventCreationTime = ml.mEventCreationTime;
+     }
+     
+     string to_string(){
+        stringstream stream;
+        stream << "-------------------------" << endl;
+        stream << "Id = " << mId << endl;
+        stream << "FieldId = " << mFieldId << endl;
+        stream << "TupleId = " << mTupleId << endl;
+        stream << "Data = " << mMetadata << endl;
+        stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
+        stream << "-------------------------" << endl;
+        return stream.str();
+     }
+};
+
+struct SchemalessMetadataEntry {
+    int mId;
+    int mINodeId;
+    int mParentId;
+    string mJSONData;
+    OperationType mOperation;
+    ptime mEventCreationTime;
+
+    SchemalessMetadataEntry(MetadataLogEntry ml) {
+        mId = ml.mMetaPK.mPK1;
+        mINodeId = ml.mMetaPK.mPK2;
+        mParentId = ml.mMetaPK.mPK3;
+        mOperation = ml.mMetaOpType;
+        mEventCreationTime = ml.mEventCreationTime;
+    }
+    
+    string to_string() {
+        stringstream stream;
+        stream << "-------------------------" << endl;
+        stream << "Id = " << mId << endl;
+        stream << "INodeId = " << mParentId << endl;
+        stream << "ParentId = " << mParentId << endl;
+        stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
+        stream << "Data = " << mJSONData << endl;
+        stream << "-------------------------" << endl;
+        return stream.str();
+    }
+};
+
+
+typedef ConcurrentPriorityQueue<MetadataLogEntry, MetadataLogEntryComparator> CMetaQ;
+typedef vector<MetadataLogEntry> MetaQ;
+typedef boost::unordered_map<MetadataKey, Row, MetadataKeyHasher> UMetadataKeyRowMap;
+
+typedef vector<SchemaBasedMetadataEntry> SchemaBasedMq;
+typedef vector<SchemalessMetadataEntry> SchemalessMq;
 
 class MetadataLogTailer : public RCTableTailer<MetadataLogEntry> {
 public:
     MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait);
     MetadataLogEntry consumeMultiQueue(int queue_id);
     MetadataLogEntry consume();
+    
+    SchemaBasedMq* readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, MetaQ* batch);
+    
+    SchemalessMq* readSchemalessMetadataRows(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, MetaQ* batch);
+    
     virtual ~MetadataLogTailer();
 private:
+    static UMetadataKeyRowMap readMetadataRows(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, const char* table_name, MetaQ* batch, const char** columns_to_read, 
+        const int columns_count, const int column_pk1, const int column_pk2, const int column_pk3);
+    
     static const WatchTable TABLE;
 
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    Cmq* mSchemaBasedQueue;
-    Cmq* mSchemalessQueue;
+    CMetaQ* mSchemaBasedQueue;
+    CMetaQ* mSchemalessQueue;
 };
 
 #endif /* METADATALOGTAILER_H */
