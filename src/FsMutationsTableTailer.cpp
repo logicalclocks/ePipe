@@ -62,14 +62,14 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
     row.mPartitionId = value[3]->int32_value();
     row.mParentId = value[4]->int32_value();
     row.mInodeName = get_string(value[5]);
-    row.mOperation = static_cast<Operation>(value[6]->int8_value());
-    if (row.mOperation == ADD || row.mOperation == DELETE) {
+    row.mOperation = static_cast<OperationType>(value[6]->int8_value());
+    if (row.mOperation == Add || row.mOperation == Delete) {
         LOG_TRACE(" push inode [" << row.mInodeId << "] to queue, Op [" << row.mOperation << "]");
         mQueue->push(row);
 
-        if (row.mOperation == ADD) {
+        if (row.mOperation == Add) {
             mPDICache->addINodeToDataset(row.mInodeId, row.mDatasetId);
-        } else if (row.mOperation == DELETE) {
+        } else if (row.mOperation == Delete) {
             mPDICache->removeINode(row.mInodeId);
         }
     } else {

@@ -238,6 +238,43 @@ namespace Utils {
         buf.append(b);
         return buf;
     }
+
+    inline static const char* OpsLogOnToStr(OpsLogOn op) {
+        switch (op) {
+            case Dataset:
+                return "Dataset";
+            case Project:
+                return "Project";
+            default:
+                return "Unkown";
+        }
+    }
+
+    inline static const char* OperationTypeToStr(OperationType optype) {
+        switch (optype) {
+            case Add:
+                return "Add";
+            case Update:
+                return "Update";
+            case Delete:
+                return "Delete";
+            default:
+                return "Unkown";
+        }
+    }
+
+    inline static const char* MetadataTypeToStr(MetadataType metaType) {
+        switch (metaType) {
+            case SchemaBased:
+                return "SchemaBased";
+            case Schemaless:
+                return "SchemaLess";
+            case Both:
+                return "Both";
+            default:
+                return "Unkown";
+        }
+    }
 }
 
 #endif /* UTILS_H */

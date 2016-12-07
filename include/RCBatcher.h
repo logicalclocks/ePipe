@@ -34,12 +34,15 @@ class RCBatcher : public Batcher {
 public:
     RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReader<DataRow, Conn>* ndb_data_reader,
             const int time_before_issuing_ndb_reqs, const int batch_size);
-
+    
+    RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReader<DataRow, Conn>* ndb_data_reader,
+            const int time_before_issuing_ndb_reqs, const int batch_size, const int queue_id);
 private:
 
     RCTableTailer<DataRow>* mTableTailer;
     NdbDataReader<DataRow, Conn>* mNdbDataReader;
-
+    const int mQueueId;
+    
     int mCurrentCount;
     boost::mutex mLock;
     vector<DataRow>* mOperations;
@@ -50,7 +53,15 @@ private:
 template<typename DataRow, typename Conn>
 RCBatcher<DataRow, Conn>::RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReader<DataRow, Conn>* ndb_data_reader,
         const int time_before_issuing_ndb_reqs, const int batch_size)
-: Batcher(time_before_issuing_ndb_reqs, batch_size), mTableTailer(table_tailer), mNdbDataReader(ndb_data_reader) {
+: Batcher(time_before_issuing_ndb_reqs, batch_size), mTableTailer(table_tailer), mNdbDataReader(ndb_data_reader), mQueueId(SINGLE_QUEUE) {
+    mCurrentCount = 0;
+    mOperations = new vector<DataRow>();
+}
+
+template<typename DataRow, typename Conn>
+RCBatcher<DataRow, Conn>::RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReader<DataRow, Conn>* ndb_data_reader,
+        const int time_before_issuing_ndb_reqs, const int batch_size, const int queue_id)
+: Batcher(time_before_issuing_ndb_reqs, batch_size), mTableTailer(table_tailer), mNdbDataReader(ndb_data_reader), mQueueId(queue_id) {
     mCurrentCount = 0;
     mOperations = new vector<DataRow>();
 }
@@ -58,7 +69,7 @@ RCBatcher<DataRow, Conn>::RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDat
 template<typename DataRow, typename Conn>
 void RCBatcher<DataRow, Conn>::run() {
     while (true) {
-        DataRow row = mTableTailer->consume();
+        DataRow row = mTableTailer->consumeMultiQueue(mQueueId);
 
         mLock.lock();
         mOperations->push_back(row);

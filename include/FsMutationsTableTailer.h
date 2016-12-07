@@ -36,7 +36,7 @@ struct FsMutationRow {
      int mParentId;
      string mInodeName;
      long mTimestamp;
-     Operation mOperation;
+     OperationType mOperation;
      
      ptime mEventCreationTime;
      
@@ -49,7 +49,7 @@ struct FsMutationRow {
         stream << "ParentId = " << mParentId << endl;
         stream << "InodeName = " << mInodeName << endl;
         stream << "Timestamp = " << mTimestamp << endl;
-        stream << "Operation = " << mOperation << endl;
+        stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
         stream << "-------------------------" << endl;
         return stream.str();
      }

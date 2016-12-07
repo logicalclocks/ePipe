@@ -84,7 +84,7 @@ void FsMutationsDataReader::readINodes(const NdbDictionary::Dictionary* database
     for (Fmq::iterator it=data_batch->begin(); it != data_batch->end(); ++it, i++) {
 
         FsMutationRow row = *it;
-        if(row.mOperation == DELETE){
+        if(row.mOperation == Delete){
             continue;
         }
         NdbOperation* op = getNdbOperation(transaction, inodes_table);
@@ -196,7 +196,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
         FsMutationRow row = *it;
         arrivalTimes[i] = row.mEventCreationTime;
         
-        if(row.mOperation == DELETE){
+        if(row.mOperation == Delete){
             //Handle the delete
             rapidjson::StringBuffer sbOp;
             rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);

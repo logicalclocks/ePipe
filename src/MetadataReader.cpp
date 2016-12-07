@@ -339,7 +339,7 @@ void MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk) {
             case INT:
             {
                 try {
-                    int intVal = entry.mOperation == DELETE ? DONT_EXIST_INT : boost::lexical_cast<int>(entry.mMetadata);
+                    int intVal = entry.mOperation == Delete ? DONT_EXIST_INT : boost::lexical_cast<int>(entry.mMetadata);
                     docWriter.Int(intVal);
                 } catch (boost::bad_lexical_cast &e) {
                     LOG_ERROR("Error while casting [" << entry.mMetadata << "] to int" << e.what());
@@ -350,7 +350,7 @@ void MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk) {
             case DOUBLE:
             {
                 try {
-                    double doubleVal = entry.mOperation == DELETE ? DONT_EXIST_INT : boost::lexical_cast<double>(entry.mMetadata);
+                    double doubleVal = entry.mOperation == Delete ? DONT_EXIST_INT : boost::lexical_cast<double>(entry.mMetadata);
                     docWriter.Double(doubleVal);
                 } catch (boost::bad_lexical_cast &e) {
                     LOG_ERROR("Error while casting [" << entry.mMetadata << "] to double" << e.what());
@@ -360,7 +360,7 @@ void MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk) {
             }
             case TEXT:
             {
-                docWriter.String(entry.mOperation == DELETE ? DONT_EXIST_STR : entry.mMetadata.c_str());
+                docWriter.String(entry.mOperation == Delete ? DONT_EXIST_STR : entry.mMetadata.c_str());
                 break;
             }
         }

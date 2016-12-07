@@ -97,7 +97,7 @@ void SchemalessMetadataReader::createJSON(Smq* data_batch, Bulk& bulk) {
         rapidjson::Document doc;
         doc.Parse("{\"doc\" : {\"xattr\" : {} }, \"doc_as_upsert\" : true}");
 
-        if (entry.mOperation != DELETE) {
+        if (entry.mOperation != Delete) {
             rapidjson::Document xattr(&doc.GetAllocator());
             if (!xattr.Parse(entry.mJSONData.c_str()).HasParseError()) {
                 mergeDoc(doc, xattr);

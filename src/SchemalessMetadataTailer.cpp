@@ -59,9 +59,9 @@ void SchemalessMetadataTailer::handleEvent(NdbDictionary::Event::TableEvent even
     entry.mParentId = value[3]->int32_value();
     entry.mInodeName = get_string(value[4]);
     entry.mJSONData = get_string(value[5]);
-    entry.mOperation = ADD;
+    entry.mOperation = Add;
     if(eventType == NdbDictionary::Event::TE_DELETE){
-        entry.mOperation = DELETE;
+        entry.mOperation = Delete;
     }
     
     LOG_TRACE(" push schemaless metadata [" << entry.mId  << "," << entry.mParentId << "," << entry.mInodeName << "] to queue, Op [" << entry.mOperation << "]");

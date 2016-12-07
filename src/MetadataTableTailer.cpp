@@ -56,9 +56,9 @@ void MetadataTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType
     entry.mFieldId = value[1]->int32_value();
     entry.mTupleId = value[2]->int32_value();
     entry.mMetadata = get_string(value[3]);
-    entry.mOperation = ADD;
+    entry.mOperation = Add;
     if(eventType == NdbDictionary::Event::TE_DELETE){
-        entry.mOperation = DELETE;
+        entry.mOperation = Delete;
     }
     
     LOG_TRACE(" push metadata [" << entry.mId  << "," << entry.mTupleId << "," << entry.mFieldId << "] to queue, Op [" << entry.mOperation << "]");

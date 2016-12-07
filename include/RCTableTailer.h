@@ -27,6 +27,8 @@
 
 #include "TableTailer.h"
 
+const int SINGLE_QUEUE = -1;
+
 template<typename TableRow>
 class RCTableTailer : public TableTailer{
 public:
@@ -34,6 +36,11 @@ public:
         : TableTailer(ndb, table, poll_maxTimeToWait){ 
     }
         
+    virtual TableRow consumeMultiQueue(int queue_id) {
+        //default behaviour is for single queue only
+        return consume();
+    }
+    
     virtual TableRow consume() = 0;
 };
 

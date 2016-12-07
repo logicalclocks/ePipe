@@ -28,11 +28,6 @@
 #include "Utils.h"
 #include "Recovery.h"
 
-enum Operation{
-    ADD = 0,
-    DELETE = 1
-};
-
 struct WatchTable{
     const string mTableName;
     const string* mColumnNames;

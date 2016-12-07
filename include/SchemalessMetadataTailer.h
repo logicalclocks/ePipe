@@ -35,7 +35,7 @@ struct SchemalessMetadataEntry {
     int mParentId;
     string mInodeName;
     string mJSONData;
-    Operation mOperation;
+    OperationType mOperation;
     ptime mEventCreationTime;
 
     string to_string() {
@@ -46,7 +46,7 @@ struct SchemalessMetadataEntry {
         stream << "PartitionId = " << mParentId << endl;
         stream << "ParentId = " << mParentId << endl;
         stream << "InodeName = " << mInodeName << endl;
-        stream << "Operation = " << mOperation << endl;
+        stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
         stream << "Data = " << mJSONData << endl;
         stream << "-------------------------" << endl;
         return stream.str();

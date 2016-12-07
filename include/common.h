@@ -62,6 +62,17 @@ enum MetadataType{
     Both = 2
 };
 
+enum OperationType{
+    Add = 0,
+    Delete = 1,
+    Update = 2,
+};
+
+enum OpsLogOn{
+    Dataset = 0,
+    Project = 1
+};
+
 struct TableUnitConf {
     int mWaitTime;
     int mBatchSize;

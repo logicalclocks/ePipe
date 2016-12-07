@@ -23,31 +23,8 @@
  */
 
 #include "HopsworksOpsLogTailer.h"
+using namespace Utils;
 using namespace Utils::NdbC;
-
-const char* OpsLogOnToStr(OpsLogOn op) {
-    switch (op) {
-        case Dataset:
-            return "Dataset";
-        case Project:
-            return "Project";
-        default:
-            return "Unkown";
-    }
-}
-
-const char* OpsLogTypeToStr(OpsLogType optype) {
-    switch (optype) {
-        case Add:
-            return "Add";
-        case Update:
-            return "Update";
-        case Delete:
-            return "Delete";
-        default:
-            return "Unkown";
-    }
-}
 
 const string _opslog_table= "ops_log";
 const int _opslog_noCols= 6;
@@ -64,7 +41,7 @@ const string _opslog_cols[_opslog_noCols]=
 const int _opslog_noEvents = 1; 
 const NdbDictionary::Event::TableEvent _opslog_events[_opslog_noEvents] = { NdbDictionary::Event::TE_INSERT};
 
-const WatchTable HopsworksOpsLogTailer::TABLE = {_opslog_table, _opslog_cols, _opslog_noCols , _opslog_events, _opslog_noEvents, "id", "id"};
+const WatchTable HopsworksOpsLogTailer::TABLE = {_opslog_table, _opslog_cols, _opslog_noCols , _opslog_events, _opslog_noEvents, "PRIMARY", "id"};
 
 const int OPS_ID_PK = 0;
 const int OPS_OP_ID = 1;
@@ -133,12 +110,12 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
     int id = value[OPS_ID_PK]->int32_value();
     int op_id = value[OPS_OP_ID]->int32_value();
     OpsLogOn op_on = static_cast<OpsLogOn>(value[OPS_OP_ON]->int8_value());
-    OpsLogType op_type = static_cast<OpsLogType>(value[OPS_OP_TYPE]->int8_value());
+    OperationType op_type = static_cast<OperationType>(value[OPS_OP_TYPE]->int8_value());
     int project_id = value[OPS_PROJECT_ID]->int32_value();
     int inode_id = value[OPS_INODE_ID]->int32_value();
     LOG_DEBUG(endl << "ID = " << id << endl << "OpID = " << op_id << endl 
             << "OpOn = " << OpsLogOnToStr(op_on) << endl
-            << "OpType = " << OpsLogTypeToStr(op_type) << endl
+            << "OpType = " << OperationTypeToStr(op_type) << endl
             << "ProjectID = " << project_id << endl
             << "INodeID = " << inode_id);
     
@@ -154,7 +131,7 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
     checkpoint(id);
 }
 
-void HopsworksOpsLogTailer::handleDataset(int opId, OpsLogType opType, 
+void HopsworksOpsLogTailer::handleDataset(int opId, OperationType opType, 
         int datasetId, int projectId) {
     if(opType == Delete){
        handleDeleteDataset(datasetId, projectId);
@@ -163,7 +140,7 @@ void HopsworksOpsLogTailer::handleDataset(int opId, OpsLogType opType,
     }
 }
 
-void HopsworksOpsLogTailer::handleUpsertDataset(int opId, OpsLogType opType, int datasetId, int projectId){
+void HopsworksOpsLogTailer::handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId){
     mPDICache->addDatasetToProject(datasetId, projectId);
 
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
@@ -266,7 +243,7 @@ void HopsworksOpsLogTailer::handleDeleteDataset(int datasetId, int projectId) {
     mPDICache->removeDataset(datasetId);
 }
 
-void HopsworksOpsLogTailer::handleProject(int projectId, OpsLogType opType) {
+void HopsworksOpsLogTailer::handleProject(int projectId, OperationType opType) {
     if (opType == Delete) {
         handleDeleteProject(projectId);
     } else {
@@ -304,7 +281,7 @@ void HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
     mPDICache->removeProject(projectId);
 }
 
-void HopsworksOpsLogTailer::handleUpsertProject(int projectId, OpsLogType opType){
+void HopsworksOpsLogTailer::handleUpsertProject(int projectId, OperationType opType){
 
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
     const NdbDictionary::Table* table = getTable(database, PR);

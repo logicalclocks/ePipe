@@ -29,17 +29,6 @@
 #include "ProjectDatasetINodeCache.h"
 #include "ElasticSearch.h"
 
-enum OpsLogOn{
-    Dataset = 0,
-    Project = 1
-};
-
-enum OpsLogType{
-    Add = 0,
-    Update = 1,
-    Delete = 2
-};
-
 class HopsworksOpsLogTailer : public TableTailer{
 public:
     HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, ElasticSearch* elastic,
@@ -56,14 +45,14 @@ private:
     static const WatchTable TABLE;
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     
-    void handleDataset(int opId, OpsLogType opType, int datasetId, int projectId);
-    void handleUpsertDataset(int opId, OpsLogType opType, int datasetId, int projectId);
+    void handleDataset(int opId, OperationType opType, int datasetId, int projectId);
+    void handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId);
     void handleDeleteDataset(int datasetId, int projectId);
     string createDatasetJSONUpSert(int porjectId, NdbRecAttr* value[]);
     
-    void handleProject(int projectId, OpsLogType opType);
+    void handleProject(int projectId, OperationType opType);
     void handleDeleteProject(int projectId);
-    void handleUpsertProject(int projectId, OpsLogType opType);
+    void handleUpsertProject(int projectId, OperationType opType);
     string createProjectJSONUpSert(NdbRecAttr* value[]);
     
     static void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase,

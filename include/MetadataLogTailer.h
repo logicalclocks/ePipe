@@ -16,24 +16,27 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+
 /* 
- * File:   MetadataTableTailer.h
+ * File:   MetadataLogTailer.h
  * Author: Mahmoud Ismail<maism@kth.se>
  *
  */
 
-#ifndef METADATATABLETAILER_H
-#define METADATATABLETAILER_H
+#ifndef METADATALOGTAILER_H
+#define METADATALOGTAILER_H
 
 #include "RCTableTailer.h"
 #include "ConcurrentPriorityQueue.h"
+#include "HopsworksOpsLogTailer.h"
 
-struct MetadataEntry {
+struct MetadataLogEntry {
      int mId;
-     int mFieldId;
-     int mTupleId;
-     string mMetadata;
-     OperationType mOperation;
+     int mMetaPK1;
+     int mMetaPK2;
+     int mMetaPK3;
+     OperationType mMetaOpType;
+     MetadataType mMetaType;
      
      ptime mEventCreationTime;
      
@@ -41,38 +44,40 @@ struct MetadataEntry {
         stringstream stream;
         stream << "-------------------------" << endl;
         stream << "Id = " << mId << endl;
-        stream << "FieldId = " << mFieldId << endl;
-        stream << "TupleId = " << mTupleId << endl;
-        stream << "Data = " << mMetadata << endl;
-        stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
+        stream << "MetaType = " << Utils::MetadataTypeToStr(mMetaType) << endl;
+        stream << "MetaPK1 = " << mMetaPK1 << endl;
+        stream << "MetaPK2 = " << mMetaPK2 << endl;
+        stream << "MetaPK3 = " << mMetaPK3 << endl;
+        stream << "MetaOpType = " << Utils::OperationTypeToStr(mMetaOpType) << endl;
         stream << "-------------------------" << endl;
         return stream.str();
      }
 };
 
-struct MetadataEntryComparator
+struct HopsworksMetaLogEntryComparator
 {
-    bool operator()(const MetadataEntry &r1, const MetadataEntry &r2) const
+    bool operator()(const MetadataLogEntry &r1, const MetadataLogEntry &r2) const
     {
         return r1.mId > r2.mId;
     }
 };
 
-typedef ConcurrentPriorityQueue<MetadataEntry, MetadataEntryComparator> Cmq;
-typedef vector<MetadataEntry> Mq;
+typedef ConcurrentPriorityQueue<MetadataLogEntry, HopsworksMetaLogEntryComparator> Cmq;
+typedef vector<MetadataLogEntry> Mq;
 
-class MetadataTableTailer : public RCTableTailer<MetadataEntry> {
+class MetadataLogTailer : public RCTableTailer<MetadataLogEntry> {
 public:
-    MetadataTableTailer(Ndb* ndb, const int poll_maxTimeToWait);
-    MetadataEntry consume();
-    virtual ~MetadataTableTailer();
-    
+    MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait);
+    MetadataLogEntry consumeMultiQueue(int queue_id);
+    MetadataLogEntry consume();
+    virtual ~MetadataLogTailer();
 private:
     static const WatchTable TABLE;
-    
+
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    Cmq* mQueue;
+    Cmq* mSchemaBasedQueue;
+    Cmq* mSchemalessQueue;
 };
 
-#endif /* METADATATABLETAILER_H */
+#endif /* METADATALOGTAILER_H */
 
