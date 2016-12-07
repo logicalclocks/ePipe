@@ -25,6 +25,30 @@
 #include "HopsworksOpsLogTailer.h"
 using namespace Utils::NdbC;
 
+const char* OpsLogOnToStr(OpsLogOn op) {
+    switch (op) {
+        case Dataset:
+            return "Dataset";
+        case Project:
+            return "Project";
+        default:
+            return "Unkown";
+    }
+}
+
+const char* OpsLogTypeToStr(OpsLogType optype) {
+    switch (optype) {
+        case Add:
+            return "Add";
+        case Update:
+            return "Update";
+        case Delete:
+            return "Delete";
+        default:
+            return "Unkown";
+    }
+}
+
 const string _opslog_table= "ops_log";
 const int _opslog_noCols= 6;
 const string _opslog_cols[_opslog_noCols]=
@@ -51,7 +75,7 @@ const int OPS_INODE_ID = 5;
 
 //Dataset Table
 const char* DS = "dataset";
-const int NUM_DS_COLS = 8;
+const int NUM_DS_COLS = 7;
 const char* DS_COLS_TO_READ[] =    
    { "id",
      "inode_id",
@@ -59,8 +83,7 @@ const char* DS_COLS_TO_READ[] =
      "inode_name",
      "projectId",
      "description",
-     "public_ds",
-     "searchable"
+     "public_ds"
     };
 
 const int DS_PK = 0;
@@ -70,7 +93,6 @@ const int DS_INODE_NAME = 3;
 const int DS_PROJECT_ID = 4;
 const int DS_DESC = 5;
 const int DS_PUBLIC = 6;
-const int DS_SEARCHABLE = 7;
 
 
 //Project Table
@@ -114,6 +136,12 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
     OpsLogType op_type = static_cast<OpsLogType>(value[OPS_OP_TYPE]->int8_value());
     int project_id = value[OPS_PROJECT_ID]->int32_value();
     int inode_id = value[OPS_INODE_ID]->int32_value();
+    LOG_DEBUG(endl << "ID = " << id << endl << "OpID = " << op_id << endl 
+            << "OpOn = " << OpsLogOnToStr(op_on) << endl
+            << "OpType = " << OpsLogTypeToStr(op_type) << endl
+            << "ProjectID = " << project_id << endl
+            << "INodeID = " << inode_id);
+    
     switch(op_on){
         case Dataset:
             handleDataset(op_id, op_type, inode_id, project_id);
@@ -199,12 +227,6 @@ string HopsworksOpsLogTailer::createDatasetJSONUpSert(int porjectId, NdbRecAttr*
         bool public_ds = value[DS_PUBLIC]->int8_value() == 1;
         docWriter.String("public_ds");
         docWriter.Bool(public_ds);
-    }
-
-    if (value[DS_SEARCHABLE]->isNULL() != -1) {
-        bool searchable = value[DS_SEARCHABLE]->int8_value() == 1;
-        docWriter.String("searchable");
-        docWriter.Bool(searchable);
     }
 
     docWriter.EndObject();
