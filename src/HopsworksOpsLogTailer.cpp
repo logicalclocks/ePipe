@@ -128,7 +128,7 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
             break;
     }
     
-    checkpoint(id);
+    removeLog(id);
 }
 
 void HopsworksOpsLogTailer::handleDataset(int opId, OperationType opType, 
@@ -351,8 +351,16 @@ string HopsworksOpsLogTailer::createProjectJSONUpSert(NdbRecAttr* value[]) {
     return string(sbDoc.GetString());
 }
 
-void HopsworksOpsLogTailer::checkpoint(int pk){
-      
+void HopsworksOpsLogTailer::removeLog(int pk){
+     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);    
+     const NdbDictionary::Table* log_table = getTable(database, TABLE.mTableName);
+     NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
+     NdbOperation* op = getNdbOperation(transaction, log_table);  
+     op->deleteTuple();
+     op->equal(_opslog_cols[OPS_ID_PK].c_str(), pk);
+     LOG_TRACE("Delete log row: [" << pk << "]");
+     executeTransaction(transaction, NdbTransaction::Commit);
+     mNdbConnection->closeTransaction(transaction);
 }
 
 

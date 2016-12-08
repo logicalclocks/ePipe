@@ -58,7 +58,7 @@ private:
     static void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase,
         NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read, ProjectDatasetINodeCache* cache);
     
-    void checkpoint(int pk);
+    void removeLog(int pk);
     
     ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
