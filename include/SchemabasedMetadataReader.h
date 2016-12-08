@@ -22,10 +22,10 @@
  *
  */
 
-#ifndef METADATAREADER_H
-#define METADATAREADER_H
+#ifndef SCHEMABASEDMETADATAREADER_H
+#define SCHEMABASEDMETADATAREADER_H
 
-#include "MetadataTableTailer.h"
+#include "MetadataLogTailer.h"
 #include "NdbDataReader.h"
 #include <boost/lexical_cast.hpp>
 
@@ -49,16 +49,16 @@ struct Table{
    int mTemplateId;
 };
 
-class MetadataReader : public NdbDataReader<MetadataEntry, MConn>{
+class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn>{
 public:
-    MetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
+    SchemabasedMetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
             ElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap);
-    virtual ~MetadataReader();
+    virtual ~SchemabasedMetadataReader();
 private:    
-    virtual void processAddedandDeleted(MConn connection, Mq* data_batch, Bulk& bulk);
+    virtual void processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk);
     
     UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, Mq* added);
+        NdbTransaction* transaction, SchemabasedMq* added);
     UISet readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids);
     UISet readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
@@ -66,12 +66,12 @@ private:
     void refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples,
         const NdbDictionary::Dictionary* metaDatabase, NdbTransaction* metaTransaction);  
     
-    void createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk);
+    void createJSON(UIRowMap tuples, SchemabasedMq* data_batch, Bulk& bulk);
     
     Cache<int, Field> mFieldsCache;
     Cache<int, Table> mTablesCache;
     Cache<int, string> mTemplatesCache;
 };
 
-#endif /* METADATAREADER_H */
+#endif /* SCHEMABASEDMETADATAREADER_H */
 

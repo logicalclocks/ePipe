@@ -26,17 +26,17 @@
 #define SCHEMALESSMETADATAREADER_H
 
 #include "NdbDataReader.h"
-#include "SchemalessMetadataTailer.h"
+#include "MetadataLogTailer.h"
 #include "HopsworksOpsLogTailer.h"
 
-class SchemalessMetadataReader : public NdbDataReader<SchemalessMetadataEntry, MConn> {
+class SchemalessMetadataReader : public NdbDataReader<MetadataLogEntry, MConn> {
 public:
     SchemalessMetadataReader(MConn* connections, const int num_readers, const bool hopsworks,
             ElasticSearch* elastic, ProjectDatasetINodeCache* cache);
     virtual ~SchemalessMetadataReader();
 private:
-    virtual void processAddedandDeleted(MConn connection, Smq* data_batch, Bulk& bulk);
-    void createJSON(Smq* data_batch, Bulk& bulk);
+    virtual void processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk);
+    void createJSON(SchemalessMq* data_batch, Bulk& bulk);
     void mergeDoc(rapidjson::Document& target, rapidjson::Document& source);
 };
 

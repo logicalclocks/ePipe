@@ -26,12 +26,12 @@
 #define NOTIFIER_H
 
 #include "FsMutationsBatcher.h"
-#include "MetadataBatcher.h"
+#include "SchemabasedMetadataBatcher.h"
 #include "ElasticSearch.h"
-#include "SchemalessMetadataTailer.h"
 #include "SchemalessMetadataReader.h"
 #include "SchemalessMetadataBatcher.h"
 #include "HopsworksOpsLogTailer.h"
+#include "MetadataLogTailer.h"
 
 class Notifier {
 public:
@@ -74,11 +74,11 @@ private:
     FsMutationsDataReader* mFsMutationsDataReader;
     FsMutationsBatcher* mFsMutationsBatcher;
     
-    MetadataTableTailer* mMetadataTableTailer;
-    MetadataReader* mMetadataReader;
-    MetadataBatcher* mMetadataBatcher;
+    MetadataLogTailer* mMetadataLogTailer;
     
-    SchemalessMetadataTailer* mSchemalessMetadataTailer;
+    SchemabasedMetadataReader* mSchemabasedMetadataReader;
+    SchemabasedMetadataBatcher* mSchemabasedMetadataBatcher;
+    
     SchemalessMetadataReader* mSchemalessMetadataReader;
     SchemalessMetadataBatcher* mSchemalessMetadataBatcher;
     

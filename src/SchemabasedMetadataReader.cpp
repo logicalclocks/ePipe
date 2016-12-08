@@ -22,7 +22,7 @@
  * 
  */
 
-#include "MetadataReader.h"
+#include "SchemabasedMetadataReader.h"
 #include "HopsworksOpsLogTailer.h"
 
 const char* META_FIELDS = "meta_fields";
@@ -57,22 +57,24 @@ const int TUPLE_INODE_ID_COL = 1;
 const int DONT_EXIST_INT = -1;
 const char* DONT_EXIST_STR = "-1";
 
-MetadataReader::MetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
+SchemabasedMetadataReader::SchemabasedMetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
         ElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap) 
-            : NdbDataReader<MetadataEntry, MConn>(connections, num_readers, hopsworks, elastic, cache), 
+            : NdbDataReader<MetadataLogEntry, MConn>(connections, num_readers, hopsworks, elastic, cache), 
         mFieldsCache(lru_cap, "Field"), mTablesCache(lru_cap, "Table"), mTemplatesCache(lru_cap, "Template"){
 
 }
 
 
-void MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, Bulk& bulk) {
+void SchemabasedMetadataReader::processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk) {
         
     Ndb* metaConn = connection.metadataConnection;
     
     const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConn);
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
-    UIRowMap tuples = readMetadataColumns(metaDatabase, metaTransaction, data_batch);
+    SchemabasedMq* data_queue = MetadataLogTailer::readSchemaBasedMetadataRows(metaDatabase, metaTransaction, data_batch);
+
+    UIRowMap tuples = readMetadataColumns(metaDatabase, metaTransaction, data_queue);
     
     if(mHopsworksEnalbed){
         //read inodes to datasets from inodes datatbase to enable
@@ -80,23 +82,20 @@ void MetadataReader::processAddedandDeleted(MConn connection, Mq* data_batch, Bu
         refreshProjectDatasetINodeCache(connection.inodeConnection, tuples,
                 metaDatabase, metaTransaction);
     }
-    
-    int last_used_id = data_batch->at(data_batch->size() - 1).mId;
-    Recovery::checkpointMetadata(metaDatabase, metaTransaction, last_used_id);
         
-    createJSON(tuples, data_batch, bulk);
+    createJSON(tuples, data_queue, bulk);
             
     metaConn->closeTransaction(metaTransaction);
 }
 
-UIRowMap MetadataReader::readMetadataColumns(const NdbDictionary::Dictionary* database,
-        NdbTransaction* transaction, Mq* data_batch) { 
+UIRowMap SchemabasedMetadataReader::readMetadataColumns(const NdbDictionary::Dictionary* database,
+        NdbTransaction* transaction, SchemabasedMq* data_batch) { 
     
     UISet fields_ids;
     UISet tuple_ids;
     
-    for (Mq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
-       MetadataEntry entry = *it;
+    for (SchemabasedMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
+       SchemabasedMetadataEntry entry = *it;
        
        if(!mFieldsCache.contains(entry.mFieldId)){
           fields_ids.insert(entry.mFieldId);
@@ -120,7 +119,7 @@ UIRowMap MetadataReader::readMetadataColumns(const NdbDictionary::Dictionary* da
     return tuples;
 }
 
-UISet MetadataReader::readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids) {
+UISet SchemabasedMetadataReader::readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids) {
     
     UISet tables_to_read;
     
@@ -157,7 +156,7 @@ UISet MetadataReader::readFields(const NdbDictionary::Dictionary* database, NdbT
     return tables_to_read;
 }
 
-UISet MetadataReader::readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids) {
+UISet SchemabasedMetadataReader::readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids) {
     
     UISet templates_to_read;
     
@@ -192,7 +191,7 @@ UISet MetadataReader::readTables(const NdbDictionary::Dictionary* database, NdbT
     return templates_to_read;
 }
 
-void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids) {
+void SchemabasedMetadataReader::readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids) {
 
     if(templates_ids.empty())
         return;
@@ -217,7 +216,7 @@ void MetadataReader::readTemplates(const NdbDictionary::Dictionary* database, Nd
     }
 }
 
-void MetadataReader::refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples, 
+void SchemabasedMetadataReader::refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples, 
         const NdbDictionary::Dictionary* metaDatabase, NdbTransaction* metaTransaction) {
 
     UISet inodes_ids;
@@ -241,13 +240,13 @@ void MetadataReader::refreshProjectDatasetINodeCache(SConn inode_connection, UIR
     }
 }
 
-void MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk) {
+void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_batch, Bulk& bulk) {
 
     vector<ptime> arrivalTimes(data_batch->size());
     stringstream out;
     int i=0;
-    for(Mq::iterator it=data_batch->begin(); it != data_batch->end(); ++it, i++){
-        MetadataEntry entry = *it;
+    for(SchemabasedMq::iterator it=data_batch->begin(); it != data_batch->end(); ++it, i++){
+        SchemabasedMetadataEntry entry = *it;
         arrivalTimes[i] = entry.mEventCreationTime;
         
         boost::optional<Field> _fres = mFieldsCache.get(entry.mFieldId);
@@ -384,7 +383,7 @@ void MetadataReader::createJSON(UIRowMap tuples, Mq* data_batch, Bulk& bulk) {
     bulk.mJSON = out.str();
 }
 
-MetadataReader::~MetadataReader() {
+SchemabasedMetadataReader::~SchemabasedMetadataReader() {
     for(int i=0; i< mNumReaders; i++){
         delete mNdbConnections[i].inodeConnection;
         delete mNdbConnections[i].metadataConnection;

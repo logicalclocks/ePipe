@@ -49,8 +49,8 @@ void Notifier::start() {
     }
     
     mFsMutationsDataReader->start();
-    if(mMetadataType == SchemaBased || mMetadataType == Both){
-        mMetadataReader->start();
+    if(mMetadataType == Schemabased || mMetadataType == Both){
+        mSchemabasedMetadataReader->start();
     }
     if(mMetadataType == Schemaless || mMetadataType == Both){
         mSchemalessMetadataReader->start();
@@ -68,21 +68,21 @@ void Notifier::start() {
     
     mFsMutationsBatcher->start();
     mFsMutationsTableTailer->start(ri.mMutationsIndex);
-
-    if (mMetadataType == SchemaBased || mMetadataType == Both) {
-        mMetadataBatcher->start();
-        mMetadataTableTailer->start(ri.mMetadataIndex);
+    
+    mMetadataLogTailer->start(-1);
+    
+    if (mMetadataType == Schemabased || mMetadataType == Both) {
+        mSchemabasedMetadataBatcher->start();
     }
 
     if (mMetadataType == Schemaless || mMetadataType == Both) {
         mSchemalessMetadataBatcher->start();
-        mSchemalessMetadataTailer->start(ri.mSchemalessMetadataIndex);
     }
     
     ptime t2 = getCurrentTime();
     LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");
     mFsMutationsBatcher->waitToFinish();
-    mMetadataBatcher->waitToFinish();
+    mSchemabasedMetadataBatcher->waitToFinish();
     mElasticSearch->waitToFinish();
 }
 
@@ -107,9 +107,10 @@ void Notifier::setup() {
             mMutationsTU.mWaitTime, mMutationsTU.mBatchSize);
     
 
-    if (mMetadataType == SchemaBased || mMetadataType == Both) {
-        Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-        mMetadataTableTailer = new MetadataTableTailer(metadata_tailer_connection, mPollMaxTimeToWait);
+    Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+    mMetadataLogTailer = new MetadataLogTailer(metadata_tailer_connection, mPollMaxTimeToWait);
+    
+    if (mMetadataType == Schemabased || mMetadataType == Both) {
 
         MConn* metadata_connections = new MConn[mMetadataTU.mNumReaders];
         for (int i = 0; i < mMetadataTU.mNumReaders; i++) {
@@ -117,16 +118,14 @@ void Notifier::setup() {
             metadata_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
         }
 
-        mMetadataReader = new MetadataReader(metadata_connections, mMetadataTU.mNumReaders,
+        mSchemabasedMetadataReader = new SchemabasedMetadataReader(metadata_connections, mMetadataTU.mNumReaders,
                 mHopsworksEnabled, mElasticSearch, mPDICache, mLRUCap);
-        mMetadataBatcher = new MetadataBatcher(mMetadataTableTailer, mMetadataReader,
+        mSchemabasedMetadataBatcher = new SchemabasedMetadataBatcher(mMetadataLogTailer, mSchemabasedMetadataReader,
                 mMetadataTU.mWaitTime, mMetadataTU.mBatchSize);
     }
-
+        
     if (mMetadataType == Schemaless || mMetadataType == Both) {
-        Ndb* s_metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-        mSchemalessMetadataTailer = new SchemalessMetadataTailer(s_metadata_tailer_connection, mPollMaxTimeToWait);
-
+        
         MConn* s_metadata_connections = new MConn[mSchemalessTU.mNumReaders];
         for (int i = 0; i < mSchemalessTU.mNumReaders; i++) {
             s_metadata_connections[i].inodeConnection = create_ndb_connection(mDatabaseName);
@@ -135,7 +134,7 @@ void Notifier::setup() {
 
         mSchemalessMetadataReader = new SchemalessMetadataReader(s_metadata_connections, mSchemalessTU.mNumReaders,
                 mHopsworksEnabled, mElasticSearch, mPDICache);
-        mSchemalessMetadataBatcher = new SchemalessMetadataBatcher(mSchemalessMetadataTailer,
+        mSchemalessMetadataBatcher = new SchemalessMetadataBatcher(mMetadataLogTailer,
                 mSchemalessMetadataReader, mSchemalessTU.mWaitTime, mSchemalessTU.mBatchSize);
     }
     
@@ -184,10 +183,9 @@ Notifier::~Notifier() {
     delete mFsMutationsTableTailer;
     delete mFsMutationsDataReader;
     delete mFsMutationsBatcher;
-    delete mMetadataTableTailer;
-    delete mMetadataReader;
-    delete mMetadataBatcher;
-    delete mSchemalessMetadataTailer;
+    delete mMetadataLogTailer;
+    delete mSchemabasedMetadataReader;
+    delete mSchemabasedMetadataBatcher;
     delete mSchemalessMetadataReader;
     delete mSchemalessMetadataBatcher;
     ndb_end(2);

@@ -265,7 +265,7 @@ namespace Utils {
 
     inline static const char* MetadataTypeToStr(MetadataType metaType) {
         switch (metaType) {
-            case SchemaBased:
+            case Schemabased:
                 return "SchemaBased";
             case Schemaless:
                 return "SchemaLess";

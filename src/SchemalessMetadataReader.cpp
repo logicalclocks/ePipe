@@ -27,36 +27,36 @@
 SchemalessMetadataReader::SchemalessMetadataReader(MConn* connections,
         const int num_readers, const bool hopsworks, ElasticSearch* elastic,
         ProjectDatasetINodeCache* cache)
-: NdbDataReader<SchemalessMetadataEntry, MConn>(connections, num_readers, hopsworks, elastic, cache) {
+: NdbDataReader<MetadataLogEntry, MConn>(connections, num_readers, hopsworks, elastic, cache) {
 }
 
-void SchemalessMetadataReader::processAddedandDeleted(MConn connection, Smq* data_batch, Bulk& bulk) {
-    
-    if (mHopsworksEnalbed) {
-        UISet inodes_ids;
-        for (Smq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
-            SchemalessMetadataEntry entry = *it;
-            inodes_ids.insert(entry.mINodeId);
-        }
-        HopsworksOpsLogTailer::refreshCache(connection, inodes_ids, mPDICache);
-    }
+void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk) {
     
     Ndb* metaConn = connection.metadataConnection;
     const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConn);
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
-    int last_used_id = data_batch->at(data_batch->size() - 1).mId;
-    Recovery::checkpointSchemalessMetadata(metaDatabase, metaTransaction, last_used_id);        
+    SchemalessMq* data_queue = MetadataLogTailer::readSchemalessMetadataRows(metaDatabase, metaTransaction, data_batch);
+    
+    if (mHopsworksEnalbed) {
+        UISet inodes_ids;
+        for (SchemalessMq::iterator it = data_queue->begin(); it != data_queue->end(); ++it) {
+            SchemalessMetadataEntry entry = *it;
+            inodes_ids.insert(entry.mINodeId);
+        }
+        HopsworksOpsLogTailer::refreshCache(connection, inodes_ids, mPDICache);
+    }
+         
     metaConn->closeTransaction(metaTransaction);
     
-    createJSON(data_batch, bulk);
+    createJSON(data_queue, bulk);
 }
 
-void SchemalessMetadataReader::createJSON(Smq* data_batch, Bulk& bulk) {
+void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, Bulk& bulk) {
     vector<ptime> arrivalTimes(data_batch->size());
     stringstream out;
     int i = 0;
-    for (Smq::iterator it = data_batch->begin(); it != data_batch->end(); ++it, i++) {
+    for (SchemalessMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it, i++) {
         SchemalessMetadataEntry entry = *it;
 
         arrivalTimes[i] = entry.mEventCreationTime;

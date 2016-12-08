@@ -23,21 +23,21 @@
  *
  */
 
-#ifndef METADATABATCHER_H
-#define METADATABATCHER_H
+#ifndef SCHEMABASEDMETADATABATCHER_H
+#define SCHEMABASEDMETADATABATCHER_H
 
-#include "MetadataTableTailer.h"
-#include "RCBatcher.h"
-#include "MetadataReader.h"
+#include "MetadataLogTailer.h"
+#include "SchemabasedMetadataReader.h"
 
-class MetadataBatcher : public RCBatcher<MetadataEntry, MConn>{
+class SchemabasedMetadataBatcher : public RCBatcher<MetadataLogEntry, MConn>{
 public:
-    MetadataBatcher(MetadataTableTailer* table_tailer, MetadataReader* data_reader, 
+    SchemabasedMetadataBatcher(MetadataLogTailer* table_tailer, SchemabasedMetadataReader* data_reader, 
             const int time_before_issuing_ndb_reqs, const int batch_size) 
-        : RCBatcher<MetadataEntry, MConn>(table_tailer, data_reader, time_before_issuing_ndb_reqs, batch_size){
+        : RCBatcher<MetadataLogEntry, MConn>(table_tailer, data_reader, 
+                time_before_issuing_ndb_reqs, batch_size, Schemabased){
         
     }
 };
 
-#endif /* METADATABATCHER_H */
+#endif /* SCHEMABASEDMETADATABATCHER_H */
 

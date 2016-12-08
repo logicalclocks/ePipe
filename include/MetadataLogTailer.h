@@ -47,6 +47,12 @@ struct MetadataKey
   bool operator == (const MetadataKey &other) const {
     return (mPK1 == other.mPK1) && (mPK2 == other.mPK2)  && (mPK3 == other.mPK3);
   }
+  
+  string to_string(){
+      stringstream stream;
+      stream << "[" << mPK1 << "," << mPK2 << "," << mPK3 << "]";
+      return stream.str();
+  }
 };
 
 struct MetadataKeyHasher
@@ -74,9 +80,7 @@ struct MetadataLogEntry {
         stream << "-------------------------" << endl;
         stream << "Id = " << mId << endl;
         stream << "MetaType = " << Utils::MetadataTypeToStr(mMetaType) << endl;
-        stream << "MetaPK1 = " << mMetaPK.mPK1 << endl;
-        stream << "MetaPK2 = " << mMetaPK.mPK2 << endl;
-        stream << "MetaPK3 = " << mMetaPK.mPK3 << endl;
+        stream << "MetaPK = " << mMetaPK.to_string() << endl;
         stream << "MetaOpType = " << Utils::OperationTypeToStr(mMetaOpType) << endl;
         stream << "-------------------------" << endl;
         return stream.str();
@@ -92,7 +96,7 @@ struct MetadataLogEntryComparator
 };
 
 
-struct SchemaBasedMetadataEntry {
+struct SchemabasedMetadataEntry {
      int mId;
      int mFieldId;
      int mTupleId;
@@ -101,7 +105,7 @@ struct SchemaBasedMetadataEntry {
      
      ptime mEventCreationTime;
      
-     SchemaBasedMetadataEntry(MetadataLogEntry ml){
+     SchemabasedMetadataEntry(MetadataLogEntry ml){
          mId = ml.mMetaPK.mPK1;
          mFieldId = ml.mMetaPK.mPK2;
          mTupleId =  ml.mMetaPK.mPK3;
@@ -156,7 +160,7 @@ typedef ConcurrentPriorityQueue<MetadataLogEntry, MetadataLogEntryComparator> CM
 typedef vector<MetadataLogEntry> MetaQ;
 typedef boost::unordered_map<MetadataKey, Row, MetadataKeyHasher> UMetadataKeyRowMap;
 
-typedef vector<SchemaBasedMetadataEntry> SchemaBasedMq;
+typedef vector<SchemabasedMetadataEntry> SchemabasedMq;
 typedef vector<SchemalessMetadataEntry> SchemalessMq;
 
 class MetadataLogTailer : public RCTableTailer<MetadataLogEntry> {
@@ -165,10 +169,10 @@ public:
     MetadataLogEntry consumeMultiQueue(int queue_id);
     MetadataLogEntry consume();
     
-    SchemaBasedMq* readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
+    static SchemabasedMq* readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, MetaQ* batch);
     
-    SchemalessMq* readSchemalessMetadataRows(const NdbDictionary::Dictionary* database, 
+    static SchemalessMq* readSchemalessMetadataRows(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, MetaQ* batch);
     
     virtual ~MetadataLogTailer();

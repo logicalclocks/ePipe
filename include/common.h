@@ -57,7 +57,7 @@ typedef boost::unordered_map<int, int> UIMap;
 #define DEFAULT_MAX_CAPACITY 10000
 
 enum MetadataType{
-    SchemaBased = 0,
+    Schemabased = 0,
     Schemaless = 1,
     Both = 2
 };

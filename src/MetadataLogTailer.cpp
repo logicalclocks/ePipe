@@ -88,7 +88,7 @@ void MetadataLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, 
     entry.mMetaType = static_cast<MetadataType>(value[4]->int8_value());
     entry.mMetaOpType = static_cast<OperationType>(value[5]->int8_value());
 
-    if (entry.mMetaType == SchemaBased) {
+    if (entry.mMetaType == Schemabased) {
         mSchemaBasedQueue->push(entry);
     } else if (entry.mMetaType == Schemaless) {
         mSchemalessQueue->push(entry);
@@ -97,18 +97,17 @@ void MetadataLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, 
         return;
     }
 
-    LOG_TRACE(" push metalog [" << entry.mId << "," << entry.mMetaPK.mPK1 << "," << entry.mMetaPK.mPK2 
-            << "," << entry.mMetaPK.mPK3 << "] to queue, Op [" << Utils::OperationTypeToStr(entry.mMetaOpType) << "]");
+    LOG_TRACE(" push metalog " << entry.mMetaPK.to_string() << " to queue, Op [" << Utils::OperationTypeToStr(entry.mMetaOpType) << "]");
 }
 
 MetadataLogEntry MetadataLogTailer::consumeMultiQueue(int queue_id) {
     MetadataLogEntry res;
-    if(queue_id == SchemaBased){
+    if(queue_id == Schemabased){
         mSchemaBasedQueue->wait_and_pop(res);
     }else if(queue_id == Schemaless){
         mSchemalessQueue->wait_and_pop(res);
     }else{
-        LOG_FATAL("Unkown Queue Id, It should be either " << SchemaBased << " or " << Schemaless << " but got " << queue_id << " instead");
+        LOG_FATAL("Unkown Queue Id, It should be either " << Schemabased << " or " << Schemaless << " but got " << queue_id << " instead");
         return res;
     }
     
@@ -122,30 +121,30 @@ MetadataLogEntry MetadataLogTailer::consume() {
     return res;
 }
 
-SchemaBasedMq* MetadataLogTailer::readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
+SchemabasedMq* MetadataLogTailer::readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, MetaQ* batch) {
     UMetadataKeyRowMap rows = readMetadataRows(database, transaction, SB_METADATA, batch, 
             SB_METADATA_COLS, METADATA_NO_COLS, METADATA_PK1, METADATA_PK2, METADATA_PK3);
     
     executeTransaction(transaction, NdbTransaction::NoCommit);
     
-    SchemaBasedMq* res = NULL;
+    SchemabasedMq* res = new SchemabasedMq();
     for (MetaQ::iterator it = batch->begin(); it != batch->end(); ++it) {
         MetadataLogEntry ml = *it;
         if(ml.mMetaOpType == Delete){
-            res->push_back(SchemaBasedMetadataEntry(ml));
+            res->push_back(SchemabasedMetadataEntry(ml));
             continue;
         }
-        
+                
         Row row = rows[ml.mMetaPK];
         if(row[METADATA_PK1]->int32_value() == ml.mMetaPK.mPK1 
                 && row[METADATA_PK2]->int32_value() == ml.mMetaPK.mPK2 
                 && row[METADATA_PK3]->int32_value() == ml.mMetaPK.mPK3){
-            SchemaBasedMetadataEntry entry = SchemaBasedMetadataEntry(ml);
+            SchemabasedMetadataEntry entry = SchemabasedMetadataEntry(ml);
             entry.mMetadata = get_string(row[METADATA_DATA]);
             res->push_back(entry);
         }else{
-            LOG_ERROR("Error while");
+            LOG_WARN("Ignore " << ml.mMetaPK.to_string() << " since it seems to be deleted");
         }
     }
     return res;
@@ -157,16 +156,17 @@ SchemalessMq* MetadataLogTailer::readSchemalessMetadataRows(const NdbDictionary:
             NS_METADATA_COLS, METADATA_NO_COLS, METADATA_PK1, METADATA_PK2, METADATA_PK3);
     
     executeTransaction(transaction, NdbTransaction::NoCommit);
-    
-    SchemalessMq* res = NULL;
+
+    SchemalessMq* res = new SchemalessMq();
     for (MetaQ::iterator it = batch->begin(); it != batch->end(); ++it) {
         MetadataLogEntry ml = *it;
         if(ml.mMetaOpType == Delete){
             res->push_back(SchemalessMetadataEntry(ml));
             continue;
         }
-        
+                        
         Row row = rows[ml.mMetaPK];
+        
         if(row[METADATA_PK1]->int32_value() == ml.mMetaPK.mPK1 
                 && row[METADATA_PK2]->int32_value() == ml.mMetaPK.mPK2 
                 && row[METADATA_PK3]->int32_value() == ml.mMetaPK.mPK3){
@@ -174,7 +174,7 @@ SchemalessMq* MetadataLogTailer::readSchemalessMetadataRows(const NdbDictionary:
             entry.mJSONData = get_string(row[METADATA_DATA]);
             res->push_back(entry);
         }else{
-            LOG_ERROR("Error while");
+            LOG_WARN("Ignore " << ml.mMetaPK.to_string() << " since it seems to be deleted");
         }
     }
     return res;
@@ -204,7 +204,7 @@ UMetadataKeyRowMap MetadataLogTailer::readMetadataRows(const NdbDictionary::Dict
             NdbRecAttr* col = getNdbOperationValue(op, columns_to_read[c]);
             res[ml.mMetaPK].push_back(col);
         }
-        LOG_TRACE(" Read " << table_name << " row for [" << ml.mMetaPK.mPK1 << "," << ml.mMetaPK.mPK2 << "," << ml.mMetaPK.mPK3 << "]");
+        LOG_TRACE("Read " << table_name << " row for [" << ml.mMetaPK.mPK1 << "," << ml.mMetaPK.mPK2 << "," << ml.mMetaPK.mPK3 << "]");
     }
     return res;
 

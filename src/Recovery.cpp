@@ -23,7 +23,7 @@
  */
 
 #include "Recovery.h"
-#include "MetadataReader.h"
+#include "SchemabasedMetadataReader.h"
 
 using namespace Utils::NdbC;
 
