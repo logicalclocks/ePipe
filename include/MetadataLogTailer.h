@@ -169,6 +169,9 @@ public:
     MetadataLogEntry consumeMultiQueue(int queue_id);
     MetadataLogEntry consume();
     
+    static void removeLogs(const NdbDictionary::Dictionary* database, 
+        NdbTransaction* transaction, MetaQ* batch);
+    
     static SchemabasedMq* readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, MetaQ* batch);
     

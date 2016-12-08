@@ -26,7 +26,6 @@
 #define TABLETAILER_H
 
 #include "Utils.h"
-#include "Recovery.h"
 
 struct WatchTable{
     const string mTableName;
@@ -42,7 +41,7 @@ class TableTailer {
 public:
     TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait);
     
-    void start(int recoverFromId);
+    void start(bool recovery);
     void waitToFinish();
     virtual ~TableTailer();
 
@@ -52,7 +51,6 @@ protected:
     
 private:
     void recover(int recoverFromId);
-    void recoverAll();
     void createListenerEvent();
     void removeListenerEvent();
     void waitForEvents();

@@ -42,11 +42,6 @@ Notifier::Notifier(const char* connection_string, const char* database_name, con
 void Notifier::start() {
     LOG_INFO("ePipe starting...");
     ptime t1 = getCurrentTime();
-    RecoveryIndeces ri;
-    if(mRecovery){
-        Ndb* recovery_conn = create_ndb_connection(mMetaDatabaseName);
-        ri = Recovery::getRecoveryIndeces(recovery_conn);
-    }
     
     mFsMutationsDataReader->start();
     if(mMetadataType == Schemabased || mMetadataType == Both){
@@ -56,20 +51,15 @@ void Notifier::start() {
         mSchemalessMetadataReader->start();
     }    
     mElasticSearch->start();
-    
-    //TODO: ePipe cannot capture project/dataset/metadata deletion events
-    //      when it is down.
-    //      new projects/datasets/metadata/files that 
-    //      were created while ePipe was starting are not captured as well. 
-    //      
+       
     if (mHopsworksEnabled) {
-        mhopsworksOpsLogTailer->start(-1);
+        mhopsworksOpsLogTailer->start(mRecovery);
     }
     
     mFsMutationsBatcher->start();
-    mFsMutationsTableTailer->start(ri.mMutationsIndex);
+    mFsMutationsTableTailer->start(mRecovery);
     
-    mMetadataLogTailer->start(-1);
+    mMetadataLogTailer->start(mRecovery);
     
     if (mMetadataType == Schemabased || mMetadataType == Both) {
         mSchemabasedMetadataBatcher->start();

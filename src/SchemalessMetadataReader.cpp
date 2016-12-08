@@ -46,10 +46,13 @@ void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* d
         }
         HopsworksOpsLogTailer::refreshCache(connection, inodes_ids, mPDICache);
     }
-         
-    metaConn->closeTransaction(metaTransaction);
-    
+             
     createJSON(data_queue, bulk);
+    
+    MetadataLogTailer::removeLogs(metaDatabase, metaTransaction, data_batch);
+    executeTransaction(metaTransaction, NdbTransaction::Commit);
+    
+    metaConn->closeTransaction(metaTransaction);  
 }
 
 void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, Bulk& bulk) {

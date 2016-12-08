@@ -84,7 +84,10 @@ void SchemabasedMetadataReader::processAddedandDeleted(MConn connection, MetaQ* 
     }
         
     createJSON(tuples, data_queue, bulk);
-            
+    
+    MetadataLogTailer::removeLogs(metaDatabase, metaTransaction, data_batch);
+    executeTransaction(metaTransaction, NdbTransaction::Commit);
+    
     metaConn->closeTransaction(metaTransaction);
 }
 

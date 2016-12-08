@@ -121,6 +121,19 @@ MetadataLogEntry MetadataLogTailer::consume() {
     return res;
 }
 
+void MetadataLogTailer::removeLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, MetaQ* batch) {
+    const NdbDictionary::Table* log_table = getTable(database, TABLE.mTableName);
+    for(MetaQ::iterator it=batch->begin(); it != batch->end() ; ++it){
+        MetadataLogEntry row = *it;
+        NdbOperation* op = getNdbOperation(transaction, log_table);
+        
+        op->deleteTuple();
+        op->equal(_metalog_cols[0].c_str(), row.mId);
+        
+        LOG_TRACE("Delete log row: " << row.mId << " -- " << row.mMetaPK.to_string());
+    }
+}
+
 SchemabasedMq* MetadataLogTailer::readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, MetaQ* batch) {
     UMetadataKeyRowMap rows = readMetadataRows(database, transaction, SB_METADATA, batch, 

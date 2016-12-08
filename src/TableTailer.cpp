@@ -31,14 +31,14 @@ TableTailer::TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTim
         mEventName(concat("tail-", table.mTableName)), mTable(table), mPollMaxTimeToWait(poll_maxTimeToWait){
 }
 
-void TableTailer::start(int recoverFromId) {
+void TableTailer::start(bool recovery) {
     if (mStarted) {
         return;
     }
     
-    LOG_INFO("start with recovery from Id " << recoverFromId);
-    if(recoverFromId >= 0){
-        recover(recoverFromId);
+    if(recovery){
+        LOG_INFO("start with recovery for " << mTable.mTableName);
+        recover(0);
     }
     
     createListenerEvent();
