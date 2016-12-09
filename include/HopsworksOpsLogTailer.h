@@ -34,12 +34,6 @@ public:
     HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, ElasticSearch* elastic,
             ProjectDatasetINodeCache* cache);
     
-    static void refreshCache(MConn connection, UISet inodes, ProjectDatasetINodeCache* cache);
-    static UISet refreshDatasetIds(SConn connection, UISet inodes, ProjectDatasetINodeCache* cache);
-    static void refreshProjectIds(SConn connection, UISet datasets, ProjectDatasetINodeCache* cache);
-    static void refreshProjectIds(const NdbDictionary::Dictionary* database, NdbTransaction* transaction,
-            UISet dataset_ids, ProjectDatasetINodeCache* cache);
-    
     virtual ~HopsworksOpsLogTailer();
 private:
     static const WatchTable TABLE;
@@ -54,10 +48,7 @@ private:
     void handleDeleteProject(int projectId);
     void handleUpsertProject(int projectId, OperationType opType);
     string createProjectJSONUpSert(NdbRecAttr* value[]);
-    
-    static void readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase,
-        NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read, ProjectDatasetINodeCache* cache);
-    
+        
     void removeLog(int pk);
     
     ElasticSearch* mElasticSearch;

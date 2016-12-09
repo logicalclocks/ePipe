@@ -183,7 +183,7 @@ void FsMutationsDataReader::updateProjectIds(Ndb* metaConnection, Fmq* data_batc
     }
 
     if (!dataset_ids.empty()) {
-        HopsworksOpsLogTailer::refreshProjectIds(metaConnection, dataset_ids, mPDICache);
+        mPDICache->refreshProjectIds(metaConnection, dataset_ids);
     }
 }
 

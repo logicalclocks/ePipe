@@ -237,10 +237,7 @@ void SchemabasedMetadataReader::refreshProjectDatasetINodeCache(SConn inode_conn
         inodes_ids.insert(inodeId);
     }
 
-    UISet dataset_ids = HopsworksOpsLogTailer::refreshDatasetIds(inode_connection, inodes_ids, mPDICache);
-    if (!dataset_ids.empty()) {
-        HopsworksOpsLogTailer::refreshProjectIds(metaDatabase, metaTransaction, dataset_ids, mPDICache);
-    }
+    mPDICache->refresh(inode_connection, metaDatabase, metaTransaction, inodes_ids);
 }
 
 void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_batch, Bulk& bulk) {

@@ -23,6 +23,9 @@
  */
 
 #include "ProjectDatasetINodeCache.h"
+#include "Tables.h"
+
+using namespace Utils::NdbC;
 
 ProjectDatasetINodeCache::ProjectDatasetINodeCache(const int lru_cap) 
     : mINodeToDataset(lru_cap, "INodeToDataset"), mDatasetToINodes(lru_cap, "DatasetToINodes"),
@@ -111,6 +114,148 @@ bool ProjectDatasetINodeCache::containsDataset(int datasetId) {
 bool ProjectDatasetINodeCache::containsINode(int inodeId) {
     LOG_TRACE("CONTAINS INode[" << inodeId << "]");
     return mINodeToDataset.contains(inodeId);
+}
+
+
+
+void ProjectDatasetINodeCache::refresh(MConn connection, UISet inodes){
+    UISet datasets_ids = refreshDatasetIds(connection.inodeConnection, inodes);
+    if(!datasets_ids.empty()){
+        refreshProjectIds(connection.metadataConnection, datasets_ids);
+    }
+}
+
+void ProjectDatasetINodeCache::refresh(SConn inodeConnection, const NdbDictionary::Dictionary* metaDatabase, 
+        NdbTransaction* metaTransaction, UISet inodes) {
+    UISet datasets_ids = refreshDatasetIds(inodeConnection, inodes);
+    if(!datasets_ids.empty()){
+        refreshProjectIds(metaDatabase, metaTransaction, datasets_ids);
+    }
+}
+
+UISet ProjectDatasetINodeCache::refreshDatasetIds(SConn inode_connection, UISet inodes) {
+    UISet inodes_ids_to_read;
+    UISet dataset_ids;
+
+    for (UISet::iterator it = inodes.begin(); it != inodes.end(); ++it) {
+
+        int inodeId = *it;
+
+        int datasetId = getDatasetId(inodeId);
+        if (datasetId == -1) {
+            inodes_ids_to_read.insert(inodeId);
+            continue;
+        }
+
+        int projectId = getProjectId(datasetId);
+        if (projectId == -1) {
+            dataset_ids.insert(datasetId);
+        }
+    }
+
+
+    if (!inodes_ids_to_read.empty()) {
+        const NdbDictionary::Dictionary* inodeDatabase = getDatabase(inode_connection);
+        NdbTransaction* inodeTransaction = startNdbTransaction(inode_connection);
+
+        readINodeToDatasetLookup(inodeDatabase, inodeTransaction,
+                inodes_ids_to_read, dataset_ids);
+
+        executeTransaction(inodeTransaction, NdbTransaction::NoCommit);
+        inode_connection->closeTransaction(inodeTransaction);
+    }
+    
+    return dataset_ids;
+}
+
+void ProjectDatasetINodeCache::readINodeToDatasetLookup(const NdbDictionary::Dictionary* inodesDatabase,
+        NdbTransaction* inodesTransaction, UISet inodes_ids, UISet& datasets_to_read) {
+
+    UIRowMap inodesToDatasets = readTableWithIntPK(inodesDatabase, inodesTransaction,
+            INODE_DATASET_LOOKUP, inodes_ids, INODE_DATASET_LOOKUP_COLS_TO_READ,
+            NUM_INODE_DATASET_COLS, INODE_DATASET_LOOKUP_INODE_ID_COL);
+
+    executeTransaction(inodesTransaction, NdbTransaction::NoCommit);
+
+    for (UIRowMap::iterator it = inodesToDatasets.begin(); it != inodesToDatasets.end(); ++it) {
+        int inodeId = it->second[INODE_DATASET_LOOKUP_INODE_ID_COL]->int32_value();
+        if (it->first != inodeId) {
+            //TODO: update elastic?!
+            LOG_ERROR("INodeToDataset " << it->first << " doesn't exist, got inodeId "
+                    << inodeId << " was expecting " << it->first);
+            continue;
+        }
+
+        int datasetId = it->second[INODE_DATASET_LOOKUO_DATASET_ID_COL]->int32_value();
+
+        addINodeToDataset(it->first, datasetId);
+        if (!containsDataset(datasetId)) {
+            datasets_to_read.insert(datasetId);
+        }
+    }
+
+}
+
+void ProjectDatasetINodeCache::refreshProjectIds(SConn connection, UISet datasets) {
+    const NdbDictionary::Dictionary* metaDatabase = getDatabase(connection);
+    NdbTransaction* metaTransaction = startNdbTransaction(connection);
+    refreshProjectIds(metaDatabase, metaTransaction, datasets);
+    connection->closeTransaction(metaTransaction);
+}
+
+void ProjectDatasetINodeCache::refreshProjectIds(const NdbDictionary::Dictionary* database,
+        NdbTransaction* transaction, UISet dataset_ids) {    
+
+    const NdbDictionary::Index * index= getIndex(database, DS, DS_COLS_TO_READ[DS_INODE_ID]);
+    
+    vector<NdbIndexScanOperation*> indexScanOps;
+    UIRowMap rows;
+    for (UISet::iterator it = dataset_ids.begin(); it != dataset_ids.end(); ++it) {
+        NdbIndexScanOperation* op = getNdbIndexScanOperation(transaction, index);
+        op->readTuples(NdbOperation::LM_CommittedRead);
+       
+        op->equal(DS_COLS_TO_READ[DS_INODE_ID], *it);
+        
+        NdbRecAttr* id_col = getNdbOperationValue(op, DS_COLS_TO_READ[DS_INODE_ID]);
+        NdbRecAttr* proj_id_col = getNdbOperationValue(op, DS_COLS_TO_READ[DS_PROJECT_ID]);
+        NdbRecAttr* shared_col = getNdbOperationValue(op, "shared");
+        rows[*it].push_back(id_col);
+        rows[*it].push_back(proj_id_col);
+        rows[*it].push_back(shared_col);
+        indexScanOps.push_back(op);
+    }
+
+    executeTransaction(transaction, NdbTransaction::NoCommit);
+
+    int i = 0;
+    for (UIRowMap::iterator it = rows.begin(); it != rows.end(); ++it, i++) {
+        
+        stringstream projs;
+        int res=0;
+        while (indexScanOps[i]->nextResult(true) == 0) {
+            if (it->first != it->second[0]->int32_value()) {
+                LOG_ERROR("Dataset [" << it->first << "] doesn't exists");
+                continue;
+            }
+            
+            bool originalDs = it->second[2]->int8_value() == 0;
+            
+            if(!originalDs){
+                continue;
+            }
+            
+            int projectId = it->second[1]->int32_value();
+            if(res == 0){
+                addDatasetToProject(it->first, projectId);
+            }
+            projs << projectId << ",";
+            res++;
+        }
+        
+        if(res > 1){
+            LOG_FATAL("Got " << res << " rows of the original Dataset [" << it->first << "] in projects [" << projs.str() << "], only one was expected");
+        }
+    }
 }
 
 ProjectDatasetINodeCache::~ProjectDatasetINodeCache() {

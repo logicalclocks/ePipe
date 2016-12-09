@@ -44,7 +44,7 @@ void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* d
             SchemalessMetadataEntry entry = *it;
             inodes_ids.insert(entry.mINodeId);
         }
-        HopsworksOpsLogTailer::refreshCache(connection, inodes_ids, mPDICache);
+        mPDICache->refresh(connection, inodes_ids);
     }
              
     createJSON(data_queue, bulk);
