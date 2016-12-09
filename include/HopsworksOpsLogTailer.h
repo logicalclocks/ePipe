@@ -28,11 +28,12 @@
 #include "TableTailer.h"
 #include "ProjectDatasetINodeCache.h"
 #include "ElasticSearch.h"
+#include "SchemaCache.h"
 
 class HopsworksOpsLogTailer : public TableTailer{
 public:
     HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, ElasticSearch* elastic,
-            ProjectDatasetINodeCache* cache);
+            ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
     
     virtual ~HopsworksOpsLogTailer();
 private:
@@ -48,11 +49,16 @@ private:
     void handleDeleteProject(int projectId);
     void handleUpsertProject(int projectId, OperationType opType);
     string createProjectJSONUpSert(NdbRecAttr* value[]);
-        
+    
+    void handleSchema(int schemaId, OperationType opType, int datasetId, int projectId, int inodeId);
+    void handleSchemaDelete(int schemaId, int datasetId, int projectId, int inodeId);
+    string createSchemaDeleteJSON(string schema);
+    
     void removeLog(int pk);
     
     ElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
+    SchemaCache* mSchemaCache;
 };
 
 #endif /* HOPSWORKSOPSLOGTAILER_H */

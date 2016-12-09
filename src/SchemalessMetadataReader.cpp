@@ -23,6 +23,7 @@
  */
 
 #include "SchemalessMetadataReader.h"
+#include "Tables.h"
 
 SchemalessMetadataReader::SchemalessMetadataReader(MConn* connections,
         const int num_readers, const bool hopsworks, ElasticSearch* elastic,
@@ -56,14 +57,23 @@ void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* d
 }
 
 void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, Bulk& bulk) {
+
+    stringstream empty_doc_stream;
+    empty_doc_stream << "{\"doc\" : {\"" << XATTR_FIELD_NAME << "\" : {} }, \"doc_as_upsert\" : true}";
+    const char* emptyDoc = empty_doc_stream.str().c_str();
+
+    stringstream scriptStream;
+    scriptStream << "ctx._source.remove(\"" << XATTR_FIELD_NAME << "\")";
+    const char* removeXattrScript = scriptStream.str().c_str();
+    
     vector<ptime> arrivalTimes(data_batch->size());
     stringstream out;
     int i = 0;
     for (SchemalessMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it, i++) {
         SchemalessMetadataEntry entry = *it;
-
+        LOG_TRACE("create JSON for " << entry.to_string());
         arrivalTimes[i] = entry.mEventCreationTime;
-
+           
         // INode Operation
         rapidjson::StringBuffer sbOp;
         rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -94,24 +104,29 @@ void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, Bulk& bulk) 
         opWriter.Int(entry.mINodeId);
 
         opWriter.EndObject();
+        opWriter.EndObject();
 
         out << sbOp.GetString() << endl;
-
-        rapidjson::Document doc;
-        doc.Parse("{\"doc\" : {\"xattr\" : {} }, \"doc_as_upsert\" : true}");
-
-        if (entry.mOperation != Delete) {
+        
+        rapidjson::StringBuffer sbDoc;
+        rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
+        
+        if(entry.mOperation == Delete) {
+            docWriter.StartObject();
+            docWriter.String("script");
+            docWriter.String(removeXattrScript);
+            docWriter.EndObject();
+        } else {
+            rapidjson::Document doc;
+            doc.Parse(emptyDoc);
             rapidjson::Document xattr(&doc.GetAllocator());
             if (!xattr.Parse(entry.mJSONData.c_str()).HasParseError()) {
                 mergeDoc(doc, xattr);
             } else {
                 LOG_ERROR("JSON Parsing error: " << entry.mJSONData);
             }
+            doc.Accept(docWriter);
         }
-
-        rapidjson::StringBuffer sbDoc;
-        rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
-        doc.Accept(docWriter);
 
         out << sbDoc.GetString() << endl;
     }
@@ -122,7 +137,7 @@ void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, Bulk& bulk) 
 
 void SchemalessMetadataReader::mergeDoc(rapidjson::Document& target, rapidjson::Document& source) {
     for (rapidjson::Document::MemberIterator itr = source.MemberBegin(); itr != source.MemberEnd(); ++itr) {
-        target["doc"]["xattr"].AddMember(itr->name, itr->value, target.GetAllocator());
+        target["doc"][XATTR_FIELD_NAME].AddMember(itr->name, itr->value, target.GetAllocator());
     }
 }
 

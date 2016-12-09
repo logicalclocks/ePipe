@@ -132,7 +132,7 @@ void Notifier::setup() {
     if (mHopsworksEnabled) {
         Ndb* ops_log_tailer_connection = create_ndb_connection(mMetaDatabaseName);
         mhopsworksOpsLogTailer = new HopsworksOpsLogTailer(ops_log_tailer_connection, mPollMaxTimeToWait,
-                mElasticSearch, mPDICache);
+                mElasticSearch, mPDICache, mSchemaCache);
     }
     
 }

@@ -70,7 +70,8 @@ enum OperationType{
 
 enum OpsLogOn{
     Dataset = 0,
-    Project = 1
+    Project = 1,
+    Schema = 2
 };
 
 struct TableUnitConf {

@@ -74,6 +74,8 @@ public:
     bool deleteDataset(int projectId, int datasetId);
     bool deleteDatasetChildren(int projectId, int datasetId, string json);
     
+    bool deleteSchemaForINode(int projectId, int datasetId, int inodeId, string json);
+    
     const char* getIndex();
     const char* getProjectType();
     const char* getDatasetType();
@@ -117,6 +119,7 @@ private:
     string getElasticSearchUrlOnDoc(string index, string type, int doc);
     string getElasticSearchUpdateDocUrl(string index, string type, int doc);
     string getElasticSearchUpdateDocUrl(string index, string type, int doc, int parent);
+    string getElasticSearchUpdateDocUrl(string index, string type, int doc, int parent, int routing); 
     string getElasticSearchDeleteDocUrl(string index, string type, int doc, int parent);
     string getElasticSearchDeleteByQueryUrl(string index, int routing);
     string getElasticSearchDeleteByQueryUrl(string index, int parent, int routing);

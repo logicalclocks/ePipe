@@ -51,6 +51,7 @@ public:
     boost::optional<string> getTemplate(int templateId);
     
     void refresh(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids);
+    void refresTemplate(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int templateId);
     
     virtual ~SchemaCache();
 private:

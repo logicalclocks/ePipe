@@ -244,6 +244,8 @@ namespace Utils {
                 return "Dataset";
             case Project:
                 return "Project";
+            case Schema:
+                return "Schema";
             default:
                 return "Unkown";
         }

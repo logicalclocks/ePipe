@@ -54,6 +54,12 @@ void SchemaCache::refresh(const NdbDictionary::Dictionary* database, NdbTransact
     readTemplates(database, transaction, templates_to_read);
 }
 
+void SchemaCache::refresTemplate(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, int templateId) {
+    UISet templates_to_read;
+    templates_to_read.insert(templateId);
+    readTemplates(database, transaction, templates_to_read);
+}
+
 UISet SchemaCache::readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids) {
     
     UISet tables_to_read;

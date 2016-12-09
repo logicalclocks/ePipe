@@ -29,7 +29,7 @@ using namespace Utils;
 using namespace Utils::NdbC;
 
 const string _opslog_table= "ops_log";
-const int _opslog_noCols= 6;
+const int _opslog_noCols= 7;
 const string _opslog_cols[_opslog_noCols]=
     {
      "id",
@@ -37,6 +37,7 @@ const string _opslog_cols[_opslog_noCols]=
      "op_on",
      "op_type",
      "project_id",
+     "dataset_id",
      "inode_id"
     };
 
@@ -50,11 +51,12 @@ const int OPS_OP_ID = 1;
 const int OPS_OP_ON = 2;
 const int OPS_OP_TYPE = 3;
 const int OPS_PROJECT_ID = 4;
-const int OPS_INODE_ID = 5;
+const int OPS_DATASET_ID = 5;
+const int OPS_INODE_ID = 6;
 
 HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, 
-        ElasticSearch* elastic, ProjectDatasetINodeCache* cache) 
-    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticSearch(elastic), mPDICache(cache){
+        ElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache) 
+    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticSearch(elastic), mPDICache(cache), mSchemaCache(schemaCache){
     
 }
 
@@ -65,11 +67,13 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
     OpsLogOn op_on = static_cast<OpsLogOn>(value[OPS_OP_ON]->int8_value());
     OperationType op_type = static_cast<OperationType>(value[OPS_OP_TYPE]->int8_value());
     int project_id = value[OPS_PROJECT_ID]->int32_value();
+    int dataset_id = value[OPS_DATASET_ID]->int32_value();
     int inode_id = value[OPS_INODE_ID]->int32_value();
     LOG_DEBUG(endl << "ID = " << id << endl << "OpID = " << op_id << endl 
             << "OpOn = " << OpsLogOnToStr(op_on) << endl
             << "OpType = " << OperationTypeToStr(op_type) << endl
             << "ProjectID = " << project_id << endl
+            << "DatasetID = " << project_id << endl
             << "INodeID = " << inode_id);
     
     switch(op_on){
@@ -78,6 +82,9 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
             break;
         case Project:
             handleProject(op_id, op_type);
+            break;
+        case Schema:
+            handleSchema(op_id, op_type, dataset_id, project_id, inode_id);
             break;
     }
     
@@ -314,6 +321,46 @@ void HopsworksOpsLogTailer::removeLog(int pk){
      LOG_TRACE("Delete log row: [" << pk << "]");
      executeTransaction(transaction, NdbTransaction::Commit);
      mNdbConnection->closeTransaction(transaction);
+}
+
+void HopsworksOpsLogTailer::handleSchema(int schemaId, OperationType opType, int datasetId, int projectId, int inodeId) {
+    if(opType == Delete){
+        handleSchemaDelete(schemaId, datasetId, projectId, inodeId);
+    }else{
+        LOG_ERROR("Unsupported Schema Operation [" << Utils::OperationTypeToStr(opType) << "]. Only Delete is supported.");
+    }
+}
+
+void HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, int datasetId, int projectId, int inodeId) {
+    const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
+    NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
+    mSchemaCache->refresTemplate(database, transaction, schemaId);
+    boost::optional<string> schema_ptr = mSchemaCache->getTemplate(schemaId);
+    if(schema_ptr){
+        string schema = *schema_ptr;
+        string json = createSchemaDeleteJSON(schema);
+        if (mElasticSearch->deleteSchemaForINode(projectId, datasetId, inodeId, json)) {
+            LOG_INFO("Delete Schema/Template [" << schemaId << ", " << schema << "] for INode ["  << inodeId<< "] : Succeeded");
+        }
+    }else{
+        LOG_WARN("Schema/Template ["<< schemaId << "] does not exist");
+    }
+}
+
+string HopsworksOpsLogTailer::createSchemaDeleteJSON(string schema) {
+    rapidjson::StringBuffer sbDoc;
+    rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
+    docWriter.StartObject();
+
+    docWriter.String("script");
+    
+    stringstream scriptStream;
+    scriptStream << "ctx._source[\""<< XATTR_FIELD_NAME << "\"].remove(\"" << schema << "\")"; 
+    docWriter.String(scriptStream.str().c_str());
+    
+    docWriter.EndObject();
+
+    return string(sbDoc.GetString());
 }
 
 HopsworksOpsLogTailer::~HopsworksOpsLogTailer() {

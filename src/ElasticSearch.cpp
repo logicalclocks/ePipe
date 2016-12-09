@@ -219,6 +219,11 @@ bool ElasticSearch::deleteDatasetChildren(int projectId, int datasetId, string j
     return elasticSearchHttpRequest(HTTP_DELETE, deteteDatasetChildren, json);
 }
 
+bool ElasticSearch::deleteSchemaForINode(int projectId, int datasetId, int inodeId, string json) {
+    string url = getElasticSearchUpdateDocUrl(mIndex, (inodeId == datasetId ? mDatasetType : mInodeType), inodeId, datasetId, projectId);
+    return elasticSearchHttpRequest(HTTP_POST, url, json);
+}
+
 string ElasticSearch::getElasticSearchUrlonIndex(string index) {
     string str = mElasticAddr + "/" + index;
     return str;
@@ -238,6 +243,12 @@ string ElasticSearch::getElasticSearchUpdateDocUrl(string index, string type, in
 string ElasticSearch::getElasticSearchUpdateDocUrl(string index, string type, int doc, int parent) {
     stringstream out;
     out << getElasticSearchUpdateDocUrl(index, type, doc) << "?parent=" << parent;
+    return out.str();
+}
+
+string ElasticSearch::getElasticSearchUpdateDocUrl(string index, string type, int doc, int parent, int routing) {
+    stringstream out;
+    out << getElasticSearchUpdateDocUrl(index, type, doc, parent) << "&routing=" << routing;
     return out.str();
 }
 

@@ -113,6 +113,7 @@ void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_
     int i=0;
     for(SchemabasedMq::iterator it=data_batch->begin(); it != data_batch->end(); ++it, i++){
         SchemabasedMetadataEntry entry = *it;
+        LOG_TRACE("create JSON for " << entry.to_string());
         arrivalTimes[i] = entry.mEventCreationTime;
         
         boost::optional<Field> _fres = mSchemaCache->getField(entry.mFieldId);
@@ -173,6 +174,7 @@ void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_
         opWriter.Int(inodeId);
         
         opWriter.EndObject();
+        opWriter.EndObject();
         
         out << sbOp.GetString() << endl;
         
@@ -183,7 +185,7 @@ void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_
         docWriter.String("doc");
         docWriter.StartObject();
 
-        docWriter.String("xattr");
+        docWriter.String(XATTR_FIELD_NAME);
         docWriter.StartObject();
         
         docWriter.String(templateName.c_str());
