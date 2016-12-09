@@ -23,44 +23,11 @@
  */
 
 #include "SchemabasedMetadataReader.h"
-#include "HopsworksOpsLogTailer.h"
-
-const char* META_FIELDS = "meta_fields";
-const int NUM_FIELDS_COLS = 5;
-const char* FIELDS_COLS_TO_READ[] = {"fieldid", "name", "tableid", "searchable", "ftype"};
-const int FIELD_ID_COL = 0;
-const int FIELD_NAME_COL = 1;
-const int FIELD_TABLE_ID_COL = 2;
-const int FIELD_SEARCHABLE_COL = 3;
-const int FIELD_TYPE_COL = 4;
-
-const char* META_TABLES = "meta_tables";
-const int NUM_TABLES_COLS = 3;
-const char* TABLES_COLS_TO_READ[] = {"tableid", "name", "templateid"};
-const int TABLE_ID_COL = 0;
-const int TABLE_NAME_COL = 1;
-const int TABLE_TEMPLATE_ID_COL = 2;
-
-const char* META_TEMPLATES = "meta_templates";
-const int NUM_TEMPLATE_COLS = 2;
-const char* TEMPLATE_COLS_TO_READ[] = {"templateid", "name"};
-const int TEMPLATE_ID_COL = 0;
-const int TEMPLATE_NAME_COL = 1;
-
-
-const char* META_TUPLE_TO_FILE = "meta_tuple_to_file";
-const int NUM_TUPLES_COLS = 2;
-const char* TUPLES_COLS_TO_READ[] = {"tupleid", "inodeid"};
-const int TUPLE_ID_COL = 0;
-const int TUPLE_INODE_ID_COL = 1;
-
-const int DONT_EXIST_INT = -1;
-const char* DONT_EXIST_STR = "-1";
+#include "Tables.h"
 
 SchemabasedMetadataReader::SchemabasedMetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
-        ElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap) 
-            : NdbDataReader<MetadataLogEntry, MConn>(connections, num_readers, hopsworks, elastic, cache), 
-        mFieldsCache(lru_cap, "Field"), mTablesCache(lru_cap, "Table"), mTemplatesCache(lru_cap, "Template"){
+        ElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache) 
+            : NdbDataReader<MetadataLogEntry, MConn>(connections, num_readers, hopsworks, elastic, cache), mSchemaCache(schemaCache) {
 
 }
 
@@ -100,18 +67,14 @@ UIRowMap SchemabasedMetadataReader::readMetadataColumns(const NdbDictionary::Dic
     for (SchemabasedMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
        SchemabasedMetadataEntry entry = *it;
        
-       if(!mFieldsCache.contains(entry.mFieldId)){
+       if(!mSchemaCache->containsField(entry.mFieldId)){
           fields_ids.insert(entry.mFieldId);
        }
        
        tuple_ids.insert(entry.mTupleId);
     }
     
-    UISet tables_to_read = readFields(database, transaction, fields_ids);
-    
-    UISet templates_to_read = readTables(database, transaction, tables_to_read);
-    
-    readTemplates(database, transaction, templates_to_read);
+    mSchemaCache->refresh(database, transaction, fields_ids);
     
     // Read the tuples
     UIRowMap tuples = readTableWithIntPK(database, transaction, META_TUPLE_TO_FILE, 
@@ -120,103 +83,6 @@ UIRowMap SchemabasedMetadataReader::readMetadataColumns(const NdbDictionary::Dic
     executeTransaction(transaction, NdbTransaction::NoCommit);
         
     return tuples;
-}
-
-UISet SchemabasedMetadataReader::readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids) {
-    
-    UISet tables_to_read;
-    
-    if(fields_ids.empty())
-        return tables_to_read;
-    
-    UIRowMap fields = readTableWithIntPK(database, transaction, META_FIELDS, 
-            fields_ids, FIELDS_COLS_TO_READ, NUM_FIELDS_COLS, FIELD_ID_COL);
-    
-    executeTransaction(transaction, NdbTransaction::NoCommit);
-    
-    for(UIRowMap::iterator it=fields.begin(); it != fields.end(); ++it){
-        int fieldId = it->second[FIELD_ID_COL]->int32_value();
-        if(it->first != fieldId){
-            // TODO: update elastic?!            
-            LOG_ERROR("Field " << it->first << " doesn't exist, got fieldId " 
-                    << fieldId << " was expecting " << it->first);
-            continue;
-        }
-        
-        Field field;
-        field.mFieldId = it->second[FIELD_ID_COL]->int32_value();
-        field.mName = get_string(it->second[FIELD_NAME_COL]);
-        field.mSearchable = it->second[FIELD_SEARCHABLE_COL]->int8_value() == 1;
-        field.mTableId = it->second[FIELD_TABLE_ID_COL]->int32_value();
-        field.mType = (FieldType) it->second[FIELD_TYPE_COL]->short_value();
-        mFieldsCache.put(it->first, field);
-        
-        if(field.mSearchable && !mTablesCache.contains(field.mTableId)){
-            tables_to_read.insert(field.mTableId);
-        }
-    }
-    
-    return tables_to_read;
-}
-
-UISet SchemabasedMetadataReader::readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids) {
-    
-    UISet templates_to_read;
-    
-    if(tables_ids.empty())
-        return templates_to_read;
-        
-    UIRowMap tables = readTableWithIntPK(database, transaction, META_TABLES, 
-            tables_ids,TABLES_COLS_TO_READ, NUM_TABLES_COLS, TABLE_ID_COL);
-    
-    executeTransaction(transaction, NdbTransaction::NoCommit);
-
-    for(UIRowMap::iterator it=tables.begin(); it != tables.end(); ++it){
-        int tableId = it->second[TABLE_ID_COL]->int32_value();
-        if(it->first != tableId){
-            //TODO: update elastic?!
-            LOG_ERROR("Table " << it->first << " doesn't exist, got tableId " 
-                    << tableId << " was expecting " << it->first);
-            continue;
-        }
-        
-        Table table;
-        table.mName = get_string(it->second[TABLE_NAME_COL]);
-        table.mTemplateId = it->second[TABLE_TEMPLATE_ID_COL]->int32_value();
-        
-        mTablesCache.put(it->first, table);
-        
-        if(!mTemplatesCache.contains(table.mTemplateId)){
-            templates_to_read.insert(table.mTemplateId);
-        }
-    }
-    
-    return templates_to_read;
-}
-
-void SchemabasedMetadataReader::readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids) {
-
-    if(templates_ids.empty())
-        return;
-    
-    UIRowMap templates = readTableWithIntPK(database, transaction, META_TEMPLATES, 
-            templates_ids, TEMPLATE_COLS_TO_READ, NUM_TEMPLATE_COLS, TEMPLATE_ID_COL);
-    
-    executeTransaction(transaction, NdbTransaction::NoCommit);
-    
-     for(UIRowMap::iterator it=templates.begin(); it != templates.end(); ++it){
-        int templateId = it->second[TEMPLATE_ID_COL]->int32_value(); 
-        if(it->first != templateId){
-            //TODO: update elastic?!
-            LOG_ERROR("Template " << it->first << " doesn't exist, got templateId " 
-                    << templateId << " was expecting " << it->first);
-            continue;
-        }
-        
-        string templateName = get_string(it->second[TEMPLATE_NAME_COL]);
-        
-        mTemplatesCache.put(it->first, templateName);
-    }
 }
 
 void SchemabasedMetadataReader::refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples, 
@@ -249,7 +115,7 @@ void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_
         SchemabasedMetadataEntry entry = *it;
         arrivalTimes[i] = entry.mEventCreationTime;
         
-        boost::optional<Field> _fres = mFieldsCache.get(entry.mFieldId);
+        boost::optional<Field> _fres = mSchemaCache->getField(entry.mFieldId);
         
         if(!_fres){
             LOG_ERROR(" Field " << entry.mFieldId << " is not in the cache");
@@ -257,7 +123,7 @@ void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_
         }
         
         Field field = *_fres;
-        boost::optional<Table> _tres = mTablesCache.get(field.mTableId);
+        boost::optional<Table> _tres = mSchemaCache->getTable(field.mTableId);
         
         if (!_tres) {
             LOG_ERROR(" Table " << field.mTableId << " is not in the cache");
@@ -266,7 +132,7 @@ void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_
 
         Table table = *_tres;
         
-        boost::optional<string> _ttres = mTemplatesCache.get(table.mTemplateId);
+        boost::optional<string> _ttres = mSchemaCache->getTemplate(table.mTemplateId);
 
         if (!_ttres) {
             LOG_ERROR(" Template " << table.mTemplateId << " is not in the cache");

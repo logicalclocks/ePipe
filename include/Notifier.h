@@ -82,7 +82,9 @@ private:
     SchemalessMetadataReader* mSchemalessMetadataReader;
     SchemalessMetadataBatcher* mSchemalessMetadataBatcher;
     
+    SchemaCache* mSchemaCache;
     ProjectDatasetINodeCache* mPDICache;
+    
     HopsworksOpsLogTailer* mhopsworksOpsLogTailer;
     
     Ndb* create_ndb_connection(const char* database);

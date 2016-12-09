@@ -72,6 +72,44 @@ static const char* INODE_DATASET_LOOKUP_COLS_TO_READ[] = {"inode_id", "dataset_i
 static const int INODE_DATASET_LOOKUP_INODE_ID_COL = 0;
 static const int INODE_DATASET_LOOKUO_DATASET_ID_COL = 1;
 
+//SchemaBased Metadata
+
+//Metadata Fields Table
+static const char* META_FIELDS = "meta_fields";
+static const int NUM_FIELDS_COLS = 5;
+static const char* FIELDS_COLS_TO_READ[] = {"fieldid", "name", "tableid", "searchable", "ftype"};
+static const int FIELD_ID_COL = 0;
+static const int FIELD_NAME_COL = 1;
+static const int FIELD_TABLE_ID_COL = 2;
+static const int FIELD_SEARCHABLE_COL = 3;
+static const int FIELD_TYPE_COL = 4;
+
+//Metadata Tables Table
+static const char* META_TABLES = "meta_tables";
+static const int NUM_TABLES_COLS = 3;
+static const char* TABLES_COLS_TO_READ[] = {"tableid", "name", "templateid"};
+static const int TABLE_ID_COL = 0;
+static const int TABLE_NAME_COL = 1;
+static const int TABLE_TEMPLATE_ID_COL = 2;
+
+//Metadata Templates Table
+static const char* META_TEMPLATES = "meta_templates";
+static const int NUM_TEMPLATE_COLS = 2;
+static const char* TEMPLATE_COLS_TO_READ[] = {"templateid", "name"};
+static const int TEMPLATE_ID_COL = 0;
+static const int TEMPLATE_NAME_COL = 1;
+
+//Metadata Tuple->File Table
+static const char* META_TUPLE_TO_FILE = "meta_tuple_to_file";
+static const int NUM_TUPLES_COLS = 2;
+static const char* TUPLES_COLS_TO_READ[] = {"tupleid", "inodeid"};
+static const int TUPLE_ID_COL = 0;
+static const int TUPLE_INODE_ID_COL = 1;
+
+
+//Non Existent Attributes
+static const int DONT_EXIST_INT = -1;
+static const char* DONT_EXIST_STR = "-1";
 
 #endif /* TABLES_H */
 

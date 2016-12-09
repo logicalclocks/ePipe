@@ -78,6 +78,7 @@ void Notifier::start() {
 
 void Notifier::setup() {
     mPDICache = new ProjectDatasetINodeCache(mLRUCap);
+    mSchemaCache = new SchemaCache(mLRUCap);
     
     mElasticSearch = new ElasticSearch(mElasticAddr, mElasticIndex, mElastticProjectType,
             mElasticDatasetType, mElasticInodeType, mElasticIssueTime, mElasticBatchsize, mStats);
@@ -109,7 +110,7 @@ void Notifier::setup() {
         }
 
         mSchemabasedMetadataReader = new SchemabasedMetadataReader(metadata_connections, mMetadataTU.mNumReaders,
-                mHopsworksEnabled, mElasticSearch, mPDICache, mLRUCap);
+                mHopsworksEnabled, mElasticSearch, mPDICache, mSchemaCache);
         mSchemabasedMetadataBatcher = new SchemabasedMetadataBatcher(mMetadataLogTailer, mSchemabasedMetadataReader,
                 mMetadataTU.mWaitTime, mMetadataTU.mBatchSize);
     }

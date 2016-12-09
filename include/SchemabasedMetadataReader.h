@@ -28,49 +28,25 @@
 #include "MetadataLogTailer.h"
 #include "NdbDataReader.h"
 #include <boost/lexical_cast.hpp>
-
-enum FieldType{
-    BOOL = 0,
-    INT = 1,
-    DOUBLE = 2,
-    TEXT = 3
-};
-
-struct Field{
-    int mFieldId;
-    string mName;
-    bool mSearchable;
-    int mTableId;
-    FieldType mType;
-};
-
-struct Table{
-   string mName;
-   int mTemplateId;
-};
+#include "SchemaCache.h"
 
 class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn>{
 public:
     SchemabasedMetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
-            ElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap);
+            ElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
     virtual ~SchemabasedMetadataReader();
 private:    
     virtual void processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk);
     
     UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, SchemabasedMq* added);
-    UISet readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids);
-    UISet readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
-    void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
     void refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples,
         const NdbDictionary::Dictionary* metaDatabase, NdbTransaction* metaTransaction);  
     
     void createJSON(UIRowMap tuples, SchemabasedMq* data_batch, Bulk& bulk);
     
-    Cache<int, Field> mFieldsCache;
-    Cache<int, Table> mTablesCache;
-    Cache<int, string> mTemplatesCache;
+    SchemaCache* mSchemaCache;
 };
 
 #endif /* SCHEMABASEDMETADATAREADER_H */
