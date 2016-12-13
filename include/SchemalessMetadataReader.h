@@ -38,6 +38,7 @@ private:
     virtual void processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk);
     void createJSON(SchemalessMq* data_batch, Bulk& bulk);
     void mergeDoc(rapidjson::Document& target, rapidjson::Document& source);
+    string upsertMetadata(string jsonData);
 };
 
 #endif /* SCHEMALESSMETADATAREADER_H */

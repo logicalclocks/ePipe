@@ -113,6 +113,7 @@ static const char* DONT_EXIST_STR = "-1";
 
 
 //Xattr
-static const char* XATTR_FIELD_NAME = "xattr";
+#define XATTR_FIELD_NAME "xattr"
+
 #endif /* TABLES_H */
 
