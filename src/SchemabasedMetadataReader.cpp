@@ -66,11 +66,7 @@ UIRowMap SchemabasedMetadataReader::readMetadataColumns(const NdbDictionary::Dic
     
     for (SchemabasedMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
        SchemabasedMetadataEntry entry = *it;
-       
-       if(!mSchemaCache->containsField(entry.mFieldId)){
-          fields_ids.insert(entry.mFieldId);
-       }
-       
+       fields_ids.insert(entry.mFieldId);
        tuple_ids.insert(entry.mTupleId);
     }
     

@@ -46,6 +46,9 @@ class SchemaCache {
 public:
     SchemaCache(const int lru_cap);
     bool containsField(int fieldId);
+    bool containsTable(int tableId);
+    bool containsTemplate(int templateId);
+    
     boost::optional<Field> getField(int fieldId);
     boost::optional<Table> getTable(int tableId);
     boost::optional<string> getTemplate(int templateId);
@@ -56,8 +59,8 @@ public:
     virtual ~SchemaCache();
 private:
     
-    UISet readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids);
-    UISet readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
+    void readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids);
+    void readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids);
     void readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids);
     
     Cache<int, Field> mFieldsCache;

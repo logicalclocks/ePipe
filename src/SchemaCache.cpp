@@ -36,6 +36,14 @@ bool SchemaCache::containsField(int fieldId) {
     return mFieldsCache.contains(fieldId);
 }
 
+bool SchemaCache::containsTable(int tableId) {
+    return mTablesCache.contains(tableId);
+}
+
+bool SchemaCache::containsTemplate(int templateId) {
+    return mTemplatesCache.contains(templateId);
+}
+
 boost::optional<Field> SchemaCache::getField(int fieldId) {
     return mFieldsCache.get(fieldId);
 }
@@ -49,8 +57,43 @@ boost::optional<string> SchemaCache::getTemplate(int templateId) {
 }
 
 void SchemaCache::refresh(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids) {
-    UISet tables_to_read = readFields(database, transaction, fields_ids);
-    UISet templates_to_read = readTables(database, transaction, tables_to_read);
+    UISet fields_to_read;
+    for (UISet::iterator it = fields_ids.begin(); it != fields_ids.end(); ++it) {
+        int fieldId = *it;
+        if (!containsField(fieldId)) {
+            fields_to_read.insert(fieldId);
+        }
+    }
+    
+    readFields(database, transaction, fields_to_read);
+    
+    UISet tables_ids;
+    UISet tables_to_read;
+    for (UISet::iterator it = fields_ids.begin(); it != fields_ids.end(); ++it) {
+        int fieldId = *it;
+        boost::optional<Field> field_ptr = getField(fieldId);
+        if(field_ptr) {
+            Field field = *field_ptr;
+            tables_ids.insert(field.mTableId);
+            if (field.mSearchable && !containsTable(field.mTableId)) {
+                tables_to_read.insert(field.mTableId);
+            }
+        }
+    }
+    
+    readTables(database, transaction, tables_to_read);
+    
+    UISet templates_to_read;
+    for (UISet::iterator it = tables_ids.begin(); it != tables_ids.end(); ++it) {
+        int tableId = *it;
+        boost::optional<Table> table_ptr = getTable(tableId);
+        if(table_ptr){
+            Table table = *table_ptr;
+            if(!containsTemplate(table.mTemplateId)){
+                templates_to_read.insert(table.mTemplateId);
+            }
+        }
+    }
     readTemplates(database, transaction, templates_to_read);
 }
 
@@ -60,12 +103,10 @@ void SchemaCache::refresTemplate(const NdbDictionary::Dictionary* database, NdbT
     readTemplates(database, transaction, templates_to_read);
 }
 
-UISet SchemaCache::readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids) {
-    
-    UISet tables_to_read;
+void SchemaCache::readFields(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet fields_ids) {
     
     if(fields_ids.empty())
-        return tables_to_read;
+        return;
     
     UIRowMap fields = readTableWithIntPK(database, transaction, META_FIELDS, 
             fields_ids, FIELDS_COLS_TO_READ, NUM_FIELDS_COLS, FIELD_ID_COL);
@@ -88,21 +129,13 @@ UISet SchemaCache::readFields(const NdbDictionary::Dictionary* database, NdbTran
         field.mTableId = it->second[FIELD_TABLE_ID_COL]->int32_value();
         field.mType = (FieldType) it->second[FIELD_TYPE_COL]->short_value();
         mFieldsCache.put(it->first, field);
-        
-        if(field.mSearchable && !mTablesCache.contains(field.mTableId)){
-            tables_to_read.insert(field.mTableId);
-        }
     }
-    
-    return tables_to_read;
 }
 
-UISet SchemaCache::readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids) {
-    
-    UISet templates_to_read;
+void SchemaCache::readTables(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet tables_ids) {
     
     if(tables_ids.empty())
-        return templates_to_read;
+        return;
         
     UIRowMap tables = readTableWithIntPK(database, transaction, META_TABLES, 
             tables_ids,TABLES_COLS_TO_READ, NUM_TABLES_COLS, TABLE_ID_COL);
@@ -123,13 +156,7 @@ UISet SchemaCache::readTables(const NdbDictionary::Dictionary* database, NdbTran
         table.mTemplateId = it->second[TABLE_TEMPLATE_ID_COL]->int32_value();
         
         mTablesCache.put(it->first, table);
-        
-        if(!mTemplatesCache.contains(table.mTemplateId)){
-            templates_to_read.insert(table.mTemplateId);
-        }
-    }
-    
-    return templates_to_read;
+    }  
 }
 
 void SchemaCache::readTemplates(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet templates_ids) {
