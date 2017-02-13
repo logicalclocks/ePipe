@@ -169,14 +169,13 @@ public:
     MetadataLogEntry consumeMultiQueue(int queue_id);
     MetadataLogEntry consume();
     
-    static void removeLogs(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, MetaQ* batch);
+    static void removeLogs(Ndb* conn, UISet& pks);
     
     static SchemabasedMq* readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, MetaQ* batch);
+        NdbTransaction* transaction, MetaQ* batch, UISet& primaryKeys);
     
     static SchemalessMq* readSchemalessMetadataRows(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, MetaQ* batch);
+        NdbTransaction* transaction, MetaQ* batch, UISet& primaryKeys);
     
     virtual ~MetadataLogTailer();
 private:

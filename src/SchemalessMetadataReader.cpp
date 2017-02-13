@@ -41,7 +41,8 @@ void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* d
     const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConn);
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
-    SchemalessMq* data_queue = MetadataLogTailer::readSchemalessMetadataRows(metaDatabase, metaTransaction, data_batch);
+    SchemalessMq* data_queue = MetadataLogTailer::readSchemalessMetadataRows(metaDatabase,
+            metaTransaction, data_batch, bulk.mPKs);
     
     if (mHopsworksEnalbed) {
         UISet inodes_ids;
@@ -53,9 +54,6 @@ void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* d
     }
              
     createJSON(data_queue, bulk);
-    
-    MetadataLogTailer::removeLogs(metaDatabase, metaTransaction, data_batch);
-    executeTransaction(metaTransaction, NdbTransaction::Commit);
     
     metaConn->closeTransaction(metaTransaction);  
 }
@@ -69,7 +67,7 @@ void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, Bulk& bulk) 
         SchemalessMetadataEntry entry = *it;
         LOG_TRACE("create JSON for " << entry.to_string());
         arrivalTimes[i] = entry.mEventCreationTime;
-           
+        
         // INode Operation
         rapidjson::StringBuffer sbOp;
         rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);

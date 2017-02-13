@@ -80,8 +80,11 @@ void Notifier::setup() {
     mPDICache = new ProjectDatasetINodeCache(mLRUCap);
     mSchemaCache = new SchemaCache(mLRUCap);
     
+    Ndb* metdata_connection = create_ndb_connection(mMetaDatabaseName);
+    
     mElasticSearch = new ElasticSearch(mElasticAddr, mElasticIndex, mElastticProjectType,
-            mElasticDatasetType, mElasticInodeType, mElasticIssueTime, mElasticBatchsize, mStats);
+            mElasticDatasetType, mElasticInodeType, mElasticIssueTime, mElasticBatchsize, 
+            mStats, metdata_connection);
     
     Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
     mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mPDICache);

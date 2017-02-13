@@ -76,31 +76,34 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
             << "DatasetID = " << project_id << endl
             << "INodeID = " << inode_id);
     
+    bool success = false;
     switch(op_on){
         case Dataset:
-            handleDataset(op_id, op_type, inode_id, project_id);
+            success = handleDataset(op_id, op_type, inode_id, project_id);
             break;
         case Project:
-            handleProject(op_id, op_type);
+            success = handleProject(op_id, op_type);
             break;
         case Schema:
-            handleSchema(op_id, op_type, dataset_id, project_id, inode_id);
+            success = handleSchema(op_id, op_type, dataset_id, project_id, inode_id);
             break;
     }
     
-    removeLog(id);
-}
-
-void HopsworksOpsLogTailer::handleDataset(int opId, OperationType opType, 
-        int datasetId, int projectId) {
-    if(opType == Delete){
-       handleDeleteDataset(datasetId, projectId);
-    }else{
-       handleUpsertDataset(opId, opType, datasetId, projectId);
+    if(success){
+        removeLog(id);
     }
 }
 
-void HopsworksOpsLogTailer::handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId){
+bool HopsworksOpsLogTailer::handleDataset(int opId, OperationType opType, 
+        int datasetId, int projectId) {
+    if(opType == Delete){
+       return handleDeleteDataset(datasetId, projectId);
+    }else{
+       return handleUpsertDataset(opId, opType, datasetId, projectId);
+    }
+}
+
+bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId){
     mPDICache->addDatasetToProject(datasetId, projectId);
 
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
@@ -120,7 +123,8 @@ void HopsworksOpsLogTailer::handleUpsertDataset(int opId, OperationType opType, 
     executeTransaction(transaction, NdbTransaction::Commit);
     
     string data = createDatasetJSONUpSert(projectId, row);
-    if (mElasticSearch->addDataset(projectId, datasetId, data)) {
+    bool success = mElasticSearch->addDataset(projectId, datasetId, data);
+    if (success) {
         switch(opType){
             case Add:
                 LOG_INFO("Add Dataset[" << datasetId << "]: Succeeded");
@@ -132,6 +136,7 @@ void HopsworksOpsLogTailer::handleUpsertDataset(int opId, OperationType opType, 
     }
     
     transaction->close();
+    return success;
 }
 
 string HopsworksOpsLogTailer::createDatasetJSONUpSert(int porjectId, NdbRecAttr* value[]) {
@@ -173,7 +178,7 @@ string HopsworksOpsLogTailer::createDatasetJSONUpSert(int porjectId, NdbRecAttr*
     return string(sbDoc.GetString());
 }
 
-void HopsworksOpsLogTailer::handleDeleteDataset(int datasetId, int projectId) {
+bool HopsworksOpsLogTailer::handleDeleteDataset(int datasetId, int projectId) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -192,26 +197,29 @@ void HopsworksOpsLogTailer::handleDeleteDataset(int datasetId, int projectId) {
     docWriter.EndObject();
 
     //TODO: handle failures in elastic search
-    if (mElasticSearch->deleteDatasetChildren(projectId, datasetId, string(sbDoc.GetString()))) {
+    bool success1 = mElasticSearch->deleteDatasetChildren(projectId, datasetId, string(sbDoc.GetString()));
+    if (success1) {
         LOG_INFO("Delete Dataset[" << datasetId << "] children inodes: Succeeded");
     }
-
-    if (mElasticSearch->deleteDataset(projectId, datasetId)) {
+    
+    bool success2 = mElasticSearch->deleteDataset(projectId, datasetId);
+    if (success2) {
         LOG_INFO("Delete Dataset[" << datasetId << "]: Succeeded");
     }
 
     mPDICache->removeDataset(datasetId);
+    return (success1 && success2);
 }
 
-void HopsworksOpsLogTailer::handleProject(int projectId, OperationType opType) {
+bool HopsworksOpsLogTailer::handleProject(int projectId, OperationType opType) {
     if (opType == Delete) {
-        handleDeleteProject(projectId);
+        return handleDeleteProject(projectId);
     } else {
-        handleUpsertProject(projectId, opType);
+        return handleUpsertProject(projectId, opType);
     }
 }
 
-void HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
+bool HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -230,18 +238,21 @@ void HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
     docWriter.EndObject();
 
     //TODO: handle failures in elastic search
-    if (mElasticSearch->deleteProjectChildren(projectId, string(sbDoc.GetString()))) {
+    bool success1 = mElasticSearch->deleteProjectChildren(projectId, string(sbDoc.GetString()));
+    if (success1) {
         LOG_INFO("Delete Project[" << projectId << "] children inodes and datasets : Succeeded");
     }
-
-    if (mElasticSearch->deleteProject(projectId)) {
+    
+    bool success2 = mElasticSearch->deleteProject(projectId);
+    if (success2) {
         LOG_INFO("Delete Project[" << projectId << "]: Succeeded");
     }
 
     mPDICache->removeProject(projectId);
+    return (success1 && success2);
 }
 
-void HopsworksOpsLogTailer::handleUpsertProject(int projectId, OperationType opType){
+bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, OperationType opType){
 
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
     const NdbDictionary::Table* table = getTable(database, PR);
@@ -260,7 +271,8 @@ void HopsworksOpsLogTailer::handleUpsertProject(int projectId, OperationType opT
     executeTransaction(transaction, NdbTransaction::Commit);
     
     string data = createProjectJSONUpSert(row);
-   if (mElasticSearch->addProject(projectId, data)) {
+    bool success = mElasticSearch->addProject(projectId, data);
+    if (success) {
          switch(opType){
             case Add:
                 LOG_INFO("Add Project[" << projectId << "]: Succeeded");
@@ -272,6 +284,7 @@ void HopsworksOpsLogTailer::handleUpsertProject(int projectId, OperationType opT
     }
     
     transaction->close();
+    return success;
         
 }
 
@@ -323,15 +336,16 @@ void HopsworksOpsLogTailer::removeLog(int pk){
      mNdbConnection->closeTransaction(transaction);
 }
 
-void HopsworksOpsLogTailer::handleSchema(int schemaId, OperationType opType, int datasetId, int projectId, int inodeId) {
+bool HopsworksOpsLogTailer::handleSchema(int schemaId, OperationType opType, int datasetId, int projectId, int inodeId) {
     if(opType == Delete){
-        handleSchemaDelete(schemaId, datasetId, projectId, inodeId);
+        return handleSchemaDelete(schemaId, datasetId, projectId, inodeId);
     }else{
         LOG_ERROR("Unsupported Schema Operation [" << Utils::OperationTypeToStr(opType) << "]. Only Delete is supported.");
+        return true;
     }
 }
 
-void HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, int datasetId, int projectId, int inodeId) {
+bool HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, int datasetId, int projectId, int inodeId) {
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
     NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
     mSchemaCache->refresTemplate(database, transaction, schemaId);
@@ -339,11 +353,14 @@ void HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, int datasetId, int 
     if(schema_ptr){
         string schema = *schema_ptr;
         string json = createSchemaDeleteJSON(schema);
-        if (mElasticSearch->deleteSchemaForINode(projectId, datasetId, inodeId, json)) {
+        bool success = mElasticSearch->deleteSchemaForINode(projectId, datasetId, inodeId, json);
+        if (success) {
             LOG_INFO("Delete Schema/Template [" << schemaId << ", " << schema << "] for INode ["  << inodeId<< "] : Succeeded");
         }
+        return success;
     }else{
         LOG_WARN("Schema/Template ["<< schemaId << "] does not exist");
+        return true;
     }
 }
 

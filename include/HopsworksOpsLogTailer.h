@@ -40,18 +40,18 @@ private:
     static const WatchTable TABLE;
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
     
-    void handleDataset(int opId, OperationType opType, int datasetId, int projectId);
-    void handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId);
-    void handleDeleteDataset(int datasetId, int projectId);
+    bool handleDataset(int opId, OperationType opType, int datasetId, int projectId);
+    bool handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId);
+    bool handleDeleteDataset(int datasetId, int projectId);
     string createDatasetJSONUpSert(int porjectId, NdbRecAttr* value[]);
     
-    void handleProject(int projectId, OperationType opType);
-    void handleDeleteProject(int projectId);
-    void handleUpsertProject(int projectId, OperationType opType);
+    bool handleProject(int projectId, OperationType opType);
+    bool handleDeleteProject(int projectId);
+    bool handleUpsertProject(int projectId, OperationType opType);
     string createProjectJSONUpSert(NdbRecAttr* value[]);
     
-    void handleSchema(int schemaId, OperationType opType, int datasetId, int projectId, int inodeId);
-    void handleSchemaDelete(int schemaId, int datasetId, int projectId, int inodeId);
+    bool handleSchema(int schemaId, OperationType opType, int datasetId, int projectId, int inodeId);
+    bool handleSchemaDelete(int schemaId, int datasetId, int projectId, int inodeId);
     string createSchemaDeleteJSON(string schema);
     
     void removeLog(int pk);

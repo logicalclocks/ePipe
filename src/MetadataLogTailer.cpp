@@ -121,21 +121,25 @@ MetadataLogEntry MetadataLogTailer::consume() {
     return res;
 }
 
-void MetadataLogTailer::removeLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, MetaQ* batch) {
+void MetadataLogTailer::removeLogs(Ndb* conn, UISet& pks) {
+    const NdbDictionary::Dictionary* database = getDatabase(conn);
+    NdbTransaction* transaction = startNdbTransaction(conn);
     const NdbDictionary::Table* log_table = getTable(database, TABLE.mTableName);
-    for(MetaQ::iterator it=batch->begin(); it != batch->end() ; ++it){
-        MetadataLogEntry row = *it;
+    for(UISet::iterator it=pks.begin(); it != pks.end() ; ++it){
+        int id = *it;
         NdbOperation* op = getNdbOperation(transaction, log_table);
         
         op->deleteTuple();
-        op->equal(_metalog_cols[0].c_str(), row.mId);
+        op->equal(_metalog_cols[0].c_str(), id);
         
-        LOG_TRACE("Delete log row: " << row.mId << " -- " << row.mMetaPK.to_string());
+        LOG_TRACE("Delete log row: " << id);
     }
+    executeTransaction(transaction, NdbTransaction::Commit);
+    conn->closeTransaction(transaction);
 }
 
 SchemabasedMq* MetadataLogTailer::readSchemaBasedMetadataRows(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, MetaQ* batch) {
+        NdbTransaction* transaction, MetaQ* batch, UISet& primaryKeys) {
     UMetadataKeyRowMap rows = readMetadataRows(database, transaction, SB_METADATA, batch, 
             SB_METADATA_COLS, METADATA_NO_COLS, METADATA_PK1, METADATA_PK2, METADATA_PK3);
     
@@ -144,6 +148,7 @@ SchemabasedMq* MetadataLogTailer::readSchemaBasedMetadataRows(const NdbDictionar
     SchemabasedMq* res = new SchemabasedMq();
     for (MetaQ::iterator it = batch->begin(); it != batch->end(); ++it) {
         MetadataLogEntry ml = *it;
+        primaryKeys.insert(ml.mId);
         if(ml.mMetaOpType == Delete){
             res->push_back(SchemabasedMetadataEntry(ml));
             continue;
@@ -164,7 +169,7 @@ SchemabasedMq* MetadataLogTailer::readSchemaBasedMetadataRows(const NdbDictionar
 }
 
 SchemalessMq* MetadataLogTailer::readSchemalessMetadataRows(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, MetaQ* batch) {
+        NdbTransaction* transaction, MetaQ* batch, UISet& primaryKeys) {
     UMetadataKeyRowMap rows = readMetadataRows(database, transaction, NS_METADATA, batch, 
             NS_METADATA_COLS, METADATA_NO_COLS, METADATA_PK1, METADATA_PK2, METADATA_PK3);
     
@@ -173,6 +178,7 @@ SchemalessMq* MetadataLogTailer::readSchemalessMetadataRows(const NdbDictionary:
     SchemalessMq* res = new SchemalessMq();
     for (MetaQ::iterator it = batch->begin(); it != batch->end(); ++it) {
         MetadataLogEntry ml = *it;
+        primaryKeys.insert(ml.mId);
         if(ml.mMetaOpType == Delete){
             res->push_back(SchemalessMetadataEntry(ml));
             continue;

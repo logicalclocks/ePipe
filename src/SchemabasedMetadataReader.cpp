@@ -39,7 +39,8 @@ void SchemabasedMetadataReader::processAddedandDeleted(MConn connection, MetaQ* 
     const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConn);
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
-    SchemabasedMq* data_queue = MetadataLogTailer::readSchemaBasedMetadataRows(metaDatabase, metaTransaction, data_batch);
+    SchemabasedMq* data_queue = MetadataLogTailer::readSchemaBasedMetadataRows(metaDatabase, 
+            metaTransaction, data_batch, bulk.mPKs);
 
     UIRowMap tuples = readMetadataColumns(metaDatabase, metaTransaction, data_queue);
     
@@ -51,9 +52,6 @@ void SchemabasedMetadataReader::processAddedandDeleted(MConn connection, MetaQ* 
     }
         
     createJSON(tuples, data_queue, bulk);
-    
-    MetadataLogTailer::removeLogs(metaDatabase, metaTransaction, data_batch);
-    executeTransaction(metaTransaction, NdbTransaction::Commit);
     
     metaConn->closeTransaction(metaTransaction);
 }

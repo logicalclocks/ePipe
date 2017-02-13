@@ -51,6 +51,7 @@ struct Bulk{
     vector<ptime> mArrivalTimes;
     ptime mStartProcessing;
     ptime mEndProcessing;
+    UISet mPKs;
 };
 
 struct ESResponse{
@@ -62,7 +63,7 @@ class ElasticSearch : public Batcher{
 public:
     ElasticSearch(string elastic_addr, string index, string proj_type, string ds_type,
             string inode_type, int time_to_wait_before_inserting, int bulk_size,
-            const bool stats);
+            const bool stats, Ndb* metaConn);
     
     void addBulk(Bulk data);
     
@@ -92,6 +93,7 @@ private:
     string mElasticAddr;
     string mElasticBulkAddr;
     
+    Ndb* mMetaBulkConn;
     ConcurrentQueue<Bulk> mQueue;
     
     vector<Bulk>* mToProcess;
