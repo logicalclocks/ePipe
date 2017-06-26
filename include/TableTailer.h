@@ -34,7 +34,6 @@ struct WatchTable{
     const NdbDictionary::Event::TableEvent* mWatchEvents;
     const int mNoEvents;
     const string mRecoveryIndex;
-    const string mRecoveryColumn;
 };
 
 class TableTailer {
@@ -50,7 +49,7 @@ protected:
     Ndb* mNdbConnection;
     
 private:
-    void recover(int recoverFromId);
+    void recover();
     void createListenerEvent();
     void removeListenerEvent();
     void waitForEvents();

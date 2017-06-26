@@ -40,7 +40,7 @@ const string _metalog_cols[_metalog_noCols]=
 const int _metalog_noEvents = 1; 
 const NdbDictionary::Event::TableEvent _metalog_events[_metalog_noEvents] = { NdbDictionary::Event::TE_INSERT };
 
-const WatchTable MetadataLogTailer::TABLE = {_metalog_table, _metalog_cols, _metalog_noCols , _metalog_events, _metalog_noEvents, "PRIMARY", _metalog_cols[0]};
+const WatchTable MetadataLogTailer::TABLE = {_metalog_table, _metalog_cols, _metalog_noCols , _metalog_events, _metalog_noEvents, "PRIMARY"};
 
 
 //Common

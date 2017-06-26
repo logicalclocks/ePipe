@@ -44,7 +44,7 @@ const string _opslog_cols[_opslog_noCols]=
 const int _opslog_noEvents = 1; 
 const NdbDictionary::Event::TableEvent _opslog_events[_opslog_noEvents] = { NdbDictionary::Event::TE_INSERT};
 
-const WatchTable HopsworksOpsLogTailer::TABLE = {_opslog_table, _opslog_cols, _opslog_noCols , _opslog_events, _opslog_noEvents, "PRIMARY", "id"};
+const WatchTable HopsworksOpsLogTailer::TABLE = {_opslog_table, _opslog_cols, _opslog_noCols , _opslog_events, _opslog_noEvents, "PRIMARY"};
 
 const int OPS_ID_PK = 0;
 const int OPS_OP_ID = 1;

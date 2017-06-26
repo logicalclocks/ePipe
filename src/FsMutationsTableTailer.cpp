@@ -42,7 +42,7 @@ const string _mutation_cols[_mutation_noCols]=
 const int _mutation_noEvents = 1; 
 const NdbDictionary::Event::TableEvent _mutation_events[_mutation_noEvents] = { NdbDictionary::Event::TE_INSERT };
 
-const WatchTable FsMutationsTableTailer::TABLE = {_mutation_table, _mutation_cols, _mutation_noCols , _mutation_events, _mutation_noEvents, _mutation_cols[2], _mutation_cols[2]};
+const WatchTable FsMutationsTableTailer::TABLE = {_mutation_table, _mutation_cols, _mutation_noCols , _mutation_events, _mutation_noEvents, _mutation_cols[2]};
 
 //const static ptime EPOCH_TIME(boost::gregorian::date(1970,1,1)); 
 

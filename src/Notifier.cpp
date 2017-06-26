@@ -59,7 +59,9 @@ void Notifier::start() {
     mFsMutationsBatcher->start();
     mFsMutationsTableTailer->start(mRecovery);
     
-    mMetadataLogTailer->start(mRecovery);
+    if(mMetadataType == Schemabased || mMetadataType == Schemaless || mMetadataType == Both){
+        mMetadataLogTailer->start(mRecovery);
+    }
     
     if (mMetadataType == Schemabased || mMetadataType == Both) {
         mSchemabasedMetadataBatcher->start();

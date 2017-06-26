@@ -38,7 +38,7 @@ void TableTailer::start(bool recovery) {
     
     if(recovery){
         LOG_INFO("start with recovery for " << mTable.mTableName);
-        recover(0);
+        recover();
     }
     
     createListenerEvent();
@@ -46,7 +46,7 @@ void TableTailer::start(bool recovery) {
     mStarted = true;
 }
 
-void TableTailer::recover(int recoverFromId) {
+void TableTailer::recover() {
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
     const NdbDictionary::Index* index = getIndex(database, mTable.mTableName, mTable.mRecoveryIndex);
     
@@ -54,7 +54,6 @@ void TableTailer::recover(int recoverFromId) {
     NdbIndexScanOperation* scanOp = getNdbIndexScanOperation(transaction, index);
     
     scanOp->readTuples(NdbOperation::LM_CommittedRead, NdbScanOperation::SF_OrderBy);
-    scanOp->setBound(mTable.mRecoveryColumn.c_str(), NdbIndexScanOperation::BoundLT, (char*) & recoverFromId);
     
     NdbRecAttr * row[mTable.mNoColumns];
     
