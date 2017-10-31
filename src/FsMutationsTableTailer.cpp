@@ -31,7 +31,7 @@ using namespace Utils::NdbC;
 typedef boost::unordered_map<Uint64, FSpq*> HashMap;
 
 const string _mutation_table= "hdfs_metadata_log";
-const int _mutation_noCols= 7;
+const int _mutation_noCols= 8;
 const string _mutation_cols[_mutation_noCols]=
     {"dataset_id",
      "inode_id",
@@ -39,7 +39,8 @@ const string _mutation_cols[_mutation_noCols]=
      "inode_partition_id",
      "inode_parent_id",
      "inode_name",
-     "operation"
+     "operation",
+     "timestamp"
     };
 
 const int _mutation_noEvents = 1; 
@@ -47,20 +48,21 @@ const NdbDictionary::Event::TableEvent _mutation_events[_mutation_noEvents] = { 
 
 const WatchTable FsMutationsTableTailer::TABLE = {_mutation_table, _mutation_cols, _mutation_noCols , _mutation_events, _mutation_noEvents, _mutation_cols[2]};
 
-//const static ptime EPOCH_TIME(boost::gregorian::date(1970,1,1)); 
+const static ptime EPOCH_TIME(boost::gregorian::date(1970,1,1)); 
+const static int PRINT_EVERY_MS=1000;
 
 FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier,
         ProjectDatasetINodeCache* cache) : RCTableTailer(ndb, TABLE, poll_maxTimeToWait, barrier), mPDICache(cache) {
     mQueue = new CFSq();
     mCurrentPriorityQueue = new FSpq();
-//    mTimeTakenForEventsToArrive = 0;
-//    mNumOfEvents = 0;
-//    mPrintEveryNEvents = 0;
+    mLastRecordedTime = Utils::getCurrentTime();
+    LOG_STATS("ArrivalTime,rollingAvg,avgAcc");
 }
 
 void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]){
     FsMutationRow row;
     readRowFromNdbRecAttr(row, value);
+    Int64 timestamp = value[7]->int64_value();
     if (row.mOperation == Add || row.mOperation == Delete) {        
         mLock.lock();
         mCurrentPriorityQueue->push(row);
@@ -78,15 +80,15 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
        LOG_ERROR( "Unknown Operation [" << row.mOperation << "] for " << " INode [" << row.mInodeId << "]");
     }
     
-//    ptime t = EPOCH_TIME + boost::posix_time::milliseconds(row.mTimestamp);
-//    mTimeTakenForEventsToArrive += Utils::getTimeDiffInMilliseconds(t, row.mEventCreationTime);
-//    mNumOfEvents++;
-//    mPrintEveryNEvents++;
-//    if(mPrintEveryNEvents>=10000){
-//        double avgArrival = mTimeTakenForEventsToArrive / mNumOfEvents;
-//        LOG_INFO("Average Arrival Time=" << avgArrival << " msec");
-//        mPrintEveryNEvents = 0;
-//    }
+    ptime t = EPOCH_TIME + boost::posix_time::milliseconds(timestamp);
+    double elapsed = Utils::getTimeDiffInMilliseconds(t, row.mEventCreationTime);
+    mAverageArrivalTime(elapsed);
+    mRollingAverageTime(elapsed);
+    if(Utils::getTimeDiffInMilliseconds(mLastRecordedTime, row.mEventCreationTime) >= PRINT_EVERY_MS){
+        LOG_STATS("ArrivalTime," << bc::mean(mRollingAverageTime) << "," << bc::mean(mAverageArrivalTime));
+        mLastRecordedTime = row.mEventCreationTime;
+        mRollingAverageTime = Accumulator();
+    }
 }
 
 void FsMutationsTableTailer::barrierChanged() {
@@ -178,7 +180,7 @@ void FsMutationsTableTailer::recover(){
     std::sort(gcis->begin(), gcis->end());
     
     
-    LOG_INFO("ePipe done reading/sorting for recovery in " << Utils::getTimeDiffInMilliseconds(start, Utils::getCurrentTime()) << " msec");
+    LOG_STATS("Recovery: Reading and Sorting, " << Utils::getTimeDiffInMilliseconds(start, Utils::getCurrentTime()));
     
     for(vector<Uint64>::iterator it=gcis->begin(); it != gcis->end(); it++){
         Uint64 gci = *it;

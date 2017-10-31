@@ -32,15 +32,6 @@
 #include "rapidjson/document.h"
 #include "Utils.h"
 #include "FsMutationsTableTailer.h"
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/min.hpp>
-#include <boost/accumulators/statistics/max.hpp>
-
-namespace bc = boost::accumulators;
-
-typedef bc::accumulator_set<double, bc::stats<bc::tag::mean, bc::tag::min, bc::tag::max> >  Accumulator;
 
 enum HttpOp {
     HTTP_POST,
@@ -112,6 +103,8 @@ private:
     long mTotalNumOfBulksProcessed;
     ptime mFirstEventArrived;
     bool mIsFirstEventArrived;
+    
+    ptime mLastRecordedTime;
     
     virtual void run();
     virtual void processBatch();

@@ -72,7 +72,7 @@ void Notifier::start() {
     }
     
     ptime t2 = getCurrentTime();
-    LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");
+    LOG_STATS("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");
     mFsMutationsBatcher->waitToFinish();
     mSchemabasedMetadataBatcher->waitToFinish();
     mElasticSearch->waitToFinish();

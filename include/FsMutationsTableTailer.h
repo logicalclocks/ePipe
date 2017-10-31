@@ -128,9 +128,9 @@ private:
     boost::mutex mLock;
     
     ProjectDatasetINodeCache* mPDICache;
-//    double mTimeTakenForEventsToArrive;
-//    long mNumOfEvents;
-//    int mPrintEveryNEvents;
+    ptime mLastRecordedTime;
+    Accumulator mAverageArrivalTime;
+    Accumulator mRollingAverageTime;
     
 };
 

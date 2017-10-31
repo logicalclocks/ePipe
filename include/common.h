@@ -43,6 +43,16 @@
 #include "rapidjson/stringbuffer.h"
 #include "Logger.h"
 
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/min.hpp>
+#include <boost/accumulators/statistics/max.hpp>
+
+namespace bc = boost::accumulators;
+
+typedef bc::accumulator_set<double, bc::stats<bc::tag::mean, bc::tag::min, bc::tag::max> >  Accumulator;
+
 using namespace std;
 
 typedef boost::unordered_set<int> UISet;

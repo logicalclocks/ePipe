@@ -48,13 +48,17 @@ using namespace std;
 
 #define FORMAT(ITEMS) ((dynamic_cast<ostringstream &>(ostringstream().seekp(0,ios_base::cur) \
                << "(" << __FILENAME__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") " << ITEMS )).str().c_str())
-        
+
+#define FORMAT_STATS(ITEMS) ((dynamic_cast<ostringstream &>(ostringstream().seekp(0,ios_base::cur) << ITEMS )).str().c_str())
+
 #define LOG_TRACE(msg) Logger::trace(FORMAT(msg))
 #define LOG_DEBUG(msg) Logger::debug(FORMAT(msg))
 #define LOG_INFO(msg)  Logger::info(FORMAT(msg))
 #define LOG_WARN(msg)  Logger::warn(FORMAT(msg))
 #define LOG_ERROR(msg) Logger::error(FORMAT(msg))
 #define LOG_FATAL(msg) Logger::fatal(FORMAT(msg))
+
+#define LOG_STATS(msg) Logger::stats(FORMAT_STATS(msg))
 
 #define LOG_NDB_API_ERROR(error) \
         LOG_FATAL("code:" << error.code << ", msg: " << error.message << ".")
@@ -68,6 +72,7 @@ public:
     static void warn(const char* msg);
     static void error(const char* msg);
     static void fatal(const char* msg);
+    static void stats(const char* msg);
     
     static bool isTrace();
 private:

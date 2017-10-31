@@ -50,6 +50,8 @@ static string getAccString(Accumulator acc){
     return out.str();
 }
 
+const static int PRINT_EVERY_MS=1000;
+
 ElasticSearch::ElasticSearch(string elastic_addr, string index, string proj_type,
         string ds_type, string inode_type, int time_to_wait_before_inserting, 
         int bulk_size, const bool stats, MConn conn) : Batcher(time_to_wait_before_inserting, bulk_size),
@@ -60,7 +62,8 @@ ElasticSearch::ElasticSearch(string elastic_addr, string index, string proj_type
     mElasticAddr = "http://" + elastic_addr;
     mElasticBulkAddr = mElasticAddr + "/" + mIndex + "/" + mInodeType + "/_bulk";
     mToProcess = new vector<Bulk>();
-    
+    mLastRecordedTime = Utils::getCurrentTime();
+    LOG_STATS("Bulks,workQueue,totalNumOfEvents,totalNumOfBulks,totalTime,totalEventsPerSecond,totalTimePerBulkAcc,totalTimePerEventAcc,batchingAcc,waitTimeBeforeProcessingAcc,processingAcc,waitElasticQueueAcc");
     curl_global_init(CURL_GLOBAL_ALL); 
 }
 
@@ -142,10 +145,20 @@ void ElasticSearch::stats(vector<Bulk>* bulks) {
     float totalTime = getTimeDiffInMilliseconds(mFirstEventArrived, t_end);
     float totalEventsPerSecond = (mTotalNumOfEventsProcessed * 1000.0) / totalTime;
 
-    LOG_INFO("Bulks[" << mTotalNumOfEventsProcessed << "/" << mTotalNumOfBulksProcessed << "] took " << totalTime << " msec at Rate=" << totalEventsPerSecond << " events/second" << endl
+    
+    if(Utils::getTimeDiffInMilliseconds(mLastRecordedTime, t_end) >= PRINT_EVERY_MS){
+        /*LOG_WARN("Bulks[" << mTotalNumOfEventsProcessed << "/" << mTotalNumOfBulksProcessed << "] took " << totalTime << " msec at Rate=" << totalEventsPerSecond << " events/second" << endl
             << "Total/Bulk=" << getAccString(mTotalTimePerBulkAcc) << ", Total/Event=" << getAccString(mTotalTimePerEventAcc) << endl
             << "Batch=" << getAccString(mBatchingAcc) << ", WaitTime=" << getAccString(mWaitTimeBeforeProcessingAcc) << endl
             << "Processing=" << getAccString(mProcessingAcc) << ", eWaitTime=" << getAccString(mWaitTimeUntillElasticCalledAcc));
+        */
+        
+        LOG_STATS("Bulks," << mQueue.size() << "," <<mTotalNumOfEventsProcessed << "," << mTotalNumOfBulksProcessed 
+                << "," << totalTime << "," << totalEventsPerSecond <<"," << bc::mean(mTotalTimePerBulkAcc) << "," << bc::mean(mTotalTimePerEventAcc)
+                << "," << bc::mean(mBatchingAcc) << "," << bc::mean(mWaitTimeBeforeProcessingAcc)<<"," << bc::mean(mProcessingAcc) << "," << bc::mean(mWaitTimeUntillElasticCalledAcc));
+        
+        mLastRecordedTime = t_end;
+    }
 }
 
 void ElasticSearch::stats(Bulk bulk, ptime t_elastic_done) {

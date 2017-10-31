@@ -34,6 +34,7 @@ public:
     void push(Data data);
     void wait_and_pop(Data &result);
     bool empty();
+    long size();
     virtual ~ConcurrentQueue();
 private:
     std::queue<Data> mQueue;
@@ -69,6 +70,12 @@ template<typename Data>
 bool ConcurrentQueue<Data>::empty(){
     boost::mutex::scoped_lock lock(mLock);
     return mQueue.empty();
+}
+
+template<typename Data>
+long ConcurrentQueue<Data>::size(){
+    boost::mutex::scoped_lock lock(mLock);
+    return mQueue.size();
 }
 
 template<typename Data>
