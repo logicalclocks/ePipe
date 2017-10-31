@@ -32,8 +32,8 @@ const int SINGLE_QUEUE = -1;
 template<typename TableRow>
 class RCTableTailer : public TableTailer{
 public:
-    RCTableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait) 
-        : TableTailer(ndb, table, poll_maxTimeToWait){ 
+    RCTableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait, const Barrier barrier) 
+        : TableTailer(ndb, table, poll_maxTimeToWait, barrier){ 
     }
         
     virtual TableRow consumeMultiQueue(int queue_id) {

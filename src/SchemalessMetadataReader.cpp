@@ -42,7 +42,7 @@ void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* d
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
     SchemalessMq* data_queue = MetadataLogTailer::readSchemalessMetadataRows(metaDatabase,
-            metaTransaction, data_batch, bulk.mPKs);
+            metaTransaction, data_batch, bulk.mMetaPKs);
     
     if (mHopsworksEnalbed) {
         UISet inodes_ids;

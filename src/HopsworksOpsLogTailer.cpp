@@ -54,9 +54,9 @@ const int OPS_PROJECT_ID = 4;
 const int OPS_DATASET_ID = 5;
 const int OPS_INODE_ID = 6;
 
-HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, 
+HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier,
         ElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache) 
-    : TableTailer(ndb, TABLE, poll_maxTimeToWait), mElasticSearch(elastic), mPDICache(cache), mSchemaCache(schemaCache){
+    : TableTailer(ndb, TABLE, poll_maxTimeToWait, barrier), mElasticSearch(elastic), mPDICache(cache), mSchemaCache(schemaCache){
     
 }
 

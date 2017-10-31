@@ -27,6 +27,11 @@
 
 #include "Utils.h"
 
+enum Barrier{
+    EPOCH = 0,
+    GCI = 1
+};
+
 struct WatchTable{
     const string mTableName;
     const string* mColumnNames;
@@ -38,7 +43,7 @@ struct WatchTable{
 
 class TableTailer {
 public:
-    TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait);
+    TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait, const Barrier mBarrier);
     
     void start(bool recovery);
     void waitToFinish();
@@ -46,15 +51,19 @@ public:
 
 protected:
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) = 0;
+    virtual void barrierChanged();
+    virtual void recover();
+
     Ndb* mNdbConnection;
     
 private:
-    void recover();
     void createListenerEvent();
     void removeListenerEvent();
     void waitForEvents();
     void run();
     const char* getEventName(NdbDictionary::Event::TableEvent event);
+    Uint64 getGCI(Uint64 epoch);
+    void checkIfBarrierReached(Uint64 epoch);
     
     bool mStarted;
     boost::thread mThread;
@@ -62,6 +71,9 @@ private:
     const string mEventName;
     const WatchTable mTable;
     const int mPollMaxTimeToWait;
+    const Barrier mBarrier;
+    
+    Uint64 mLastReportedBarrier;
 };
 
 #endif /* TABLETAILER_H */

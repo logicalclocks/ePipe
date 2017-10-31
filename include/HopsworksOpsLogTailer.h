@@ -32,8 +32,8 @@
 
 class HopsworksOpsLogTailer : public TableTailer{
 public:
-    HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, ElasticSearch* elastic,
-            ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
+    HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier, 
+            ElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
     
     virtual ~HopsworksOpsLogTailer();
 private:

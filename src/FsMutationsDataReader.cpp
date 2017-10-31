@@ -60,8 +60,6 @@ void FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch, 
     readINodes(database, ts, data_batch, inodes);
 
     getUsersAndGroups(database, ts, inodes);
-
-    FsMutationsTableTailer::removeLogs(database, ts, data_batch);
     
     executeTransaction(ts, NdbTransaction::Commit);
     
@@ -195,6 +193,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
     for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it, i++) {
         FsMutationRow row = *it;
         arrivalTimes[i] = row.mEventCreationTime;
+        bulk.mFSPKs.push_back(row.getPK());
         
         if(row.mOperation == Delete){
             //Handle the delete
@@ -292,7 +291,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
         docWriter.Int(row.mOperation);
         
         docWriter.String("timestamp");
-        docWriter.Int64(row.mTimestamp);
+        docWriter.Int(row.mLogicalTime);
         
         docWriter.String("size");
         docWriter.Int64(inodes[i][INODE_SIZE_COL]->int64_value());

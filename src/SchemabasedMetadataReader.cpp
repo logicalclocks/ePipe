@@ -40,7 +40,7 @@ void SchemabasedMetadataReader::processAddedandDeleted(MConn connection, MetaQ* 
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
     SchemabasedMq* data_queue = MetadataLogTailer::readSchemaBasedMetadataRows(metaDatabase, 
-            metaTransaction, data_batch, bulk.mPKs);
+            metaTransaction, data_batch, bulk.mMetaPKs);
 
     UIRowMap tuples = readMetadataColumns(metaDatabase, metaTransaction, data_queue);
     

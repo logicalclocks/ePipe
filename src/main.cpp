@@ -53,6 +53,8 @@ int main(int argc, char** argv) {
     bool stats = false;
     MetadataType metadata_type = Both;
     
+    Barrier barrier = EPOCH;
+    
     po::options_description desc("Allowed options");
     desc.add_options()
             ("help", "produce help message")
@@ -76,6 +78,7 @@ int main(int argc, char** argv) {
             ("recovery", po::value<bool>(&recovery)->default_value(recovery), "enable or disable startup recovery")
             ("stats", po::value<bool>(&stats)->default_value(stats), "enable or disable print of accumulators stats")
             ("metadata_type", po::value<int>()->default_value(metadata_type), "Extended metadata type; SchemaBased=0, Schemaless=1, Both=2")
+            ("barrier", po::value<int>()->default_value(barrier), "Table tailer barrier type. EPOCH=0, GCI=1")
             ("version", "ePipe version")
             ;
 
@@ -111,6 +114,10 @@ int main(int argc, char** argv) {
         metadata_type = static_cast<MetadataType>(vm["metadata_type"].as<int>());
     }
     
+    if(vm.count("barrier")){
+        barrier = static_cast<Barrier>(vm["barrier"].as<int>());
+    }
+    
     Logger::setLoggerLevel(log_level);
             
     if(connection_string.empty() || database_name.empty() || meta_database_name.empty()){
@@ -122,7 +129,7 @@ int main(int argc, char** argv) {
             meta_database_name.c_str(), mutations_tu, metadata_tu, schemaless_tu,
             poll_maxTimeToWait, elastic_addr, hopsworks, elastic_index, elastic_project_type, 
             elastic_dataset_type, elastic_inode_type, elastic_batch_size, elastic_issue_time,
-            lru_cap, recovery, stats, metadata_type);
+            lru_cap, recovery, stats, metadata_type, barrier);
     notifer->start();
 
     return EXIT_SUCCESS;

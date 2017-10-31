@@ -71,8 +71,8 @@ const int METADATA_PK3 = 2;
 const int METADATA_DATA = 3;
 
 
-MetadataLogTailer::MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait)
-    : RCTableTailer<MetadataLogEntry> (ndb, TABLE, poll_maxTimeToWait) {
+MetadataLogTailer::MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier)
+    : RCTableTailer<MetadataLogEntry> (ndb, TABLE, poll_maxTimeToWait, barrier) {
    mSchemaBasedQueue = new CMetaQ();
    mSchemalessQueue = new CMetaQ();
 }

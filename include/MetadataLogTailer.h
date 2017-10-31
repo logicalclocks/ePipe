@@ -165,7 +165,7 @@ typedef vector<SchemalessMetadataEntry> SchemalessMq;
 
 class MetadataLogTailer : public RCTableTailer<MetadataLogEntry> {
 public:
-    MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait);
+    MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier);
     MetadataLogEntry consumeMultiQueue(int queue_id);
     MetadataLogEntry consume();
     

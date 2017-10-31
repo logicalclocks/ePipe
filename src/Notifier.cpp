@@ -29,12 +29,12 @@ Notifier::Notifier(const char* connection_string, const char* database_name, con
         const int poll_maxTimeToWait, const string elastic_ip, const bool hopsworks, const string elastic_index, 
         const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type,
         const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, 
-        const bool stats, MetadataType metadata_type)
+        const bool stats, MetadataType metadata_type, Barrier barrier)
 : mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mMutationsTU(mutations_tu), mMetadataTU(metadata_tu), 
         mSchemalessTU(schemaless_tu), mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
         mElasticIndex(elastic_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), 
         mElasticInodeType(elastic_inode_type), mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), 
-        mRecovery(recovery), mStats(stats), mMetadataType(metadata_type) {
+        mRecovery(recovery), mStats(stats), mMetadataType(metadata_type), mBarrier(barrier) {
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
 }
@@ -82,14 +82,16 @@ void Notifier::setup() {
     mPDICache = new ProjectDatasetINodeCache(mLRUCap);
     mSchemaCache = new SchemaCache(mLRUCap);
     
-    Ndb* metdata_connection = create_ndb_connection(mMetaDatabaseName);
+    MConn ndb_connections_elastic;
+    ndb_connections_elastic.metadataConnection = create_ndb_connection(mMetaDatabaseName);
+    ndb_connections_elastic.inodeConnection = create_ndb_connection(mDatabaseName);
     
     mElasticSearch = new ElasticSearch(mElasticAddr, mElasticIndex, mElastticProjectType,
             mElasticDatasetType, mElasticInodeType, mElasticIssueTime, mElasticBatchsize, 
-            mStats, metdata_connection);
+            mStats, ndb_connections_elastic);
     
     Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
-    mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mPDICache);
+    mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mBarrier, mPDICache);
     
     MConn* mutations_connections = new MConn[mMutationsTU.mNumReaders];
     for(int i=0; i< mMutationsTU.mNumReaders; i++){
@@ -104,7 +106,7 @@ void Notifier::setup() {
     
 
     Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-    mMetadataLogTailer = new MetadataLogTailer(metadata_tailer_connection, mPollMaxTimeToWait);
+    mMetadataLogTailer = new MetadataLogTailer(metadata_tailer_connection, mPollMaxTimeToWait, mBarrier);
     
     if (mMetadataType == Schemabased || mMetadataType == Both) {
 
@@ -136,7 +138,7 @@ void Notifier::setup() {
     
     if (mHopsworksEnabled) {
         Ndb* ops_log_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-        mhopsworksOpsLogTailer = new HopsworksOpsLogTailer(ops_log_tailer_connection, mPollMaxTimeToWait,
+        mhopsworksOpsLogTailer = new HopsworksOpsLogTailer(ops_log_tailer_connection, mPollMaxTimeToWait, mBarrier,
                 mElasticSearch, mPDICache, mSchemaCache);
     }
     

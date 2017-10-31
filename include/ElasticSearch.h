@@ -31,6 +31,7 @@
 #include <curl/curl.h>
 #include "rapidjson/document.h"
 #include "Utils.h"
+#include "FsMutationsTableTailer.h"
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/accumulators/statistics/mean.hpp>
@@ -51,7 +52,8 @@ struct Bulk{
     vector<ptime> mArrivalTimes;
     ptime mStartProcessing;
     ptime mEndProcessing;
-    UISet mPKs;
+    UISet mMetaPKs;
+    FPK mFSPKs;
 };
 
 struct ESResponse{
@@ -63,7 +65,7 @@ class ElasticSearch : public Batcher{
 public:
     ElasticSearch(string elastic_addr, string index, string proj_type, string ds_type,
             string inode_type, int time_to_wait_before_inserting, int bulk_size,
-            const bool stats, Ndb* metaConn);
+            const bool stats, MConn conn);
     
     void addBulk(Bulk data);
     
@@ -93,7 +95,7 @@ private:
     string mElasticAddr;
     string mElasticBulkAddr;
     
-    Ndb* mMetaBulkConn;
+    MConn mConn;
     ConcurrentQueue<Bulk> mQueue;
     
     vector<Bulk>* mToProcess;

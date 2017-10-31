@@ -28,6 +28,17 @@
 #include "RCTableTailer.h"
 #include "ConcurrentPriorityQueue.h"
 #include "ProjectDatasetINodeCache.h"
+#include "ConcurrentQueue.h"
+struct FsMutationPK{
+    int mDatasetId;
+    int mInodeId;
+    int mLogicalTime;
+    FsMutationPK (int datasetId, int inodeId, int logicalTime){
+        mDatasetId = datasetId;
+        mInodeId = inodeId;
+        mLogicalTime = logicalTime;
+    }
+};
 
 struct FsMutationRow {
      int mDatasetId;
@@ -35,11 +46,14 @@ struct FsMutationRow {
      int mPartitionId;
      int mParentId;
      string mInodeName;
-     long mTimestamp;
+     int mLogicalTime;
      OperationType mOperation;
      
      ptime mEventCreationTime;
      
+     FsMutationPK getPK(){
+         return FsMutationPK(mDatasetId, mInodeId, mLogicalTime);
+     }
      string to_string(){
         stringstream stream;
         stream << "-------------------------" << endl;
@@ -48,7 +62,7 @@ struct FsMutationRow {
         stream << "PartitionId = " << mPartitionId << endl;
         stream << "ParentId = " << mParentId << endl;
         stream << "InodeName = " << mInodeName << endl;
-        stream << "Timestamp = " << mTimestamp << endl;
+        stream << "LogicalTime = " << mLogicalTime << endl;
         stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
         stream << "-------------------------" << endl;
         return stream.str();
@@ -81,24 +95,38 @@ struct FsMutationRowComparator
 {
     bool operator()(const FsMutationRow &r1, const FsMutationRow &r2) const
     {
-        return r1.mTimestamp > r2.mTimestamp;
+        if(r1.mInodeId == r2.mInodeId){
+            return r1.mLogicalTime > r2.mLogicalTime;
+        }else{
+            return r1.mInodeId > r2.mInodeId;
+        }
     }
 };
 
-typedef ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator> Cpq;
+//typedef ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator> CFSpq;
 typedef vector<FsMutationRow> Fmq;
+typedef ConcurrentQueue<FsMutationRow> CFSq;
+typedef boost::heap::priority_queue<FsMutationRow,  boost::heap::compare<FsMutationRowComparator> > FSpq;
+typedef vector<FsMutationPK> FPK;
 
 class FsMutationsTableTailer : public RCTableTailer<FsMutationRow>  {
 public:
-    FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, ProjectDatasetINodeCache* cache);
+    FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier, ProjectDatasetINodeCache* cache);
     FsMutationRow consume();
     virtual ~FsMutationsTableTailer();
     
-    static void removeLogs(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* rows);
+    static void removeLogs(Ndb* conn, FPK& pks);
 private:
     static const WatchTable TABLE;
     virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    Cpq* mQueue;
+    void barrierChanged();
+    void recover();
+    void readRowFromNdbRecAttr(FsMutationRow &row, NdbRecAttr* value[]);
+    void pushToQueue(FSpq* curr);
+    CFSq* mQueue;
+    FSpq* mCurrentPriorityQueue;
+    boost::mutex mLock;
+    
     ProjectDatasetINodeCache* mPDICache;
 //    double mTimeTakenForEventsToArrive;
 //    long mNumOfEvents;

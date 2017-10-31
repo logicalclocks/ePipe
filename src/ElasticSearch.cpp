@@ -52,9 +52,9 @@ static string getAccString(Accumulator acc){
 
 ElasticSearch::ElasticSearch(string elastic_addr, string index, string proj_type,
         string ds_type, string inode_type, int time_to_wait_before_inserting, 
-        int bulk_size, const bool stats, Ndb* metaConn) : Batcher(time_to_wait_before_inserting, bulk_size),
+        int bulk_size, const bool stats, MConn conn) : Batcher(time_to_wait_before_inserting, bulk_size),
         mIndex(index), mProjectType(proj_type), mDatasetType(ds_type), mInodeType(inode_type),
-        mStats(stats), mMetaBulkConn(metaConn), mToProcessLength(0), mTotalNumOfEventsProcessed(0),
+        mStats(stats), mConn(conn), mToProcessLength(0), mTotalNumOfEventsProcessed(0),
         mTotalNumOfBulksProcessed(0), mIsFirstEventArrived(false){
     
     mElasticAddr = "http://" + elastic_addr;
@@ -95,17 +95,25 @@ void ElasticSearch::processBatch() {
         mToProcessLength = 0;
         mLock.unlock();
 
-        UISet pks;
+        UISet metaPKS;
+        FPK fsPKS;
         string batch;
         for (vector<Bulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
             Bulk bulk = *it;
             batch.append(bulk.mJSON);
-            pks.insert(bulk.mPKs.begin(), bulk.mPKs.end());
+            metaPKS.insert(bulk.mMetaPKs.begin(), bulk.mMetaPKs.end());
+            fsPKS.insert(fsPKS.end(), bulk.mFSPKs.begin(), bulk.mFSPKs.end());
         }
 
         //TODO: handle failures
         if(elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch)){
-            MetadataLogTailer::removeLogs(mMetaBulkConn, pks);
+            if(!metaPKS.empty()){
+                MetadataLogTailer::removeLogs(mConn.metadataConnection, metaPKS);
+            }
+            
+            if(!fsPKS.empty()){
+                FsMutationsTableTailer::removeLogs(mConn.inodeConnection, fsPKS);
+            }
         }
 
         if (mStats) {

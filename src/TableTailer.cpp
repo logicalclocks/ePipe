@@ -27,8 +27,9 @@
 using namespace Utils;
 using namespace Utils::NdbC;
 
-TableTailer::TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait) : mNdbConnection(ndb), mStarted(false),
-        mEventName(concat("tail-", table.mTableName)), mTable(table), mPollMaxTimeToWait(poll_maxTimeToWait){
+TableTailer::TableTailer(Ndb* ndb, const WatchTable table, const int poll_maxTimeToWait, const Barrier barrier) : mNdbConnection(ndb), mStarted(false),
+        mEventName(concat("tail-", table.mTableName)), mTable(table), mPollMaxTimeToWait(poll_maxTimeToWait), mBarrier(barrier),
+        mLastReportedBarrier(0){
 }
 
 void TableTailer::start(bool recovery) {
@@ -148,23 +149,28 @@ void TableTailer::waitForEvents() {
         int r = mNdbConnection->pollEvents2(mPollMaxTimeToWait);
         if (r > 0) {
             while ((op = mNdbConnection->nextEvent2())) {
-                NdbDictionary::Event::TableEvent event = op->getEventType2();
-                if(event != NdbDictionary::Event::TE_EMPTY){
-                    LOG_TRACE("Got Event [" << event << ","  << getEventName(event) << "] Epoch " << op->getEpoch());
+               NdbDictionary::Event::TableEvent event = op->getEventType2();
+                
+               if(event != NdbDictionary::Event::TE_EMPTY){
+                   LOG_TRACE("Got Event [" << event << ","  << getEventName(event) << "] Epoch " << op->getEpoch() << " GCI " << getGCI(op->getEpoch()));
                 }
                 switch (event) {
                     case NdbDictionary::Event::TE_INSERT:
                     case NdbDictionary::Event::TE_DELETE:
                     case NdbDictionary::Event::TE_UPDATE:
+                    {
+                        checkIfBarrierReached(op->getEpoch());
                         handleEvent(event, recAttrPre, recAttr);
                         break;
+                    }
                     default:
                         break;
                 }
 
             }
         }
-        //boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait));
+//        boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait));
+        checkIfBarrierReached(mNdbConnection->getHighestQueuedEpoch());
     }
 
 }
@@ -205,6 +211,31 @@ const char* TableTailer::getEventName(NdbDictionary::Event::TableEvent event) {
             return "ALL";      
     }
     return "UNKOWN";
+}
+
+void TableTailer::barrierChanged(){
+    //do nothing
+}
+
+Uint64 TableTailer::getGCI(Uint64 epoch) {
+    return (epoch & 0xffffffff00000000) >> 32;
+}
+
+void TableTailer::checkIfBarrierReached(Uint64 epoch) {
+    Uint64 currentBarrier = 0;
+    if (mBarrier == EPOCH) {
+        currentBarrier = epoch;
+    } else if (mBarrier == GCI) {
+        currentBarrier = getGCI(epoch);
+    }
+
+    if (mLastReportedBarrier == 0) {
+        mLastReportedBarrier = currentBarrier;
+    } else if (mLastReportedBarrier != currentBarrier) {
+        barrierChanged();
+        mLastReportedBarrier = currentBarrier;
+        LOG_TRACE("************************** NEW BARRIER [" << currentBarrier << "] ************ ");
+    }
 }
 
 TableTailer::~TableTailer() {
