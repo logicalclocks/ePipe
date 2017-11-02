@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 2.8)
 
 set(EPIPE_VERSION_MAJOR 0)
 set(EPIPE_VERSION_MINOR 4)
-set(EPIPE_VERSION_BUILD 0)
+set(EPIPE_VERSION_BUILD 1)
 configure_file(Version.h.in ${CMAKE_SOURCE_DIR}/include/Version.h)
 
 set(Boost_USE_STATIC_LIBS ON)
