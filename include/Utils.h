@@ -160,7 +160,7 @@ namespace Utils {
                      Data starts from second byte of aRef
                      */
                     first_byte = aRef + 1;
-                    bytes = (size_t) (aRef[0]);
+                    bytes = (size_t) ((unsigned char)aRef[0]);
                     return 0;
                 case NdbDictionary::Column::ArrayTypeMediumVar:
                     /*
@@ -177,6 +177,19 @@ namespace Utils {
             }
         }
 
+        inline static string latin1_to_utf8(string &str) {
+            string strOut;
+            for (string::iterator it = str.begin(); it != str.end(); ++it) {
+                uint8_t ch = *it;
+                if (ch < 0x80) {
+                    strOut.push_back(ch);
+                } else {
+                    strOut.push_back(0xc0 | ch >> 6);
+                    strOut.push_back(0x80 | (ch & 0x3f));
+                }
+            }
+            return strOut;
+        }
         /*
          Extracts the string from given NdbRecAttr
          Uses get_byte_array internally
@@ -196,7 +209,7 @@ namespace Utils {
                         str = str.substr(0, endpos + 1);
                     }
                 }
-                return string(str);
+                return latin1_to_utf8(str);
             }
             return NULL;
         }
