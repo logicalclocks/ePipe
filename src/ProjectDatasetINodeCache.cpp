@@ -231,7 +231,7 @@ void ProjectDatasetINodeCache::refreshProjectIds(const NdbDictionary::Dictionary
     for (UIRowMap::iterator it = rows.begin(); it != rows.end(); ++it, i++) {
         
         stringstream projs;
-        int res=0;
+        UISet projectIds;
         while (indexScanOps[i]->nextResult(true) == 0) {
             if (it->first != it->second[0]->int32_value()) {
                 LOG_ERROR("Dataset [" << it->first << "] doesn't exists");
@@ -245,15 +245,15 @@ void ProjectDatasetINodeCache::refreshProjectIds(const NdbDictionary::Dictionary
             }
             
             int projectId = it->second[1]->int32_value();
-            if(res == 0){
+            if(projectIds.empty()){
                 addDatasetToProject(it->first, projectId);
             }
             projs << projectId << ",";
-            res++;
+            projectIds.insert(projectId);
         }
         
-        if(res > 1){
-            LOG_FATAL("Got " << res << " rows of the original Dataset [" << it->first << "] in projects [" << projs.str() << "], only one was expected");
+        if(projectIds.size() > 1){
+            LOG_ERROR("Got " << projectIds.size() << " rows of the original Dataset [" << it->first << "] in projects [" << projs.str() << "], only one was expected");
         }
     }
 }
