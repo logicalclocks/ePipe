@@ -48,6 +48,7 @@ private:
     UIRowMap getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
     
     void createJSON(Fmq* pending, Rows& inodes, Bulk& bulk);
+    void deleteINodeJSON(FsMutationRow &row, stringstream &out);
 };
 
 #endif /* FSMUTATIONSDATAREADER_H */

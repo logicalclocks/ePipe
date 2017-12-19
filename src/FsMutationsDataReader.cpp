@@ -197,42 +197,17 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
         
         if(row.mOperation == Delete){
             //Handle the delete
-            rapidjson::StringBuffer sbOp;
-            rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
-
-            opWriter.StartObject();
-            
-            // update could be used and set operation to delete instead of add
-            opWriter.String("delete");
-            opWriter.StartObject();
-
-            if (mHopsworksEnalbed) {
-                // set project (rounting) and dataset (parent) ids 
-                opWriter.String("_parent");
-                opWriter.Int(row.mDatasetId);
-
-                opWriter.String("_routing");
-                opWriter.Int(mPDICache->getProjectId(row.mDatasetId));
-            }
-
-            opWriter.String("_id");
-            opWriter.Int(row.mInodeId);
-
-            opWriter.EndObject();
-
-            opWriter.EndObject();
-
-            out << sbOp.GetString() << endl;
+            deleteINodeJSON(row, out);
             continue;
         }
         
         int inodeId = inodes[i][INODE_ID_COL]->int32_value();
         if (row.mInodeId != inodeId) {
-            LOG_ERROR(" Data for " << row.mParentId << ", " << row.mInodeName 
+            LOG_WARN(" Data for " << row.mParentId << ", " << row.mInodeName 
                    << " not found, got inode id " << inodeId << " was expecting " << row.mInodeId);
+            deleteINodeJSON(row, out);
             continue;
         }
-        
         
         //Handle ADD
         int userId = inodes[i][INODE_USER_ID_COL]->int32_value();
@@ -319,6 +294,35 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
     
     bulk.mArrivalTimes = arrivalTimes;
     bulk.mJSON = out.str();
+}
+
+void FsMutationsDataReader::deleteINodeJSON(FsMutationRow &row, stringstream &out) {
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    // update could be used and set operation to delete instead of add
+    opWriter.String("delete");
+    opWriter.StartObject();
+
+    if (mHopsworksEnalbed) {
+        // set project (rounting) and dataset (parent) ids 
+        opWriter.String("_parent");
+        opWriter.Int(row.mDatasetId);
+
+        opWriter.String("_routing");
+        opWriter.Int(mPDICache->getProjectId(row.mDatasetId));
+    }
+
+    opWriter.String("_id");
+    opWriter.Int(row.mInodeId);
+
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+    
+    out << sbOp.GetString() << endl;
 }
 
 FsMutationsDataReader::~FsMutationsDataReader() {
