@@ -27,19 +27,20 @@
 
 #include "FsMutationsTableTailer.h"
 #include "NdbDataReader.h"
+#include "ProjectsElasticSearch.h"
 
 typedef vector<Row> Rows;
 
-class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn>{
+class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn, FSKeys>{
 public:
     FsMutationsDataReader(MConn* connections, const int num_readers, const bool hopsworks, 
-            ElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap);
+            ProjectsElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap);
     virtual ~FsMutationsDataReader();
 private:    
     Cache<int, string> mUsersCache;
     Cache<int, string> mGroupsCache;
         
-    virtual void processAddedandDeleted(MConn connection, Fmq* data_batch, Bulk& bulk);
+    virtual void processAddedandDeleted(MConn connection, Fmq* data_batch, FSBulk& bulk);
     void updateProjectIds(Ndb* metaConnection, Fmq* data_batch);
     
     void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch, Rows& inodes);
@@ -47,7 +48,7 @@ private:
     UIRowMap getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
     UIRowMap getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
     
-    void createJSON(Fmq* pending, Rows& inodes, Bulk& bulk);
+    void createJSON(Fmq* pending, Rows& inodes, FSBulk& bulk);
     void deleteINodeJSON(FsMutationRow &row, stringstream &out);
 };
 

@@ -26,11 +26,10 @@
 #ifndef NDBDATAREADER_H
 #define NDBDATAREADER_H
 
-#include "ConcurrentQueue.h"
 #include "Cache.h"
 #include "Utils.h"
 #include "ProjectDatasetINodeCache.h"
-#include "ElasticSearch.h"
+#include "ElasticSearchBase.h"
 
 using namespace Utils;
 using namespace Utils::NdbC;
@@ -47,11 +46,11 @@ struct BatchStats{
     }
 };
 
-template<typename Data, typename Conn>
+template<typename Data, typename Conn, typename Keys>
 class NdbDataReader {
 public:
     NdbDataReader(Conn* connections, const int num_readers, const bool hopsworks, 
-            ElasticSearch* elastic, ProjectDatasetINodeCache* cache);
+            ElasticSearchBase<Keys>* elastic, ProjectDatasetINodeCache* cache);
     void start();
     void processBatch(vector<Data>* data_batch);
     virtual ~NdbDataReader();
@@ -69,24 +68,24 @@ protected:
     const int mNumReaders;
     Conn* mNdbConnections;
     const bool mHopsworksEnalbed;
-    ElasticSearch* mElasticSearch;
+    ElasticSearchBase<Keys>* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
     
-    virtual void processAddedandDeleted(Conn conn, vector<Data>* data_batch, Bulk& bulk) = 0;
+    virtual void processAddedandDeleted(Conn conn, vector<Data>* data_batch, Bulk<Keys>& bulk) = 0;
 };
 
 
-template<typename Data, typename Conn>
-NdbDataReader<Data, Conn>::NdbDataReader(Conn* connections, const int num_readers, 
-        const bool hopsworks,ElasticSearch* elastic, ProjectDatasetINodeCache* cache) 
+template<typename Data, typename Conn, typename Keys>
+NdbDataReader<Data, Conn, Keys>::NdbDataReader(Conn* connections, const int num_readers, 
+        const bool hopsworks,ElasticSearchBase<Keys>* elastic, ProjectDatasetINodeCache* cache) 
         :  mNumReaders(num_readers), mNdbConnections(connections), 
         mHopsworksEnalbed(hopsworks), mElasticSearch(elastic), mPDICache(cache){
     mStarted = false;
     mBatchedQueue = new ConcurrentQueue<vector<Data>*>();
 }
 
-template<typename Data, typename Conn>
-void NdbDataReader<Data, Conn>::start() {
+template<typename Data, typename Conn, typename Keys>
+void NdbDataReader<Data, Conn, Keys>::start() {
     if (mStarted) {
         return;
     }
@@ -99,8 +98,8 @@ void NdbDataReader<Data, Conn>::start() {
     mStarted = true;
 }
 
-template<typename Data, typename Conn>
-void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
+template<typename Data, typename Conn, typename Keys>
+void NdbDataReader<Data, Conn, Keys>::readerThread(int connIndex) {
     while(true){
         vector<Data>* curr;
         mBatchedQueue->wait_and_pop(curr);
@@ -111,20 +110,20 @@ void NdbDataReader<Data, Conn>::readerThread(int connIndex) {
     }
 }
 
-template<typename Data, typename Conn>
-void NdbDataReader<Data, Conn>::readData(int connIndex, Conn connection, vector<Data>* data_batch) {    
-    Bulk bulk;
+template<typename Data, typename Conn, typename Keys>
+void NdbDataReader<Data, Conn, Keys>::readData(int connIndex, Conn connection, vector<Data>* data_batch) {
+    Bulk<Keys> bulk;
     bulk.mStartProcessing = getCurrentTime();
     
     if (!data_batch->empty()) {
         processAddedandDeleted(connection, data_batch, bulk);
-        }
+    }
     
     bulk.mEndProcessing = getCurrentTime();
     
     if (!bulk.mJSON.empty()) {
         sort(bulk.mArrivalTimes.begin(), bulk.mArrivalTimes.end());
-        mElasticSearch->addBulk(bulk);
+        mElasticSearch->addData(bulk);
     }
     
     LOG_INFO("[thread-" << connIndex << "] processing batch of size [" << data_batch->size() << "] took " 
@@ -132,13 +131,13 @@ void NdbDataReader<Data, Conn>::readData(int connIndex, Conn connection, vector<
 }
 
 
-template<typename Data, typename Conn>
-void NdbDataReader<Data, Conn>::processBatch(vector<Data>* data_batch) {
+template<typename Data, typename Conn, typename Keys>
+void NdbDataReader<Data, Conn, Keys>::processBatch(vector<Data>* data_batch) {
     mBatchedQueue->push(data_batch);
 }
 
-template<typename Data, typename Conn>
-NdbDataReader<Data, Conn>::~NdbDataReader() {
+template<typename Data, typename Conn, typename Keys>
+NdbDataReader<Data, Conn, Keys>::~NdbDataReader() {
     delete[] mNdbConnections;
     delete mBatchedQueue;
 }

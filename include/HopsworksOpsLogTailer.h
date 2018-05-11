@@ -27,13 +27,13 @@
 
 #include "TableTailer.h"
 #include "ProjectDatasetINodeCache.h"
-#include "ElasticSearch.h"
+#include "ProjectsElasticSearch.h"
 #include "SchemaCache.h"
 
 class HopsworksOpsLogTailer : public TableTailer{
 public:
     HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier, 
-            ElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
+            ProjectsElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
     
     virtual ~HopsworksOpsLogTailer();
 private:
@@ -56,7 +56,7 @@ private:
     
     void removeLog(int pk);
     
-    ElasticSearch* mElasticSearch;
+    ProjectsElasticSearch* mElasticSearch;
     ProjectDatasetINodeCache* mPDICache;
     SchemaCache* mSchemaCache;
 };

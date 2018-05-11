@@ -104,7 +104,7 @@ void TableTailer::createListenerEvent() {
     }
     myEvent.addEventColumns(mTable.mNoColumns, columns);
     //myEvent.mergeEvents(merge_events);
-
+    
     // Add event to database
     if (myDict->createEvent(myEvent) == 0)
         myEvent.print();

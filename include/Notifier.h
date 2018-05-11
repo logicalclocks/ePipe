@@ -27,18 +27,18 @@
 
 #include "FsMutationsBatcher.h"
 #include "SchemabasedMetadataBatcher.h"
-#include "ElasticSearch.h"
+#include "ProjectsElasticSearch.h"
 #include "SchemalessMetadataReader.h"
 #include "SchemalessMetadataBatcher.h"
 #include "HopsworksOpsLogTailer.h"
 #include "MetadataLogTailer.h"
-
+#include "ProvenanceBatcher.h"
 class Notifier {
 public:
     Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
-            const TableUnitConf mutations_tu, const TableUnitConf metadata_tu, const TableUnitConf schemaless_tu,
-            const int poll_maxTimeToWait, const string elastic_addr, const bool hopsworks, const string elastic_index,
-            const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type,
+            const TableUnitConf mutations_tu, const TableUnitConf metadata_tu, const TableUnitConf schemaless_tu, const TableUnitConf provenance_tu,
+            const int poll_maxTimeToWait, const string elastic_addr, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
+            const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type, const string elastic_provenance_type,
             const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
             MetadataType metadata_type, Barrier barrier);
     void start();
@@ -53,14 +53,17 @@ private:
     const TableUnitConf mMutationsTU;
     const TableUnitConf mMetadataTU;
     const TableUnitConf mSchemalessTU;
+    const TableUnitConf mProvenanceTU;
     
     const int mPollMaxTimeToWait;
     const string mElasticAddr;
     const bool mHopsworksEnabled;
     const string mElasticIndex;
+    const string mElasticProvenanceIndex;
     const string mElastticProjectType;
     const string mElasticDatasetType;
     const string mElasticInodeType;
+    const string mElasticProvenanceType;
     const int mElasticBatchsize;
     const int mElasticIssueTime;
     const int mLRUCap;
@@ -68,8 +71,8 @@ private:
     const bool mStats;
     const MetadataType mMetadataType;
     const Barrier mBarrier;
-    
-    ElasticSearch* mElasticSearch;
+        
+    ProjectsElasticSearch* mElasticSearch;
     
     FsMutationsTableTailer* mFsMutationsTableTailer;
     FsMutationsDataReader* mFsMutationsDataReader;
@@ -87,6 +90,12 @@ private:
     ProjectDatasetINodeCache* mPDICache;
     
     HopsworksOpsLogTailer* mhopsworksOpsLogTailer;
+    
+    ProvenanceTableTailer* mProvenanceTableTailer;
+    ProvenanceDataReader* mProvenanceDataReader;
+    ProvenanceBatcher* mProvenanceBatcher;
+    
+    ProvenanceElasticSearch* mProvenancElasticSearch;
     
     Ndb* create_ndb_connection(const char* database);
     Ndb_cluster_connection* connect_to_cluster(const char *connection_string);

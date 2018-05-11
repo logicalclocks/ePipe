@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Hops.io
+ * Copyright (C) 2018 Hops.io
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,29 +15,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 /* 
- * File:   MetadataBatcher.h
- * Author: Mahmoud Ismail<maism@kth.se>
+ * File:   ProvenanceDataReader.h
+ * Author: Mahmoud Ismail <maism@kth.se>
  *
  */
 
-#ifndef SCHEMABASEDMETADATABATCHER_H
-#define SCHEMABASEDMETADATABATCHER_H
+#ifndef PROVENANCEDATAREADER_H
+#define PROVENANCEDATAREADER_H
 
-#include "MetadataLogTailer.h"
-#include "SchemabasedMetadataReader.h"
+#include "NdbDataReader.h"
+#include "ProvenanceElasticSearch.h"
 
-class SchemabasedMetadataBatcher : public RCBatcher<MetadataLogEntry, MConn, FSKeys>{
+class ProvenanceDataReader : public NdbDataReader<ProvenanceRow, SConn, PKeys>{
 public:
-    SchemabasedMetadataBatcher(MetadataLogTailer* table_tailer, SchemabasedMetadataReader* data_reader, 
-            const int time_before_issuing_ndb_reqs, const int batch_size) 
-        : RCBatcher<MetadataLogEntry, MConn, FSKeys>(table_tailer, data_reader,
-                time_before_issuing_ndb_reqs, batch_size, Schemabased){
-        
-    }
+    ProvenanceDataReader(SConn* connections, const int num_readers, const bool hopsworks, 
+            ProvenanceElasticSearch* elastic, ProjectDatasetINodeCache* cache);
+    virtual ~ProvenanceDataReader();
+private:
+    virtual void processAddedandDeleted(SConn conn, Pq* data_batch, PBulk& bulk);
 };
 
-#endif /* SCHEMABASEDMETADATABATCHER_H */
+#endif /* PROVENANCEDATAREADER_H */
 

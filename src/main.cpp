@@ -39,7 +39,8 @@ int main(int argc, char** argv) {
     TableUnitConf mutations_tu = TableUnitConf(1000, 5, 5);
     TableUnitConf metadata_tu = TableUnitConf(1000, 5, 5);
     TableUnitConf schemaless_tu = TableUnitConf(1000, 5, 5);
-
+    TableUnitConf provenance_tu = TableUnitConf(1000, 5, 1);
+    
     bool hopsworks = true;
     string elastic_index = "projects";
     string elastic_project_type = "proj";
@@ -47,6 +48,9 @@ int main(int argc, char** argv) {
     string elastic_inode_type = "inode";
     int elastic_batch_size = 5000;
     int elastic_issue_time = 5000;
+    
+    string elastic_provenance_index = "provenance";
+    string elastic_provenance_type = "inode";
     
     int lru_cap = DEFAULT_MAX_CAPACITY;
     bool recovery = true;
@@ -64,6 +68,7 @@ int main(int argc, char** argv) {
             ("poll_maxTimeToWait", po::value<int>(&poll_maxTimeToWait)->default_value(poll_maxTimeToWait), "max time to wait in miliseconds while waiting for events in pollEvents")
             ("fs_mutations_tu", po::value< vector<int> >()->default_value(mutations_tu.getVector(), mutations_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
             ("metadata_tu", po::value< vector<int> >()->default_value(metadata_tu.getVector(), metadata_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
+            ("provenance_tu", po::value< vector<int> >()->default_value(provenance_tu.getVector(), provenance_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
             ("schemaless_tu", po::value< vector<int> >()->default_value(schemaless_tu.getVector(), schemaless_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS \nWAIT_TIME is the time to wait in miliseconds before issuing the ndb request if the batch size wasn't reached.\nBATCH_SIZE is the batch size for reading from ndb\nNUM_READERS is the num of threads used for reading from ndb and processing the data")
             ("elastic_addr", po::value<string>(&elastic_addr)->default_value(elastic_addr), "ip and port of the elasticsearch server")
             ("hopsworks", po::value<bool>(&hopsworks)->default_value(hopsworks), "enable or disable hopsworks, which will use grandparents to index inodes and metadata")
@@ -71,6 +76,8 @@ int main(int argc, char** argv) {
             ("project_type", po::value<string>(&elastic_project_type)->default_value(elastic_project_type), "Elastic type for projects, only used when hopsworks is enabled.")
             ("dataset_type", po::value<string>(&elastic_dataset_type)->default_value(elastic_dataset_type), "Elastic type for datasets, only used when hopsworks is enabled.")
             ("inode_type", po::value<string>(&elastic_inode_type)->default_value(elastic_inode_type), "Elastic type for inodes.")
+            ("provenance_index", po::value<string>(&elastic_provenance_index)->default_value(elastic_provenance_index), "Elastic index to add the provenance data to.")
+            ("provenance_type", po::value<string>(&elastic_provenance_type)->default_value(elastic_provenance_type), "Elastic type for Provenance.")
             ("elastic_batch", po::value<int>(&elastic_batch_size)->default_value(elastic_batch_size), "Elastic batch size in bytes for bulk requests")
             ("ewait_time", po::value<int>(&elastic_issue_time)->default_value(elastic_issue_time), "time to wait in miliseconds before issuing a bulk request to Elasticsearch if the batch size wasn't reached")
             ("lru_cap", po::value<int>(&lru_cap)->default_value(lru_cap), "LRU Cache max capacity")
@@ -110,6 +117,10 @@ int main(int argc, char** argv) {
         schemaless_tu.update(vm["schemaless_tu"].as< vector<int> >());
     }
     
+    if (vm.count("provenance_tu")) {
+        provenance_tu.update(vm["provenance_tu"].as< vector<int> >());
+    }
+    
     if(vm.count("metadata_type")){
         metadata_type = static_cast<MetadataType>(vm["metadata_type"].as<int>());
     }
@@ -126,9 +137,9 @@ int main(int argc, char** argv) {
     }
 
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), 
-            meta_database_name.c_str(), mutations_tu, metadata_tu, schemaless_tu,
-            poll_maxTimeToWait, elastic_addr, hopsworks, elastic_index, elastic_project_type, 
-            elastic_dataset_type, elastic_inode_type, elastic_batch_size, elastic_issue_time,
+            meta_database_name.c_str(), mutations_tu, metadata_tu, schemaless_tu, provenance_tu,
+            poll_maxTimeToWait, elastic_addr, hopsworks, elastic_index, elastic_provenance_index, elastic_project_type, 
+            elastic_dataset_type, elastic_inode_type, elastic_provenance_type, elastic_batch_size, elastic_issue_time,
             lru_cap, recovery, stats, metadata_type, barrier);
     notifer->start();
 
