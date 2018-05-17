@@ -30,19 +30,19 @@
 
 
 SchemalessMetadataReader::SchemalessMetadataReader(MConn* connections,
-        const int num_readers, const bool hopsworks, ElasticSearch* elastic,
+        const int num_readers, const bool hopsworks, ProjectsElasticSearch* elastic,
         ProjectDatasetINodeCache* cache)
-: NdbDataReader<MetadataLogEntry, MConn>(connections, num_readers, hopsworks, elastic, cache) {
+: NdbDataReader<MetadataLogEntry, MConn, FSKeys>(connections, num_readers, hopsworks, elastic, cache) {
 }
 
-void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk) {
+void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* data_batch, FSBulk& bulk) {
     
     Ndb* metaConn = connection.metadataConnection;
     const NdbDictionary::Dictionary* metaDatabase = getDatabase(metaConn);
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
     SchemalessMq* data_queue = MetadataLogTailer::readSchemalessMetadataRows(metaDatabase,
-            metaTransaction, data_batch, bulk.mMetaPKs);
+            metaTransaction, data_batch, bulk.mPKs.mMetaPKs);
     
     if (mHopsworksEnalbed) {
         UISet inodes_ids;
@@ -58,7 +58,7 @@ void SchemalessMetadataReader::processAddedandDeleted(MConn connection, MetaQ* d
     metaConn->closeTransaction(metaTransaction);  
 }
 
-void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, Bulk& bulk) {
+void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, FSBulk& bulk) {
     
     vector<ptime> arrivalTimes(data_batch->size());
     stringstream out;
@@ -89,7 +89,7 @@ void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, Bulk& bulk) 
 
             if (datasetId == entry.mINodeId) {
                 opWriter.String("_type");
-                opWriter.String(mElasticSearch->getDatasetType());
+                opWriter.String(((ProjectsElasticSearch*)mElasticSearch)->getDatasetType());
             }
 
         }

@@ -26,13 +26,13 @@
 #include "Tables.h"
 
 SchemabasedMetadataReader::SchemabasedMetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
-        ElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache) 
-            : NdbDataReader<MetadataLogEntry, MConn>(connections, num_readers, hopsworks, elastic, cache), mSchemaCache(schemaCache) {
+        ProjectsElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache) 
+            : NdbDataReader<MetadataLogEntry, MConn, FSKeys>(connections, num_readers, hopsworks, elastic, cache), mSchemaCache(schemaCache) {
 
 }
 
 
-void SchemabasedMetadataReader::processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk) {
+void SchemabasedMetadataReader::processAddedandDeleted(MConn connection, MetaQ* data_batch, FSBulk& bulk) {
         
     Ndb* metaConn = connection.metadataConnection;
     
@@ -40,7 +40,7 @@ void SchemabasedMetadataReader::processAddedandDeleted(MConn connection, MetaQ* 
     NdbTransaction* metaTransaction = startNdbTransaction(metaConn);
     
     SchemabasedMq* data_queue = MetadataLogTailer::readSchemaBasedMetadataRows(metaDatabase, 
-            metaTransaction, data_batch, bulk.mMetaPKs);
+            metaTransaction, data_batch, bulk.mPKs.mMetaPKs);
 
     UIRowMap tuples = readMetadataColumns(metaDatabase, metaTransaction, data_queue);
     
@@ -100,7 +100,7 @@ void SchemabasedMetadataReader::refreshProjectDatasetINodeCache(SConn inode_conn
     mPDICache->refresh(inode_connection, metaDatabase, metaTransaction, inodes_ids);
 }
 
-void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_batch, Bulk& bulk) {
+void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_batch, FSBulk& bulk) {
 
     vector<ptime> arrivalTimes(data_batch->size());
     stringstream out;
@@ -159,7 +159,7 @@ void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_
             
             if(datasetId == inodeId){
                 opWriter.String("_type");
-                opWriter.String(mElasticSearch->getDatasetType());
+                opWriter.String(((ProjectsElasticSearch*)mElasticSearch)->getDatasetType());
             }
             
         }

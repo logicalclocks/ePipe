@@ -23,17 +23,18 @@
  */
 
 #include "Notifier.h"
+#include "ProvenanceBatcher.h"
 
 Notifier::Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
-        const TableUnitConf mutations_tu, const TableUnitConf metadata_tu, const TableUnitConf schemaless_tu,
-        const int poll_maxTimeToWait, const string elastic_ip, const bool hopsworks, const string elastic_index, 
-        const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type,
+        const TableUnitConf mutations_tu, const TableUnitConf metadata_tu, const TableUnitConf schemaless_tu, TableUnitConf provenance_tu,
+        const int poll_maxTimeToWait, const string elastic_ip, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
+        const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type, const string elastic_provenance_type,
         const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, 
         const bool stats, MetadataType metadata_type, Barrier barrier)
 : mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mMutationsTU(mutations_tu), mMetadataTU(metadata_tu), 
-        mSchemalessTU(schemaless_tu), mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
-        mElasticIndex(elastic_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), 
-        mElasticInodeType(elastic_inode_type), mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), 
+        mSchemalessTU(schemaless_tu), mProvenanceTU(provenance_tu), mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
+        mElasticIndex(elastic_index), mElasticProvenanceIndex(elastic_provenance_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), 
+        mElasticInodeType(elastic_inode_type), mElasticProvenanceType(elastic_provenance_type), mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), 
         mRecovery(recovery), mStats(stats), mMetadataType(metadata_type), mBarrier(barrier) {
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
@@ -71,11 +72,20 @@ void Notifier::start() {
         mSchemalessMetadataBatcher->start();
     }
     
+    mProvenancElasticSearch->start();
+    
+    mProvenanceDataReader->start();
+    mProvenanceBatcher->start();
+    mProvenanceTableTailer->start(mRecovery);
+    
     ptime t2 = getCurrentTime();
     LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");
     mFsMutationsBatcher->waitToFinish();
     mSchemabasedMetadataBatcher->waitToFinish();
     mElasticSearch->waitToFinish();
+    
+    mProvenanceBatcher->waitToFinish();
+    mProvenancElasticSearch->waitToFinish();
 }
 
 void Notifier::setup() {
@@ -86,7 +96,7 @@ void Notifier::setup() {
     ndb_connections_elastic.metadataConnection = create_ndb_connection(mMetaDatabaseName);
     ndb_connections_elastic.inodeConnection = create_ndb_connection(mDatabaseName);
     
-    mElasticSearch = new ElasticSearch(mElasticAddr, mElasticIndex, mElastticProjectType,
+    mElasticSearch = new ProjectsElasticSearch(mElasticAddr, mElasticIndex, mElastticProjectType,
             mElasticDatasetType, mElasticInodeType, mElasticIssueTime, mElasticBatchsize, 
             mStats, ndb_connections_elastic);
     
@@ -142,6 +152,24 @@ void Notifier::setup() {
                 mElasticSearch, mPDICache, mSchemaCache);
     }
     
+    Ndb* ndb_elastic_provenance_conn = create_ndb_connection(mDatabaseName);
+    mProvenancElasticSearch = new ProvenanceElasticSearch(mElasticAddr, 
+            mElasticProvenanceIndex, mElasticProvenanceType, mElasticIssueTime, 
+            mElasticBatchsize, mStats,ndb_elastic_provenance_conn);
+     
+    
+    Ndb* provenance_tailer_connection = create_ndb_connection(mDatabaseName);
+    mProvenanceTableTailer = new ProvenanceTableTailer(provenance_tailer_connection, mPollMaxTimeToWait, mBarrier);
+    
+    SConn* provenance_connections = new SConn[mProvenanceTU.mNumReaders];
+    for(int i=0; i< mProvenanceTU.mNumReaders; i++){
+        provenance_connections[i] =  create_ndb_connection(mDatabaseName);
+    }
+    mProvenanceDataReader = new ProvenanceDataReader(provenance_connections,mProvenanceTU.mNumReaders,
+            mHopsworksEnabled, mProvenancElasticSearch, mPDICache);
+    mProvenanceBatcher = new ProvenanceBatcher(mProvenanceTableTailer, mProvenanceDataReader, 
+            mProvenanceTU.mWaitTime, mProvenanceTU.mBatchSize);
+   
 }
 
 Ndb_cluster_connection* Notifier::connect_to_cluster(const char *connection_string) {

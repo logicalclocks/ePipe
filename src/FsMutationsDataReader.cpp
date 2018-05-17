@@ -41,14 +41,14 @@ const int UG_ID_COL = 0;
 const int UG_NAME_COL = 1;
 
 FsMutationsDataReader::FsMutationsDataReader(MConn* connections, const int num_readers,
-        const bool hopsworks, ElasticSearch* elastic ,ProjectDatasetINodeCache* cache, 
-        const int lru_cap) : NdbDataReader<FsMutationRow,MConn>(connections, num_readers, 
+        const bool hopsworks, ProjectsElasticSearch* elastic ,ProjectDatasetINodeCache* cache, 
+        const int lru_cap) : NdbDataReader<FsMutationRow,MConn, FSKeys>(connections, num_readers,
         hopsworks, elastic, cache), mUsersCache(lru_cap, "User"), 
         mGroupsCache(lru_cap, "Group"){
 
 }
 
-void FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch, Bulk& bulk) {
+void FsMutationsDataReader::processAddedandDeleted(MConn conn, Fmq* data_batch, FSBulk& bulk) {
     
     Ndb* inodeConnection = conn.inodeConnection;
     const NdbDictionary::Dictionary* database = getDatabase(inodeConnection);
@@ -185,7 +185,7 @@ void FsMutationsDataReader::updateProjectIds(Ndb* metaConnection, Fmq* data_batc
     }
 }
 
-void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
+void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, FSBulk& bulk) {
     
     vector<ptime> arrivalTimes(pending->size());
     stringstream out;
@@ -193,7 +193,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, Bulk& bulk) {
     for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it, i++) {
         FsMutationRow row = *it;
         arrivalTimes[i] = row.mEventCreationTime;
-        bulk.mFSPKs.push_back(row.getPK());
+        bulk.mPKs.mFSPKs.push_back(row.getPK());
         
         if(row.mOperation == Delete){
             //Handle the delete

@@ -112,7 +112,7 @@ FsMutationRow FsMutationsTableTailer::consume(){
 }
 
 void FsMutationsTableTailer::removeLogs(Ndb* conn, FPK& pks) {
-     const NdbDictionary::Dictionary* database = getDatabase(conn);
+    const NdbDictionary::Dictionary* database = getDatabase(conn);
     NdbTransaction* transaction = startNdbTransaction(conn);
     const NdbDictionary::Table* log_table = getTable(database, TABLE.mTableName);
     for(FPK::iterator it=pks.begin(); it != pks.end() ; ++it){
@@ -124,7 +124,7 @@ void FsMutationsTableTailer::removeLogs(Ndb* conn, FPK& pks) {
         op->equal(_mutation_cols[1].c_str(), pk.mInodeId);
         op->equal(_mutation_cols[2].c_str(), pk.mLogicalTime);
         
-        LOG_TRACE("Delete log row: Dataset[" << pk.mDatasetId << "], INode[" 
+        LOG_DEBUG("Delete log row: Dataset[" << pk.mDatasetId << "], INode[" 
                 << pk.mInodeId << "], Timestamp[" << pk.mLogicalTime << "]");
     }
     executeTransaction(transaction, NdbTransaction::Commit);
@@ -178,7 +178,7 @@ void FsMutationsTableTailer::recover(){
     std::sort(gcis->begin(), gcis->end());
     
     
-    LOG_INFO("ePipe done reading/sorting for recovery in " << Utils::getTimeDiffInMilliseconds(start, Utils::getCurrentTime()) << " msec");
+    LOG_INFO("ePipe done reading/sorting for " << _mutation_table << " recovery in " << Utils::getTimeDiffInMilliseconds(start, Utils::getCurrentTime()) << " msec");
     
     for(vector<Uint64>::iterator it=gcis->begin(); it != gcis->end(); it++){
         Uint64 gci = *it;

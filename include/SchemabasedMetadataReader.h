@@ -29,14 +29,15 @@
 #include "NdbDataReader.h"
 #include <boost/lexical_cast.hpp>
 #include "SchemaCache.h"
+#include "ProjectsElasticSearch.h"
 
-class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn>{
+class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn, FSKeys>{
 public:
     SchemabasedMetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
-            ElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
+            ProjectsElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
     virtual ~SchemabasedMetadataReader();
 private:    
-    virtual void processAddedandDeleted(MConn connection, MetaQ* data_batch, Bulk& bulk);
+    virtual void processAddedandDeleted(MConn connection, MetaQ* data_batch, FSBulk& bulk);
     
     UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, 
         NdbTransaction* transaction, SchemabasedMq* added);
@@ -44,7 +45,7 @@ private:
     void refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples,
         const NdbDictionary::Dictionary* metaDatabase, NdbTransaction* metaTransaction);  
     
-    void createJSON(UIRowMap tuples, SchemabasedMq* data_batch, Bulk& bulk);
+    void createJSON(UIRowMap tuples, SchemabasedMq* data_batch, FSBulk& bulk);
     
     SchemaCache* mSchemaCache;
 };
