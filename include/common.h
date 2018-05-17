@@ -58,8 +58,7 @@ typedef boost::unordered_map<int, int> UIMap;
 
 enum MetadataType{
     Schemabased = 0,
-    Schemaless = 1,
-    Both = 2
+    Schemaless = 1
 };
 
 enum OperationType{
@@ -79,6 +78,12 @@ struct TableUnitConf {
     int mBatchSize;
     int mNumReaders;
 
+    TableUnitConf(){
+        mWaitTime = 0;
+        mBatchSize = 0;
+        mNumReaders = 0;
+    }
+    
     TableUnitConf(int wait_time, int batch_size, int num_readers) {
         mWaitTime = wait_time;
         mBatchSize = batch_size;
@@ -105,6 +110,10 @@ struct TableUnitConf {
         stringstream str;
         str << mWaitTime << " " << mBatchSize << " " << mNumReaders;
         return str.str();
+    }
+    
+    bool isEnabled() const{
+        return mWaitTime > 0 && mBatchSize > 0 && mNumReaders > 0;
     }
 };
 

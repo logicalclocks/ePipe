@@ -36,11 +36,11 @@
 class Notifier {
 public:
     Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
-            const TableUnitConf mutations_tu, const TableUnitConf metadata_tu, const TableUnitConf schemaless_tu, const TableUnitConf provenance_tu,
+            const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, const TableUnitConf provenance_tu,
             const int poll_maxTimeToWait, const string elastic_addr, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
             const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type, const string elastic_provenance_type,
             const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
-            MetadataType metadata_type, Barrier barrier);
+            Barrier barrier);
     void start();
     virtual ~Notifier();
     
@@ -51,7 +51,7 @@ private:
     Ndb_cluster_connection *mClusterConnection;
     
     const TableUnitConf mMutationsTU;
-    const TableUnitConf mMetadataTU;
+    const TableUnitConf mSchemabasedTU;
     const TableUnitConf mSchemalessTU;
     const TableUnitConf mProvenanceTU;
     
@@ -69,10 +69,9 @@ private:
     const int mLRUCap;
     const bool mRecovery;
     const bool mStats;
-    const MetadataType mMetadataType;
     const Barrier mBarrier;
         
-    ProjectsElasticSearch* mElasticSearch;
+    ProjectsElasticSearch* mProjectsElasticSearch;
     
     FsMutationsTableTailer* mFsMutationsTableTailer;
     FsMutationsDataReader* mFsMutationsDataReader;

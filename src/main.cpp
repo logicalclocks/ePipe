@@ -36,10 +36,10 @@ int main(int argc, char** argv) {
     string elastic_addr = "localhost:9200";
     int log_level = 2;
     
-    TableUnitConf mutations_tu = TableUnitConf(1000, 5, 5);
-    TableUnitConf metadata_tu = TableUnitConf(1000, 5, 5);
-    TableUnitConf schemaless_tu = TableUnitConf(1000, 5, 5);
-    TableUnitConf provenance_tu = TableUnitConf(1000, 5, 1);
+    TableUnitConf mutations_tu = TableUnitConf();
+    TableUnitConf schamebased_tu = TableUnitConf();
+    TableUnitConf schemaless_tu = TableUnitConf();
+    TableUnitConf provenance_tu = TableUnitConf();
     
     bool hopsworks = true;
     string elastic_index = "projects";
@@ -55,7 +55,6 @@ int main(int argc, char** argv) {
     int lru_cap = DEFAULT_MAX_CAPACITY;
     bool recovery = true;
     bool stats = false;
-    MetadataType metadata_type = Both;
     
     Barrier barrier = EPOCH;
     
@@ -67,9 +66,9 @@ int main(int argc, char** argv) {
             ("meta_database", po::value<string>(&meta_database_name)->default_value(meta_database_name), "database name for metadata")
             ("poll_maxTimeToWait", po::value<int>(&poll_maxTimeToWait)->default_value(poll_maxTimeToWait), "max time to wait in miliseconds while waiting for events in pollEvents")
             ("fs_mutations_tu", po::value< vector<int> >()->default_value(mutations_tu.getVector(), mutations_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
-            ("metadata_tu", po::value< vector<int> >()->default_value(metadata_tu.getVector(), metadata_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
+            ("schamebased_tu", po::value< vector<int> >()->default_value(schamebased_tu.getVector(), schamebased_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
             ("provenance_tu", po::value< vector<int> >()->default_value(provenance_tu.getVector(), provenance_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
-            ("schemaless_tu", po::value< vector<int> >()->default_value(schemaless_tu.getVector(), schemaless_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS \nWAIT_TIME is the time to wait in miliseconds before issuing the ndb request if the batch size wasn't reached.\nBATCH_SIZE is the batch size for reading from ndb\nNUM_READERS is the num of threads used for reading from ndb and processing the data")
+            ("schemaless_tu", po::value< vector<int> >()->default_value(schemaless_tu.getVector(), schemaless_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS \nWAIT_TIME is the time to wait in miliseconds before issuing the ndb request if the batch size wasn't reached.\nBATCH_SIZE is the batch size for reading from ndb\nNUM_READERS is the num of threads used for reading from ndb and processing the data. The watch unit is disabled if set to 0 0 0.")
             ("elastic_addr", po::value<string>(&elastic_addr)->default_value(elastic_addr), "ip and port of the elasticsearch server")
             ("hopsworks", po::value<bool>(&hopsworks)->default_value(hopsworks), "enable or disable hopsworks, which will use grandparents to index inodes and metadata")
             ("index", po::value<string>(&elastic_index)->default_value(elastic_index), "Elastic index to add the data to.")
@@ -84,7 +83,6 @@ int main(int argc, char** argv) {
             ("log_level", po::value<int>(&log_level)->default_value(log_level), "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
             ("recovery", po::value<bool>(&recovery)->default_value(recovery), "enable or disable startup recovery")
             ("stats", po::value<bool>(&stats)->default_value(stats), "enable or disable print of accumulators stats")
-            ("metadata_type", po::value<int>()->default_value(metadata_type), "Extended metadata type; SchemaBased=0, Schemaless=1, Both=2")
             ("barrier", po::value<int>()->default_value(barrier), "Table tailer barrier type. EPOCH=0, GCI=1")
             ("version", "ePipe version")
             ;
@@ -109,8 +107,8 @@ int main(int argc, char** argv) {
         mutations_tu.update(vm["fs_mutations_tu"].as< vector<int> >());
     }
 
-    if (vm.count("metadata_tu")) {
-        metadata_tu.update(vm["metadata_tu"].as< vector<int> >());
+    if (vm.count("schamebased_tu")) {
+        schamebased_tu.update(vm["schamebased_tu"].as< vector<int> >());
     }
 
     if (vm.count("schemaless_tu")) {
@@ -119,10 +117,6 @@ int main(int argc, char** argv) {
     
     if (vm.count("provenance_tu")) {
         provenance_tu.update(vm["provenance_tu"].as< vector<int> >());
-    }
-    
-    if(vm.count("metadata_type")){
-        metadata_type = static_cast<MetadataType>(vm["metadata_type"].as<int>());
     }
     
     if(vm.count("barrier")){
@@ -137,10 +131,10 @@ int main(int argc, char** argv) {
     }
 
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), 
-            meta_database_name.c_str(), mutations_tu, metadata_tu, schemaless_tu, provenance_tu,
+            meta_database_name.c_str(), mutations_tu, schamebased_tu, schemaless_tu, provenance_tu,
             poll_maxTimeToWait, elastic_addr, hopsworks, elastic_index, elastic_provenance_index, elastic_project_type, 
             elastic_dataset_type, elastic_inode_type, elastic_provenance_type, elastic_batch_size, elastic_issue_time,
-            lru_cap, recovery, stats, metadata_type, barrier);
+            lru_cap, recovery, stats, barrier);
     notifer->start();
 
     return EXIT_SUCCESS;

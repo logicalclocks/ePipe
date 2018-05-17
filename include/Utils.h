@@ -283,8 +283,6 @@ namespace Utils {
                 return "SchemaBased";
             case Schemaless:
                 return "SchemaLess";
-            case Both:
-                return "Both";
             default:
                 return "Unkown";
         }
