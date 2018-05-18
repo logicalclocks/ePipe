@@ -48,31 +48,22 @@ typedef Bulk<FSKeys> FSBulk;
 
 class ProjectsElasticSearch : public ElasticSearchBase<FSKeys>{
 public:
-    ProjectsElasticSearch(string elastic_addr, string index, string proj_type, string ds_type,
-            string inode_type, int time_to_wait_before_inserting, int bulk_size,
+    ProjectsElasticSearch(string elastic_addr, string index, 
+            int time_to_wait_before_inserting, int bulk_size,
             const bool stats, MConn conn);
 
-    bool addProject(int projectId, string json);
-    bool deleteProject(int projectId);
-    bool deleteProjectChildren(int projectId, string json);
+    bool addDoc(int inodeId, string json);
+    bool deleteDocsByQuery(string json);
     
-    bool addDataset(int projectId, int datasetId, string json);
-    bool deleteDataset(int projectId, int datasetId);
-    bool deleteDatasetChildren(int projectId, int datasetId, string json);
+    bool deleteSchemaForINode(int inodeId, string json);
     
-    bool deleteSchemaForINode(int projectId, int datasetId, int inodeId, string json);
-    
-    const char* getIndex();
-    const char* getProjectType();
-    const char* getDatasetType();
-    const char* getINodeType();
+    static const string getProjectType();
+    static const string getDatasetType();
+    static const string getINodeType();
     
     virtual ~ProjectsElasticSearch();
 private:
     const string mIndex;
-    const string mProjectType;
-    const string mDatasetType;
-    const string mInodeType;
     const bool mStats;
 
     string mElasticBulkAddr;
@@ -94,15 +85,6 @@ private:
 
     void stats(vector<FSBulk>* bulks);
     void stats(FSBulk bulk, ptime t_elastic_done);
-    string getElasticSearchBulkUrl();
-    string getElasticSearchUrlonIndex(string index);
-    string getElasticSearchUrlOnDoc(string index, string type, int doc);
-    string getElasticSearchUpdateDocUrl(string index, string type, int doc);
-    string getElasticSearchUpdateDocUrl(string index, string type, int doc, int parent);
-    string getElasticSearchUpdateDocUrl(string index, string type, int doc, int parent, int routing); 
-    string getElasticSearchDeleteDocUrl(string index, string type, int doc, int parent);
-    string getElasticSearchDeleteByQueryUrl(string index, int routing);
-    string getElasticSearchDeleteByQueryUrl(string index, int parent, int routing);
 };
 
 #endif /* PROJECTSELASTICSEARCH_H */

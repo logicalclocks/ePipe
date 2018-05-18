@@ -38,7 +38,6 @@ public:
     Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
             const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, const TableUnitConf provenance_tu,
             const int poll_maxTimeToWait, const string elastic_addr, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
-            const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type, const string elastic_provenance_type,
             const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
             Barrier barrier);
     void start();
@@ -60,10 +59,6 @@ private:
     const bool mHopsworksEnabled;
     const string mElasticIndex;
     const string mElasticProvenanceIndex;
-    const string mElastticProjectType;
-    const string mElasticDatasetType;
-    const string mElasticInodeType;
-    const string mElasticProvenanceType;
     const int mElasticBatchsize;
     const int mElasticIssueTime;
     const int mLRUCap;

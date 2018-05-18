@@ -63,6 +63,7 @@ HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToW
 void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]) {
 
     int id = value[OPS_ID_PK]->int32_value();
+    //op_id is the dataset_id or project_id or schema_id depending on the operation type
     int op_id = value[OPS_OP_ID]->int32_value();
     OpsLogOn op_on = static_cast<OpsLogOn>(value[OPS_OP_ON]->int8_value());
     OperationType op_type = static_cast<OperationType>(value[OPS_OP_TYPE]->int8_value());
@@ -73,7 +74,7 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
             << "OpOn = " << OpsLogOnToStr(op_on) << endl
             << "OpType = " << OperationTypeToStr(op_type) << endl
             << "ProjectID = " << project_id << endl
-            << "DatasetID = " << project_id << endl
+            << "DatasetID = " << dataset_id << endl
             << "INodeID = " << inode_id);
     
     bool success = false;
@@ -82,10 +83,10 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
             success = handleDataset(op_id, op_type, inode_id, project_id);
             break;
         case Project:
-            success = handleProject(op_id, op_type);
+            success = handleProject(op_id, inode_id, op_type);
             break;
         case Schema:
-            success = handleSchema(op_id, op_type, dataset_id, project_id, inode_id);
+            success = handleSchema(op_id, op_type, inode_id);
             break;
     }
     
@@ -97,7 +98,7 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
 bool HopsworksOpsLogTailer::handleDataset(int opId, OperationType opType, 
         int datasetId, int projectId) {
     if(opType == Delete){
-       return handleDeleteDataset(datasetId, projectId);
+       return handleDeleteDataset(datasetId);
     }else{
        return handleUpsertDataset(opId, opType, datasetId, projectId);
     }
@@ -122,8 +123,8 @@ bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, OperationType opType, 
     
     executeTransaction(transaction, NdbTransaction::Commit);
     
-    string data = createDatasetJSONUpSert(projectId, row);
-    bool success = mElasticSearch->addDataset(projectId, datasetId, data);
+    string data = createDatasetJSONUpSert(projectId, datasetId, row);
+    bool success = mElasticSearch->addDoc(datasetId, data);
     if (success) {
         switch(opType){
             case Add:
@@ -139,14 +140,20 @@ bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, OperationType opType, 
     return success;
 }
 
-string HopsworksOpsLogTailer::createDatasetJSONUpSert(int porjectId, NdbRecAttr* value[]) {
+string HopsworksOpsLogTailer::createDatasetJSONUpSert(int porjectId, int datasetId, NdbRecAttr* value[]) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
 
     docWriter.String("doc");
     docWriter.StartObject();
-
+    
+    docWriter.String("doc_type");
+    docWriter.String(mElasticSearch->getDatasetType().c_str());
+    
+    docWriter.String("dataset_id");
+    docWriter.Int(datasetId);
+    
     if (value[DS_INODE_PARENT_ID]->isNULL() != -1) {
         docWriter.String("parent_id");
         docWriter.Int(value[DS_INODE_PARENT_ID]->int32_value());
@@ -178,7 +185,7 @@ string HopsworksOpsLogTailer::createDatasetJSONUpSert(int porjectId, NdbRecAttr*
     return string(sbDoc.GetString());
 }
 
-bool HopsworksOpsLogTailer::handleDeleteDataset(int datasetId, int projectId) {
+bool HopsworksOpsLogTailer::handleDeleteDataset(int datasetId) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -186,7 +193,7 @@ bool HopsworksOpsLogTailer::handleDeleteDataset(int datasetId, int projectId) {
 
     docWriter.StartObject();
 
-    docWriter.String("match");
+    docWriter.String("term");
     docWriter.StartObject();
     docWriter.String("dataset_id");
     docWriter.Int(datasetId);
@@ -197,25 +204,20 @@ bool HopsworksOpsLogTailer::handleDeleteDataset(int datasetId, int projectId) {
     docWriter.EndObject();
 
     //TODO: handle failures in elastic search
-    bool success1 = mElasticSearch->deleteDatasetChildren(projectId, datasetId, string(sbDoc.GetString()));
-    if (success1) {
-        LOG_INFO("Delete Dataset[" << datasetId << "] children inodes: Succeeded");
-    }
-    
-    bool success2 = mElasticSearch->deleteDataset(projectId, datasetId);
-    if (success2) {
-        LOG_INFO("Delete Dataset[" << datasetId << "]: Succeeded");
+    bool success = mElasticSearch->deleteDocsByQuery(string(sbDoc.GetString()));
+    if (success) {
+        LOG_INFO("Delete Dataset[" << datasetId << "] and all children inodes: Succeeded");
     }
 
     mPDICache->removeDataset(datasetId);
-    return (success1 && success2);
+    return success;
 }
 
-bool HopsworksOpsLogTailer::handleProject(int projectId, OperationType opType) {
+bool HopsworksOpsLogTailer::handleProject(int projectId, int inodeId, OperationType opType) {
     if (opType == Delete) {
         return handleDeleteProject(projectId);
     } else {
-        return handleUpsertProject(projectId, opType);
+        return handleUpsertProject(projectId, inodeId, opType);
     }
 }
 
@@ -227,7 +229,7 @@ bool HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
 
     docWriter.StartObject();
 
-    docWriter.String("match");
+    docWriter.String("term");
     docWriter.StartObject();
     docWriter.String("project_id");
     docWriter.Int(projectId);
@@ -238,21 +240,16 @@ bool HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
     docWriter.EndObject();
 
     //TODO: handle failures in elastic search
-    bool success1 = mElasticSearch->deleteProjectChildren(projectId, string(sbDoc.GetString()));
-    if (success1) {
-        LOG_INFO("Delete Project[" << projectId << "] children inodes and datasets : Succeeded");
-    }
-    
-    bool success2 = mElasticSearch->deleteProject(projectId);
-    if (success2) {
-        LOG_INFO("Delete Project[" << projectId << "]: Succeeded");
+    bool success = mElasticSearch->deleteDocsByQuery(string(sbDoc.GetString()));
+    if (success) {
+        LOG_INFO("Delete Project[" << projectId << "] and all children datasets and inodes: Succeeded");
     }
 
     mPDICache->removeProject(projectId);
-    return (success1 && success2);
+    return success;
 }
 
-bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, OperationType opType){
+bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, int inodeId, OperationType opType){
 
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
     const NdbDictionary::Table* table = getTable(database, PR);
@@ -270,8 +267,8 @@ bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, OperationType opT
     
     executeTransaction(transaction, NdbTransaction::Commit);
     
-    string data = createProjectJSONUpSert(row);
-    bool success = mElasticSearch->addProject(projectId, data);
+    string data = createProjectJSONUpSert(projectId, row);
+    bool success = mElasticSearch->addDoc(inodeId, data);
     if (success) {
          switch(opType){
             case Add:
@@ -288,14 +285,20 @@ bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, OperationType opT
         
 }
 
-string HopsworksOpsLogTailer::createProjectJSONUpSert(NdbRecAttr* value[]) {
+string HopsworksOpsLogTailer::createProjectJSONUpSert(int projectId, NdbRecAttr* value[]) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
 
     docWriter.String("doc");
     docWriter.StartObject();
-
+    
+    docWriter.String("doc_type");
+    docWriter.String(mElasticSearch->getProjectType().c_str());
+    
+    docWriter.String("project_id");
+    docWriter.Int(projectId);
+    
     if (value[PR_INODE_PID]->isNULL() != -1) {
         docWriter.String("parent_id");
         docWriter.Int(value[PR_INODE_PID]->int32_value());
@@ -336,16 +339,16 @@ void HopsworksOpsLogTailer::removeLog(int pk){
      mNdbConnection->closeTransaction(transaction);
 }
 
-bool HopsworksOpsLogTailer::handleSchema(int schemaId, OperationType opType, int datasetId, int projectId, int inodeId) {
+bool HopsworksOpsLogTailer::handleSchema(int schemaId, OperationType opType, int inodeId) {
     if(opType == Delete){
-        return handleSchemaDelete(schemaId, datasetId, projectId, inodeId);
+        return handleSchemaDelete(schemaId, inodeId);
     }else{
         LOG_ERROR("Unsupported Schema Operation [" << Utils::OperationTypeToStr(opType) << "]. Only Delete is supported.");
         return true;
     }
 }
 
-bool HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, int datasetId, int projectId, int inodeId) {
+bool HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, int inodeId) {
     const NdbDictionary::Dictionary* database = getDatabase(mNdbConnection);
     NdbTransaction* transaction = startNdbTransaction(mNdbConnection);
     mSchemaCache->refresTemplate(database, transaction, schemaId);
@@ -353,11 +356,12 @@ bool HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, int datasetId, int 
     if(schema_ptr){
         string schema = *schema_ptr;
         string json = createSchemaDeleteJSON(schema);
-        bool success = mElasticSearch->deleteSchemaForINode(projectId, datasetId, inodeId, json);
+        bool success = mElasticSearch->deleteSchemaForINode(inodeId, json);
         if (success) {
             LOG_INFO("Delete Schema/Template [" << schemaId << ", " << schema << "] for INode ["  << inodeId<< "] : Succeeded");
         }
         return success;
+        return true;
     }else{
         LOG_WARN("Schema/Template ["<< schemaId << "] does not exist");
         return true;

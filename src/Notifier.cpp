@@ -28,13 +28,12 @@
 Notifier::Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
         const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, TableUnitConf provenance_tu,
         const int poll_maxTimeToWait, const string elastic_ip, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
-        const string elasttic_project_type, const string elastic_dataset_type, const string elastic_inode_type, const string elastic_provenance_type,
         const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, 
         const bool stats, Barrier barrier)
 : mDatabaseName(database_name), mMetaDatabaseName(meta_database_name), mMutationsTU(mutations_tu), mSchemabasedTU(schemabased_tu), 
         mSchemalessTU(schemaless_tu), mProvenanceTU(provenance_tu), mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
-        mElasticIndex(elastic_index), mElasticProvenanceIndex(elastic_provenance_index), mElastticProjectType(elasttic_project_type), mElasticDatasetType(elastic_dataset_type), 
-        mElasticInodeType(elastic_inode_type), mElasticProvenanceType(elastic_provenance_type), mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), 
+        mElasticIndex(elastic_index), mElasticProvenanceIndex(elastic_provenance_index), 
+        mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap), 
         mRecovery(recovery), mStats(stats), mBarrier(barrier) {
     mClusterConnection = connect_to_cluster(connection_string);
     setup();
@@ -122,9 +121,8 @@ void Notifier::setup() {
         ndb_connections_elastic.metadataConnection = create_ndb_connection(mMetaDatabaseName);
         ndb_connections_elastic.inodeConnection = create_ndb_connection(mDatabaseName);
 
-        mProjectsElasticSearch = new ProjectsElasticSearch(mElasticAddr, mElasticIndex, mElastticProjectType,
-                mElasticDatasetType, mElasticInodeType, mElasticIssueTime, mElasticBatchsize,
-                mStats, ndb_connections_elastic);
+        mProjectsElasticSearch = new ProjectsElasticSearch(mElasticAddr, mElasticIndex,
+                mElasticIssueTime, mElasticBatchsize, mStats, ndb_connections_elastic);
     }
   
 
@@ -187,7 +185,7 @@ void Notifier::setup() {
     if (mProvenanceTU.isEnabled()) {
         Ndb* ndb_elastic_provenance_conn = create_ndb_connection(mDatabaseName);
         mProvenancElasticSearch = new ProvenanceElasticSearch(mElasticAddr,
-                mElasticProvenanceIndex, mElasticProvenanceType, mElasticIssueTime,
+                mElasticProvenanceIndex, mElasticIssueTime,
                 mElasticBatchsize, mStats, ndb_elastic_provenance_conn);
 
 

@@ -76,24 +76,7 @@ void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, FSBulk& bulk
 
         opWriter.String("update");
         opWriter.StartObject();
-
-
-        if (mHopsworksEnalbed) {
-            int datasetId = mPDICache->getDatasetId(entry.mINodeId);
-            // set project (rounting) and dataset (parent) ids 
-            opWriter.String("_parent");
-            opWriter.Int(datasetId);
-
-            opWriter.String("_routing");
-            opWriter.Int(mPDICache->getProjectId(datasetId));
-
-            if (datasetId == entry.mINodeId) {
-                opWriter.String("_type");
-                opWriter.String(((ProjectsElasticSearch*)mElasticSearch)->getDatasetType());
-            }
-
-        }
-
+        
         opWriter.String("_id");
         opWriter.Int(entry.mINodeId);
 
