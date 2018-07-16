@@ -29,21 +29,21 @@
 
 typedef Bulk<PKeys> PBulk;
 
-class ProvenanceElasticSearch : public ElasticSearchBase<PKeys>{
+class ProvenanceElasticSearch : public ElasticSearchBase<PKeys> {
 public:
-    ProvenanceElasticSearch(string elastic_addr, string index, 
-            int time_to_wait_before_inserting, int bulk_size, const bool stats, 
-            SConn conn);
-    virtual ~ProvenanceElasticSearch();
+  ProvenanceElasticSearch(string elastic_addr, string index,
+          int time_to_wait_before_inserting, int bulk_size, const bool stats,
+          SConn conn);
+  virtual ~ProvenanceElasticSearch();
 private:
-    const string mIndex;
-    const bool mStats;
-    
-    string mElasticBulkAddr;
+  const string mIndex;
+  const bool mStats;
 
-    SConn mConn;
-    
-    virtual void process(vector<PBulk>* bulks);
+  string mElasticBulkAddr;
+
+  SConn mConn;
+
+  virtual void process(vector<PBulk>* bulks);
 
 };
 

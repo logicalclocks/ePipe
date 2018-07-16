@@ -25,21 +25,32 @@
 #ifndef SCHEMALESSMETADATAREADER_H
 #define SCHEMALESSMETADATAREADER_H
 
-#include "NdbDataReader.h"
+#include "NdbDataReaders.h"
 #include "MetadataLogTailer.h"
 #include "HopsworksOpsLogTailer.h"
 #include "ProjectsElasticSearch.h"
+#include "tables/SchemalessMetadataTable.h"
 
 class SchemalessMetadataReader : public NdbDataReader<MetadataLogEntry, MConn, FSKeys> {
 public:
-    SchemalessMetadataReader(MConn* connections, const int num_readers, const bool hopsworks,
-            ProjectsElasticSearch* elastic, ProjectDatasetINodeCache* cache);
-    virtual ~SchemalessMetadataReader();
+  SchemalessMetadataReader(MConn connection, const bool hopsworks,
+          ProjectsElasticSearch* elastic);
+  virtual ~SchemalessMetadataReader();
 private:
-    virtual void processAddedandDeleted(MConn connection, MetaQ* data_batch, FSBulk& bulk);
-    void createJSON(SchemalessMq* data_batch, FSBulk& bulk);
-    void mergeDoc(rapidjson::Document& target, rapidjson::Document& source);
-    string upsertMetadata(string jsonData);
+  SchemalessMetadataTable mSchemalessTable;
+  virtual void processAddedandDeleted(MetaQ* data_batch, FSBulk& bulk);
+  void createJSON(SchemalessMq* data_batch, FSBulk& bulk);
+};
+
+class SchemalessMetadataReaders : public NdbDataReaders<MetadataLogEntry, MConn, FSKeys> {
+public:
+  SchemalessMetadataReaders(MConn* connections, int num_readers, const bool hopsworks,
+          ProjectsElasticSearch* elastic) {
+    NdbDataReaders();
+    for (int i = 0; i < num_readers; i++) {
+      mDataReaders.push_back(new SchemalessMetadataReader(connections[i], hopsworks, elastic));
+    }
+  }
 };
 
 #endif /* SCHEMALESSMETADATAREADER_H */

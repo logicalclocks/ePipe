@@ -33,68 +33,60 @@
 #include "HopsworksOpsLogTailer.h"
 #include "MetadataLogTailer.h"
 #include "ProvenanceBatcher.h"
-class Notifier {
+#include "ClusterConnectionBase.h"
+
+class Notifier : public ClusterConnectionBase {
 public:
-    Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
-            const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, const TableUnitConf provenance_tu,
-            const int poll_maxTimeToWait, const string elastic_addr, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
-            const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
-            Barrier barrier);
-    void start();
-    virtual ~Notifier();
-    
+  Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
+          const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, const TableUnitConf provenance_tu,
+          const int poll_maxTimeToWait, const string elastic_addr, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
+          const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
+          Barrier barrier);
+  void start();
+  virtual ~Notifier();
+
 private:
-    const char* mDatabaseName;
-    const char* mMetaDatabaseName;
-    
-    Ndb_cluster_connection *mClusterConnection;
-    
-    const TableUnitConf mMutationsTU;
-    const TableUnitConf mSchemabasedTU;
-    const TableUnitConf mSchemalessTU;
-    const TableUnitConf mProvenanceTU;
-    
-    const int mPollMaxTimeToWait;
-    const string mElasticAddr;
-    const bool mHopsworksEnabled;
-    const string mElasticIndex;
-    const string mElasticProvenanceIndex;
-    const int mElasticBatchsize;
-    const int mElasticIssueTime;
-    const int mLRUCap;
-    const bool mRecovery;
-    const bool mStats;
-    const Barrier mBarrier;
-        
-    ProjectsElasticSearch* mProjectsElasticSearch;
-    
-    FsMutationsTableTailer* mFsMutationsTableTailer;
-    FsMutationsDataReader* mFsMutationsDataReader;
-    FsMutationsBatcher* mFsMutationsBatcher;
-    
-    MetadataLogTailer* mMetadataLogTailer;
-    
-    SchemabasedMetadataReader* mSchemabasedMetadataReader;
-    SchemabasedMetadataBatcher* mSchemabasedMetadataBatcher;
-    
-    SchemalessMetadataReader* mSchemalessMetadataReader;
-    SchemalessMetadataBatcher* mSchemalessMetadataBatcher;
-    
-    SchemaCache* mSchemaCache;
-    ProjectDatasetINodeCache* mPDICache;
-    
-    HopsworksOpsLogTailer* mhopsworksOpsLogTailer;
-    
-    ProvenanceTableTailer* mProvenanceTableTailer;
-    ProvenanceDataReader* mProvenanceDataReader;
-    ProvenanceBatcher* mProvenanceBatcher;
-    
-    ProvenanceElasticSearch* mProvenancElasticSearch;
-    
-    Ndb* create_ndb_connection(const char* database);
-    Ndb_cluster_connection* connect_to_cluster(const char *connection_string);
-    
-    void setup();
+
+  const TableUnitConf mMutationsTU;
+  const TableUnitConf mSchemabasedTU;
+  const TableUnitConf mSchemalessTU;
+  const TableUnitConf mProvenanceTU;
+
+  const int mPollMaxTimeToWait;
+  const string mElasticAddr;
+  const bool mHopsworksEnabled;
+  const string mElasticIndex;
+  const string mElasticProvenanceIndex;
+  const int mElasticBatchsize;
+  const int mElasticIssueTime;
+  const int mLRUCap;
+  const bool mRecovery;
+  const bool mStats;
+  const Barrier mBarrier;
+
+  ProjectsElasticSearch* mProjectsElasticSearch;
+
+  FsMutationsTableTailer* mFsMutationsTableTailer;
+  FsMutationsDataReaders* mFsMutationsDataReaders;
+  FsMutationsBatcher* mFsMutationsBatcher;
+
+  MetadataLogTailer* mMetadataLogTailer;
+
+  SchemabasedMetadataReaders* mSchemabasedMetadataReaders;
+  SchemabasedMetadataBatcher* mSchemabasedMetadataBatcher;
+
+  SchemalessMetadataReaders* mSchemalessMetadataReaders;
+  SchemalessMetadataBatcher* mSchemalessMetadataBatcher;
+
+  HopsworksOpsLogTailer* mhopsworksOpsLogTailer;
+
+  ProvenanceTableTailer* mProvenanceTableTailer;
+  ProvenanceDataReaders* mProvenanceDataReaders;
+  ProvenanceBatcher* mProvenanceBatcher;
+
+  ProvenanceElasticSearch* mProvenancElasticSearch;
+
+  void setup();
 };
 
 #endif /* NOTIFIER_H */

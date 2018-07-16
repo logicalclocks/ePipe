@@ -48,7 +48,7 @@ using namespace std;
 
 #define FORMAT(ITEMS) ((dynamic_cast<ostringstream &>(ostringstream().seekp(0,ios_base::cur) \
                << "(" << __FILENAME__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") " << ITEMS )).str().c_str())
-        
+
 #define LOG_TRACE(msg) Logger::trace(FORMAT(msg))
 #define LOG_DEBUG(msg) Logger::debug(FORMAT(msg))
 #define LOG_INFO(msg)  Logger::info(FORMAT(msg))
@@ -59,22 +59,22 @@ using namespace std;
 #define LOG_NDB_API_ERROR(error) \
         LOG_FATAL("code:" << error.code << ", msg: " << error.message << ".")
 
-class Logger{
+class Logger {
 public:
-    static void setLoggerLevel(int level);
-    static void trace(const char* msg);
-    static void debug(const char* msg);
-    static void info(const char* msg);
-    static void warn(const char* msg);
-    static void error(const char* msg);
-    static void fatal(const char* msg);
-    
-    static bool isTrace();
+  static void setLoggerLevel(int level);
+  static void trace(const char* msg);
+  static void debug(const char* msg);
+  static void info(const char* msg);
+  static void warn(const char* msg);
+  static void error(const char* msg);
+  static void fatal(const char* msg);
+
+  static bool isTrace();
 private:
-    static Logger* mInstance;
-    static int mLoggerLevel;
-    static void log(const char* level, const char* msg);
-    static string getTimestamp();
+  static Logger* mInstance;
+  static int mLoggerLevel;
+  static void log(const char* level, const char* msg);
+  static string getTimestamp();
 };
 
 #endif /* LOGGER_H */

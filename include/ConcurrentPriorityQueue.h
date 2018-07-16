@@ -28,47 +28,46 @@
 #include <boost/heap/priority_queue.hpp>
 
 template<typename Data, typename DataCompartor>
-class ConcurrentPriorityQueue{
+class ConcurrentPriorityQueue {
 public:
-    ConcurrentPriorityQueue();
-    void push(Data data);
-    void wait_and_pop(Data &result);
-    bool empty();
-    virtual ~ConcurrentPriorityQueue();
+  ConcurrentPriorityQueue();
+  void push(Data data);
+  void wait_and_pop(Data &result);
+  bool empty();
+  virtual ~ConcurrentPriorityQueue();
 private:
-    boost::heap::priority_queue<Data,  boost::heap::compare<DataCompartor> > mQueue;
-    mutable boost::mutex mLock;
-    boost::condition_variable mQueueUpdated;
+  boost::heap::priority_queue<Data, boost::heap::compare<DataCompartor> > mQueue;
+  mutable boost::mutex mLock;
+  boost::condition_variable mQueueUpdated;
 };
-
 
 template<typename Data, typename DataCompartor>
 ConcurrentPriorityQueue<Data, DataCompartor>::ConcurrentPriorityQueue() {
 }
 
 template<typename Data, typename DataCompartor>
-void ConcurrentPriorityQueue<Data, DataCompartor>::push(Data data){
-    boost::mutex::scoped_lock lock(mLock);
-    mQueue.push(data);
-    lock.unlock();
-    mQueueUpdated.notify_one();
+void ConcurrentPriorityQueue<Data, DataCompartor>::push(Data data) {
+  boost::mutex::scoped_lock lock(mLock);
+  mQueue.push(data);
+  lock.unlock();
+  mQueueUpdated.notify_one();
 }
 
 template<typename Data, typename DataCompartor>
-void ConcurrentPriorityQueue<Data, DataCompartor>::wait_and_pop(Data& result){
-    boost::mutex::scoped_lock lock(mLock);
-    while(mQueue.empty()){
-        mQueueUpdated.wait(lock);
-    }
-    result = mQueue.top();
-    mQueue.pop();
-    
+void ConcurrentPriorityQueue<Data, DataCompartor>::wait_and_pop(Data& result) {
+  boost::mutex::scoped_lock lock(mLock);
+  while (mQueue.empty()) {
+    mQueueUpdated.wait(lock);
+  }
+  result = mQueue.top();
+  mQueue.pop();
+
 }
 
 template<typename Data, typename DataCompartor>
-bool ConcurrentPriorityQueue<Data, DataCompartor>::empty(){
-    boost::mutex::scoped_lock lock(mLock);
-    return mQueue.empty();
+bool ConcurrentPriorityQueue<Data, DataCompartor>::empty() {
+  boost::mutex::scoped_lock lock(mLock);
+  return mQueue.empty();
 }
 
 template<typename Data, typename DataCompartor>

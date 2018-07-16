@@ -26,29 +26,32 @@
 #define SCHEMABASEDMETADATAREADER_H
 
 #include "MetadataLogTailer.h"
-#include "NdbDataReader.h"
+#include "NdbDataReaders.h"
 #include <boost/lexical_cast.hpp>
-#include "SchemaCache.h"
 #include "ProjectsElasticSearch.h"
+#include "tables/SchemabasedMetadataTable.h"
 
-class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn, FSKeys>{
+class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn, FSKeys> {
 public:
-    SchemabasedMetadataReader(MConn* connections, const int num_readers, const bool hopsworks, 
-            ProjectsElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
-    virtual ~SchemabasedMetadataReader();
-private:    
-    virtual void processAddedandDeleted(MConn connection, MetaQ* data_batch, FSBulk& bulk);
-    
-    UIRowMap readMetadataColumns(const NdbDictionary::Dictionary* database, 
-        NdbTransaction* transaction, SchemabasedMq* added);
-    
-    void refreshProjectDatasetINodeCache(SConn inode_connection, UIRowMap tuples,
-        const NdbDictionary::Dictionary* metaDatabase, NdbTransaction* metaTransaction);  
-    
-    void createJSON(UIRowMap tuples, SchemabasedMq* data_batch, FSBulk& bulk);
-    
-    SchemaCache* mSchemaCache;
+  SchemabasedMetadataReader(MConn connection, const bool hopsworks,
+          ProjectsElasticSearch* elastic, const int lru_cap);
+  virtual ~SchemabasedMetadataReader();
+private:
+  virtual void processAddedandDeleted(MetaQ* data_batch, FSBulk& bulk);
+  void createJSON(SchemabasedMq* data_batch, FSBulk& bulk);
+
+  SchemabasedMetadataTable mSchemabasedTable;
 };
 
+class SchemabasedMetadataReaders : public NdbDataReaders<MetadataLogEntry, MConn, FSKeys>{
+  public:
+    SchemabasedMetadataReaders(MConn* connections, int num_readers, const bool hopsworks,
+          ProjectsElasticSearch* elastic, const int lru_cap){
+      NdbDataReaders();
+      for(int i=0; i<num_readers; i++){
+        mDataReaders.push_back(new SchemabasedMetadataReader(connections[i], hopsworks, elastic, lru_cap));
+      }
+    }
+};
 #endif /* SCHEMABASEDMETADATAREADER_H */
 

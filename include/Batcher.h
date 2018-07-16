@@ -32,32 +32,34 @@
 
 class Batcher {
 public:
-    Batcher(const int time_to_wait, const int batch_size);
-    void start();
-    void waitToFinish();
-    virtual ~Batcher();
-    
+  Batcher(const int time_to_wait, const int batch_size);
+  void start();
+  void shutdown();
+  void waitToFinish();
+  virtual ~Batcher();
+
 protected:
-    virtual void run() = 0;
-    virtual void processBatch() = 0;
-    void resetTimer();
-    
-    const int mBatchSize;
-    bool mTimerProcessing;
-    
+  virtual void run() = 0;
+  virtual void processBatch() = 0;
+  void resetTimer();
+
+  const int mBatchSize;
+  bool mTimerProcessing;
+
 private:
-    boost::thread mThread;
-    bool mStarted;
-    bool mFirstTimer;
-    
-    const int mTimeToWait;
-    boost::thread mTimerThread;
-    
-    boost::asio::io_service mIOService;
-    
-    void startTimer();
-    void timerThread();
-    void timerExpired(const boost::system::error_code& e);
+  boost::thread mThread;
+  bool mStarted;
+  bool mFirstTimer;  
+  const int mTimeToWait;
+  bool mScheduleShutdown;
+  bool mShutdownTimer;
+  boost::thread mTimerThread;
+
+  boost::asio::io_service mIOService;
+
+  void startTimer();
+  void timerThread();
+  void timerExpired(const boost::system::error_code& e);
 
 };
 

@@ -26,39 +26,40 @@
 #define HOPSWORKSOPSLOGTAILER_H
 
 #include "TableTailer.h"
-#include "ProjectDatasetINodeCache.h"
 #include "ProjectsElasticSearch.h"
-#include "SchemaCache.h"
+#include "tables/HopsworksOpsLogTable.h"
+#include "tables/ProjectTable.h"
+#include "tables/DatasetTable.h"
+#include "tables/MetaTemplateTable.h"
 
-class HopsworksOpsLogTailer : public TableTailer{
+class HopsworksOpsLogTailer : public TableTailer<HopsworksOpRow> {
 public:
-    HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier, 
-            ProjectsElasticSearch* elastic, ProjectDatasetINodeCache* cache, SchemaCache* schemaCache);
-    
-    virtual ~HopsworksOpsLogTailer();
+  HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier,
+          ProjectsElasticSearch* elastic, const int lru_cap);
+
+  virtual ~HopsworksOpsLogTailer();
 private:
-    static const WatchTable TABLE;
-    virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, NdbRecAttr* preValue[], NdbRecAttr* value[]);
-    
-    bool handleDataset(int opId, OperationType opType, int datasetId, int projectId);
-    bool handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId);
-    bool handleDeleteDataset(int datasetId);
-    string createDatasetJSONUpSert(int porjectId, int datasetId, NdbRecAttr* value[]);
-    
-    bool handleProject(int projectId, int inodeId, OperationType opType);
-    bool handleDeleteProject(int projectId);
-    bool handleUpsertProject(int projectId, int inodeId, OperationType opType);
-    string createProjectJSONUpSert(int projectId, NdbRecAttr* value[]);
-    
-    bool handleSchema(int schemaId, OperationType opType, int inodeId);
-    bool handleSchemaDelete(int schemaId, int inodeId);
-    string createSchemaDeleteJSON(string schema);
-    
-    void removeLog(int pk);
-    
-    ProjectsElasticSearch* mElasticSearch;
-    ProjectDatasetINodeCache* mPDICache;
-    SchemaCache* mSchemaCache;
+  HopsworksOpsLogTable mHopsworksLogTable;
+  virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, HopsworksOpRow pre, HopsworksOpRow row);
+
+  bool handleDataset(int opId, OperationType opType, int datasetId, int projectId);
+  bool handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId);
+  bool handleDeleteDataset(int datasetId);
+
+  bool handleProject(int projectId, int inodeId, OperationType opType);
+  bool handleDeleteProject(int projectId);
+  bool handleUpsertProject(int projectId, int inodeId, OperationType opType);
+
+  bool handleSchema(int schemaId, OperationType opType, int inodeId);
+  bool handleSchemaDelete(int schemaId, int inodeId);
+
+  void removeLog(int pk);
+
+  ProjectsElasticSearch* mElasticSearch;
+
+  ProjectTable mProjectTable;
+  DatasetTable mDatasetTable;
+  MetaTemplateTable mTemplateTable;
 };
 
 #endif /* HOPSWORKSOPSLOGTAILER_H */

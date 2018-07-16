@@ -18,57 +18,57 @@
 
 #include "Logger.h"
 
-int  Logger::mLoggerLevel = LOG_LEVEL_TRACE;
+int Logger::mLoggerLevel = LOG_LEVEL_TRACE;
 
-void Logger::setLoggerLevel(int level){
-    mLoggerLevel = level;
+void Logger::setLoggerLevel(int level) {
+  mLoggerLevel = level;
 }
 
-void Logger::trace(const char* msg){
-    if(mLoggerLevel <= LOG_LEVEL_TRACE){
-        log("trace", msg);
-    }
+void Logger::trace(const char* msg) {
+  if (mLoggerLevel <= LOG_LEVEL_TRACE) {
+    log("trace", msg);
+  }
 }
 
-void Logger::debug(const char* msg){
-    if(mLoggerLevel <= LOG_LEVEL_DEBUG){
-        log("debug", msg);
-    }
+void Logger::debug(const char* msg) {
+  if (mLoggerLevel <= LOG_LEVEL_DEBUG) {
+    log("debug", msg);
+  }
 }
 
-void Logger::info(const char* msg){
-    if(mLoggerLevel <= LOG_LEVEL_INFO){
-        log("info", msg);
-    }
+void Logger::info(const char* msg) {
+  if (mLoggerLevel <= LOG_LEVEL_INFO) {
+    log("info", msg);
+  }
 }
 
-void Logger::warn(const char* msg){
-    if(mLoggerLevel <= LOG_LEVEL_WARN){
-        log("warn", msg);
-    }
+void Logger::warn(const char* msg) {
+  if (mLoggerLevel <= LOG_LEVEL_WARN) {
+    log("warn", msg);
+  }
 }
 
-void Logger::error(const char* msg){
-    if(mLoggerLevel <= LOG_LEVEL_ERROR){
-        log("error", msg);
-    }
+void Logger::error(const char* msg) {
+  if (mLoggerLevel <= LOG_LEVEL_ERROR) {
+    log("error", msg);
+  }
 }
 
-void Logger::fatal(const char* msg){
-    if(mLoggerLevel <= LOG_LEVEL_FATAL){
-        log("fatal", msg);
-    }
-    exit(EXIT_FAILURE);
+void Logger::fatal(const char* msg) {
+  if (mLoggerLevel <= LOG_LEVEL_FATAL) {
+    log("fatal", msg);
+  }
+  exit(EXIT_FAILURE);
 }
 
 bool Logger::isTrace() {
-    return mLoggerLevel ==  LOG_LEVEL_TRACE;
+  return mLoggerLevel == LOG_LEVEL_TRACE;
 }
 
-void Logger::log(const char* level, const char* msg){
-    cout << getTimestamp() << " <" << level << "> " << msg << endl;
+void Logger::log(const char* level, const char* msg) {
+  cout << getTimestamp() << " <" << level << "> " << msg << endl;
 }
 
-string Logger::getTimestamp(){
-    return boost::posix_time::to_iso_extended_string(boost::posix_time::second_clock::local_time());
+string Logger::getTimestamp() {
+  return boost::posix_time::to_iso_extended_string(boost::posix_time::second_clock::local_time());
 }
