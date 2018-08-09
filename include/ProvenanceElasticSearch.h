@@ -31,13 +31,12 @@ typedef Bulk<PKeys> PBulk;
 
 class ProvenanceElasticSearch : public ElasticSearchBase<PKeys>{
 public:
-    ProvenanceElasticSearch(string elastic_addr, string index, string type, 
+    ProvenanceElasticSearch(string elastic_addr, string index, 
             int time_to_wait_before_inserting, int bulk_size, const bool stats, 
             SConn conn);
     virtual ~ProvenanceElasticSearch();
 private:
     const string mIndex;
-    const string mType;
     const bool mStats;
     
     string mElasticBulkAddr;

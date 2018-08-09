@@ -146,24 +146,7 @@ void SchemabasedMetadataReader::createJSON(UIRowMap tuples, SchemabasedMq* data_
 
         opWriter.String("update");
         opWriter.StartObject();
-
-
-        if(mHopsworksEnalbed){
-            int datasetId = mPDICache->getDatasetId(inodeId);
-            // set project (rounting) and dataset (parent) ids 
-            opWriter.String("_parent");
-            opWriter.Int(datasetId);
-
-            opWriter.String("_routing");
-            opWriter.Int(mPDICache->getProjectId(datasetId));  
-            
-            if(datasetId == inodeId){
-                opWriter.String("_type");
-                opWriter.String(((ProjectsElasticSearch*)mElasticSearch)->getDatasetType());
-            }
-            
-        }
-
+        
         opWriter.String("_id");
         opWriter.Int(inodeId);
         

@@ -84,13 +84,20 @@ protected:
     bool elasticSearchHttpRequest(HttpOp op, string elasticUrl, string json);
 
     virtual void process(vector<Bulk<Keys> >* data) = 0;
-
+    
+    string getElasticSearchUrlonIndex(string index);
+    string getElasticSearchUrlOnDoc(string index, int doc);
+    string getElasticSearchUpdateDocUrl(string index, int doc);
+    string getElasticSearchBulkUrl(string index);
+    string getElasticSearchDeleteByQuery(string index);
+    
 private:
     ConcurrentQueue<Bulk<Keys> > mQueue;
     vector<Bulk<Keys> >* mToProcess;
     int mToProcessLength;
     boost::mutex mLock;
-
+    const string DEFAULT_TYPE;
+    
     bool elasticSearchHttpRequestInternal(HttpOp op, string elasticUrl, string json);
     bool parseResponse(string response);
     ESResponse perform(HttpOp op, string elasticUrl, string json);
@@ -102,7 +109,7 @@ private:
 
 template<typename Keys>
 ElasticSearchBase<Keys>::ElasticSearchBase(string elastic_addr, int time_to_wait_before_inserting, int bulk_size)
-        : Batcher(time_to_wait_before_inserting,bulk_size), mToProcessLength(0){
+        : Batcher(time_to_wait_before_inserting,bulk_size), mToProcessLength(0), DEFAULT_TYPE("_doc") {
     mElasticAddr = "http://" + elastic_addr;
     curl_global_init(CURL_GLOBAL_ALL);
     mToProcess = new vector<Bulk<Keys> >();
@@ -187,6 +194,10 @@ ESResponse ElasticSearchBase<Keys>::perform(HttpOp op, string elasticUrl, string
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response.mResponse);
 
+    struct curl_slist *headers=NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+ 
     switch (op) {
         case HTTP_POST:
             curl_easy_setopt(curl, CURLOPT_POST, 1);
@@ -261,6 +272,38 @@ bool ElasticSearchBase<Keys>::parseResponse(string response) {
     }
     return true;
 }
+
+template<typename Keys>
+string ElasticSearchBase<Keys>::getElasticSearchUrlonIndex(string index) {
+    string str = mElasticAddr + "/" + index;
+    return str;
+}
+
+template<typename Keys>
+string ElasticSearchBase<Keys>::getElasticSearchUrlOnDoc(string index, int doc) {
+    stringstream out;
+    out << getElasticSearchUrlonIndex(index) << "/" << DEFAULT_TYPE << "/" << doc;
+    return out.str();
+}
+
+template<typename Keys>
+string ElasticSearchBase<Keys>::getElasticSearchUpdateDocUrl(string index, int doc) {
+    string str = getElasticSearchUrlOnDoc(index, doc) + "/_update";
+    return str;
+}
+
+template<typename Keys>
+string ElasticSearchBase<Keys>::getElasticSearchBulkUrl(string index) {
+    string str = mElasticAddr + "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
+    return str;
+}
+
+template<typename Keys>
+string ElasticSearchBase<Keys>::getElasticSearchDeleteByQuery(string index) {
+    string str = mElasticAddr + "/" + index + "/" + DEFAULT_TYPE + "/_delete_by_query";
+    return str;
+}
+
 
 template<typename Keys>
 ElasticSearchBase<Keys>::~ElasticSearchBase(){

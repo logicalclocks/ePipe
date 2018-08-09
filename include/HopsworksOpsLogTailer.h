@@ -42,16 +42,16 @@ private:
     
     bool handleDataset(int opId, OperationType opType, int datasetId, int projectId);
     bool handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId);
-    bool handleDeleteDataset(int datasetId, int projectId);
-    string createDatasetJSONUpSert(int porjectId, NdbRecAttr* value[]);
+    bool handleDeleteDataset(int datasetId);
+    string createDatasetJSONUpSert(int porjectId, int datasetId, NdbRecAttr* value[]);
     
-    bool handleProject(int projectId, OperationType opType);
+    bool handleProject(int projectId, int inodeId, OperationType opType);
     bool handleDeleteProject(int projectId);
-    bool handleUpsertProject(int projectId, OperationType opType);
-    string createProjectJSONUpSert(NdbRecAttr* value[]);
+    bool handleUpsertProject(int projectId, int inodeId, OperationType opType);
+    string createProjectJSONUpSert(int projectId, NdbRecAttr* value[]);
     
-    bool handleSchema(int schemaId, OperationType opType, int datasetId, int projectId, int inodeId);
-    bool handleSchemaDelete(int schemaId, int datasetId, int projectId, int inodeId);
+    bool handleSchema(int schemaId, OperationType opType, int inodeId);
+    bool handleSchemaDelete(int schemaId, int inodeId);
     string createSchemaDeleteJSON(string schema);
     
     void removeLog(int pk);

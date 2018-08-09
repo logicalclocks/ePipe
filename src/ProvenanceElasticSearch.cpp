@@ -24,11 +24,11 @@
 #include "ProvenanceElasticSearch.h"
 
 ProvenanceElasticSearch::ProvenanceElasticSearch(string elastic_addr, 
-        string index, string type, int time_to_wait_before_inserting,
+        string index, int time_to_wait_before_inserting,
         int bulk_size, const bool stats, SConn conn) : 
 ElasticSearchBase(elastic_addr,time_to_wait_before_inserting,bulk_size), 
-        mIndex(index), mType(type), mStats(stats), mConn(conn){
-    mElasticBulkAddr = mElasticAddr + "/" + mIndex + "/" + mType + "/_bulk";
+        mIndex(index), mStats(stats), mConn(conn){
+    mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
 void ProvenanceElasticSearch::process(vector<PBulk>* bulks){

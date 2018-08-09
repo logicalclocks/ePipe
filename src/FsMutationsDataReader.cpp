@@ -221,17 +221,6 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, FSBulk& bulk)
         opWriter.String("update");
         opWriter.StartObject();
         
-        int projectId = -1;
-        if(mHopsworksEnalbed){
-            // set project (rounting) and dataset (parent) ids 
-            opWriter.String("_parent");
-            opWriter.Int(row.mDatasetId);
-            
-            projectId = mPDICache->getProjectId(row.mDatasetId);
-            opWriter.String("_routing");
-            opWriter.Int(projectId);
-        }
- 
         opWriter.String("_id");
         opWriter.Int(row.mInodeId);
 
@@ -248,13 +237,18 @@ void FsMutationsDataReader::createJSON(Fmq* pending, Rows& inodes, FSBulk& bulk)
         docWriter.String("doc");
         docWriter.StartObject();
         
+        docWriter.String("doc_type");
+        docWriter.String(ProjectsElasticSearch::getINodeType().c_str());
+        
         docWriter.String("parent_id");
         docWriter.Int(row.mParentId);
         
+        int projectId = -1;
         if(mHopsworksEnalbed){
             docWriter.String("dataset_id");
             docWriter.Int(row.mDatasetId);
         
+            projectId = mPDICache->getProjectId(row.mDatasetId);
             docWriter.String("project_id");
             docWriter.Int(projectId);
         }
@@ -305,15 +299,6 @@ void FsMutationsDataReader::deleteINodeJSON(FsMutationRow &row, stringstream &ou
     // update could be used and set operation to delete instead of add
     opWriter.String("delete");
     opWriter.StartObject();
-
-    if (mHopsworksEnalbed) {
-        // set project (rounting) and dataset (parent) ids 
-        opWriter.String("_parent");
-        opWriter.Int(row.mDatasetId);
-
-        opWriter.String("_routing");
-        opWriter.Int(mPDICache->getProjectId(row.mDatasetId));
-    }
 
     opWriter.String("_id");
     opWriter.Int(row.mInodeId);

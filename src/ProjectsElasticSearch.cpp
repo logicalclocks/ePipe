@@ -33,14 +33,13 @@ static string getAccString(Accumulator acc){
     return out.str();
 }
 
-ProjectsElasticSearch::ProjectsElasticSearch(string elastic_addr, string index, string proj_type,
-        string ds_type, string inode_type, int time_to_wait_before_inserting, 
+ProjectsElasticSearch::ProjectsElasticSearch(string elastic_addr, string index,
+        int time_to_wait_before_inserting, 
         int bulk_size, const bool stats, MConn conn) : ElasticSearchBase(elastic_addr, time_to_wait_before_inserting, bulk_size),
-        mIndex(index), mProjectType(proj_type), mDatasetType(ds_type), mInodeType(inode_type),
+        mIndex(index),
         mStats(stats), mConn(conn), mTotalNumOfEventsProcessed(0),
         mTotalNumOfBulksProcessed(0), mIsFirstEventArrived(false){
-
-    mElasticBulkAddr = mElasticAddr + "/" + mIndex + "/" + mInodeType + "/_bulk";
+    mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
 
@@ -133,101 +132,32 @@ void ProjectsElasticSearch::stats(FSBulk bulk, ptime t_elastic_done) {
     mTotalNumOfBulksProcessed++;
 }
 
-const char* ProjectsElasticSearch::getIndex() {
-    return mIndex.c_str();
+const string ProjectsElasticSearch::getProjectType() {
+    return "proj";
 }
 
-const char* ProjectsElasticSearch::getProjectType() {
-    return mProjectType.c_str();
+const string ProjectsElasticSearch::getDatasetType() {
+    return "ds";
 }
 
-const char* ProjectsElasticSearch::getDatasetType() {
-    return mDatasetType.c_str();
+const string ProjectsElasticSearch::getINodeType() {
+    return "inode";
 }
 
-const char* ProjectsElasticSearch::getINodeType() {
-    return mInodeType.c_str();
-}
-
-bool ProjectsElasticSearch::addProject(int projectId, string json) {
-    string url = getElasticSearchUpdateDocUrl(mIndex, mProjectType, projectId);
+bool ProjectsElasticSearch::addDoc(int inodeId, string json) {
+    string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
     return elasticSearchHttpRequest(HTTP_POST, url, json);
 }
 
-bool ProjectsElasticSearch::deleteProject(int projectId) {
-    string deleteProjUrl = getElasticSearchUrlOnDoc(mIndex, mProjectType, projectId);
-    return elasticSearchHttpRequest(HTTP_DELETE, deleteProjUrl, string());
+
+bool ProjectsElasticSearch::deleteDocsByQuery(string json) {
+    string deleteProjUrl = getElasticSearchDeleteByQuery(mIndex);
+    return elasticSearchHttpRequest(HTTP_POST, deleteProjUrl, json);
 }
 
-bool ProjectsElasticSearch::deleteProjectChildren(int projectId, string json) {
-    string deteteProjectChildren = getElasticSearchDeleteByQueryUrl(mIndex, projectId);
-    return elasticSearchHttpRequest(HTTP_DELETE, deteteProjectChildren, json);
-}
-
-bool ProjectsElasticSearch::addDataset(int projectId, int datasetId, string json) {
-    string url = getElasticSearchUpdateDocUrl(mIndex, mDatasetType, datasetId, projectId);
+bool ProjectsElasticSearch::deleteSchemaForINode(int inodeId, string json) {
+    string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
     return elasticSearchHttpRequest(HTTP_POST, url, json);
-}
-
-bool ProjectsElasticSearch::deleteDataset(int projectId, int datasetId) {
-    string deleteDatasetUrl = getElasticSearchDeleteDocUrl(mIndex, mDatasetType, datasetId, projectId);
-    return elasticSearchHttpRequest(HTTP_DELETE, deleteDatasetUrl, string());
-}
-
-bool ProjectsElasticSearch::deleteDatasetChildren(int projectId, int datasetId, string json) {
-    string deteteDatasetChildren = getElasticSearchDeleteByQueryUrl(mIndex, datasetId, projectId);
-    return elasticSearchHttpRequest(HTTP_DELETE, deteteDatasetChildren, json);
-}
-
-bool ProjectsElasticSearch::deleteSchemaForINode(int projectId, int datasetId, int inodeId, string json) {
-    string url = getElasticSearchUpdateDocUrl(mIndex, (inodeId == datasetId ? mDatasetType : mInodeType), inodeId, datasetId, projectId);
-    return elasticSearchHttpRequest(HTTP_POST, url, json);
-}
-
-string ProjectsElasticSearch::getElasticSearchUrlonIndex(string index) {
-    string str = mElasticAddr + "/" + index;
-    return str;
-}
-
-string ProjectsElasticSearch::getElasticSearchUrlOnDoc(string index, string type, int doc) {
-    stringstream out;
-    out << getElasticSearchUrlonIndex(index) << "/" << type << "/" << doc;
-    return out.str();
-}
-
-string ProjectsElasticSearch::getElasticSearchUpdateDocUrl(string index, string type, int doc) {
-    string str = getElasticSearchUrlOnDoc(index, type, doc) + "/_update";
-    return str;
-}
-
-string ProjectsElasticSearch::getElasticSearchUpdateDocUrl(string index, string type, int doc, int parent) {
-    stringstream out;
-    out << getElasticSearchUpdateDocUrl(index, type, doc) << "?parent=" << parent;
-    return out.str();
-}
-
-string ProjectsElasticSearch::getElasticSearchUpdateDocUrl(string index, string type, int doc, int parent, int routing) {
-    stringstream out;
-    out << getElasticSearchUpdateDocUrl(index, type, doc, parent) << "&routing=" << routing;
-    return out.str();
-}
-
-string ProjectsElasticSearch::getElasticSearchDeleteDocUrl(string index, string type, int doc, int parent) {
-    stringstream out;
-    out << getElasticSearchUrlOnDoc(index, type, doc) << "?parent=" << parent;
-    return out.str();
-}
-
-string ProjectsElasticSearch::getElasticSearchDeleteByQueryUrl(string index, int routing) {
-    stringstream out;
-    out << getElasticSearchUrlonIndex(index) << "/_query" << "?routing=" << routing;
-    return out.str();
-}
-
-string ProjectsElasticSearch::getElasticSearchDeleteByQueryUrl(string index, int parent, int routing) {
-    stringstream out;
-    out << getElasticSearchDeleteByQueryUrl(index, routing) << "&parent=" << parent;
-    return out.str();
 }
 
 ProjectsElasticSearch::~ProjectsElasticSearch() {

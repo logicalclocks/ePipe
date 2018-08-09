@@ -43,14 +43,10 @@ int main(int argc, char** argv) {
     
     bool hopsworks = true;
     string elastic_index = "projects";
-    string elastic_project_type = "proj";
-    string elastic_dataset_type = "ds";
-    string elastic_inode_type = "inode";
     int elastic_batch_size = 5000;
     int elastic_issue_time = 5000;
     
     string elastic_provenance_index = "provenance";
-    string elastic_provenance_type = "inode";
     
     int lru_cap = DEFAULT_MAX_CAPACITY;
     bool recovery = true;
@@ -72,11 +68,7 @@ int main(int argc, char** argv) {
             ("elastic_addr", po::value<string>(&elastic_addr)->default_value(elastic_addr), "ip and port of the elasticsearch server")
             ("hopsworks", po::value<bool>(&hopsworks)->default_value(hopsworks), "enable or disable hopsworks, which will use grandparents to index inodes and metadata")
             ("index", po::value<string>(&elastic_index)->default_value(elastic_index), "Elastic index to add the data to.")
-            ("project_type", po::value<string>(&elastic_project_type)->default_value(elastic_project_type), "Elastic type for projects, only used when hopsworks is enabled.")
-            ("dataset_type", po::value<string>(&elastic_dataset_type)->default_value(elastic_dataset_type), "Elastic type for datasets, only used when hopsworks is enabled.")
-            ("inode_type", po::value<string>(&elastic_inode_type)->default_value(elastic_inode_type), "Elastic type for inodes.")
             ("provenance_index", po::value<string>(&elastic_provenance_index)->default_value(elastic_provenance_index), "Elastic index to add the provenance data to.")
-            ("provenance_type", po::value<string>(&elastic_provenance_type)->default_value(elastic_provenance_type), "Elastic type for Provenance.")
             ("elastic_batch", po::value<int>(&elastic_batch_size)->default_value(elastic_batch_size), "Elastic batch size in bytes for bulk requests")
             ("ewait_time", po::value<int>(&elastic_issue_time)->default_value(elastic_issue_time), "time to wait in miliseconds before issuing a bulk request to Elasticsearch if the batch size wasn't reached")
             ("lru_cap", po::value<int>(&lru_cap)->default_value(lru_cap), "LRU Cache max capacity")
@@ -132,8 +124,8 @@ int main(int argc, char** argv) {
 
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(), 
             meta_database_name.c_str(), mutations_tu, schamebased_tu, schemaless_tu, provenance_tu,
-            poll_maxTimeToWait, elastic_addr, hopsworks, elastic_index, elastic_provenance_index, elastic_project_type, 
-            elastic_dataset_type, elastic_inode_type, elastic_provenance_type, elastic_batch_size, elastic_issue_time,
+            poll_maxTimeToWait, elastic_addr, hopsworks, elastic_index, elastic_provenance_index,
+            elastic_batch_size, elastic_issue_time,
             lru_cap, recovery, stats, barrier);
     notifer->start();
 
