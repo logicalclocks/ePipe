@@ -28,47 +28,53 @@
 #include "queue"
 
 template<typename Data>
-class ConcurrentQueue{
+class ConcurrentQueue {
 public:
-    ConcurrentQueue();
-    void push(Data data);
-    void wait_and_pop(Data &result);
-    bool empty();
-    virtual ~ConcurrentQueue();
+  ConcurrentQueue();
+  void push(Data data);
+  void wait_and_pop(Data &result);
+  bool empty();
+  unsigned int size();
+  virtual ~ConcurrentQueue();
 private:
-    std::queue<Data> mQueue;
-    mutable boost::mutex mLock;
-    boost::condition_variable mQueueUpdated;
+  std::queue<Data> mQueue;
+  mutable boost::mutex mLock;
+  boost::condition_variable mQueueUpdated;
 };
-
 
 template<typename Data>
 ConcurrentQueue<Data>::ConcurrentQueue() {
 }
 
 template<typename Data>
-void ConcurrentQueue<Data>::push(Data data){
-    boost::mutex::scoped_lock lock(mLock);
-    mQueue.push(data);
-    lock.unlock();
-    mQueueUpdated.notify_one();
+void ConcurrentQueue<Data>::push(Data data) {
+  boost::mutex::scoped_lock lock(mLock);
+  mQueue.push(data);
+  lock.unlock();
+  mQueueUpdated.notify_one();
 }
 
 template<typename Data>
-void ConcurrentQueue<Data>::wait_and_pop(Data& result){
-    boost::mutex::scoped_lock lock(mLock);
-    while(mQueue.empty()){
-        mQueueUpdated.wait(lock);
-    }
-    result = mQueue.front();
-    mQueue.pop();
-    
+void ConcurrentQueue<Data>::wait_and_pop(Data& result) {
+  boost::mutex::scoped_lock lock(mLock);
+  while (mQueue.empty()) {
+    mQueueUpdated.wait(lock);
+  }
+  result = mQueue.front();
+  mQueue.pop();
+
 }
 
 template<typename Data>
-bool ConcurrentQueue<Data>::empty(){
-    boost::mutex::scoped_lock lock(mLock);
-    return mQueue.empty();
+bool ConcurrentQueue<Data>::empty() {
+  boost::mutex::scoped_lock lock(mLock);
+  return mQueue.empty();
+}
+
+template<typename Data>
+unsigned int ConcurrentQueue<Data>::size() {
+  boost::mutex::scoped_lock lock(mLock);
+  return mQueue.size();
 }
 
 template<typename Data>

@@ -37,54 +37,50 @@
 
 namespace bc = boost::accumulators;
 
-typedef bc::accumulator_set<double, bc::stats<bc::tag::mean, bc::tag::min, bc::tag::max> >  Accumulator;
+typedef bc::accumulator_set<double, bc::stats<bc::tag::mean, bc::tag::min, bc::tag::max> > Accumulator;
 
-struct FSKeys{
-    UISet mMetaPKs;
-    FPK mFSPKs;
+struct FSKeys {
+  UISet mMetaPKs;
+  FPK mFSPKs;
 };
 
 typedef Bulk<FSKeys> FSBulk;
 
-class ProjectsElasticSearch : public ElasticSearchBase<FSKeys>{
+class ProjectsElasticSearch : public ElasticSearchBase<FSKeys> {
 public:
-    ProjectsElasticSearch(string elastic_addr, string index, 
-            int time_to_wait_before_inserting, int bulk_size,
-            const bool stats, MConn conn);
+  ProjectsElasticSearch(string elastic_addr, string index,
+          int time_to_wait_before_inserting, int bulk_size,
+          const bool stats, MConn conn);
 
-    bool addDoc(int inodeId, string json);
-    bool deleteDocsByQuery(string json);
-    
-    bool deleteSchemaForINode(int inodeId, string json);
-    
-    static const string getProjectType();
-    static const string getDatasetType();
-    static const string getINodeType();
-    
-    virtual ~ProjectsElasticSearch();
+  bool addDoc(int inodeId, string json);
+  bool addBulk(string json);
+  bool deleteDocsByQuery(string json);
+  bool deleteSchemaForINode(int inodeId, string json);
+
+  virtual ~ProjectsElasticSearch();
 private:
-    const string mIndex;
-    const bool mStats;
+  const string mIndex;
+  const bool mStats;
 
-    string mElasticBulkAddr;
+  string mElasticBulkAddr;
 
-    MConn mConn;
+  MConn mConn;
 
-    Accumulator mBatchingAcc;
-    Accumulator mWaitTimeBeforeProcessingAcc;
-    Accumulator mProcessingAcc;
-    Accumulator mWaitTimeUntillElasticCalledAcc;
-    Accumulator mTotalTimePerEventAcc;
-    Accumulator mTotalTimePerBulkAcc;
-    long mTotalNumOfEventsProcessed;
-    long mTotalNumOfBulksProcessed;
-    ptime mFirstEventArrived;
-    bool mIsFirstEventArrived;
+  Accumulator mBatchingAcc;
+  Accumulator mWaitTimeBeforeProcessingAcc;
+  Accumulator mProcessingAcc;
+  Accumulator mWaitTimeUntillElasticCalledAcc;
+  Accumulator mTotalTimePerEventAcc;
+  Accumulator mTotalTimePerBulkAcc;
+  long mTotalNumOfEventsProcessed;
+  long mTotalNumOfBulksProcessed;
+  ptime mFirstEventArrived;
+  bool mIsFirstEventArrived;
 
-    virtual void process(vector<FSBulk>* bulks);
+  virtual void process(vector<FSBulk>* bulks);
 
-    void stats(vector<FSBulk>* bulks);
-    void stats(FSBulk bulk, ptime t_elastic_done);
+  void stats(vector<FSBulk>* bulks);
+  void stats(FSBulk bulk, ptime t_elastic_done);
 };
 
 #endif /* PROJECTSELASTICSEARCH_H */

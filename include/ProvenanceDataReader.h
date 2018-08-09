@@ -24,16 +24,27 @@
 #ifndef PROVENANCEDATAREADER_H
 #define PROVENANCEDATAREADER_H
 
-#include "NdbDataReader.h"
+#include "NdbDataReaders.h"
 #include "ProvenanceElasticSearch.h"
 
-class ProvenanceDataReader : public NdbDataReader<ProvenanceRow, SConn, PKeys>{
+class ProvenanceDataReader : public NdbDataReader<ProvenanceRow, SConn, PKeys> {
 public:
-    ProvenanceDataReader(SConn* connections, const int num_readers, const bool hopsworks, 
-            ProvenanceElasticSearch* elastic, ProjectDatasetINodeCache* cache);
-    virtual ~ProvenanceDataReader();
+  ProvenanceDataReader(SConn connection, const bool hopsworks,
+          ProvenanceElasticSearch* elastic);
+  virtual ~ProvenanceDataReader();
 private:
-    virtual void processAddedandDeleted(SConn conn, Pq* data_batch, PBulk& bulk);
+  virtual void processAddedandDeleted(Pq* data_batch, PBulk& bulk);
+};
+
+class ProvenanceDataReaders :  public NdbDataReaders<ProvenanceRow, SConn, PKeys>{
+  public:
+    ProvenanceDataReaders(SConn* connections, int num_readers,const bool hopsworks,
+          ProvenanceElasticSearch* elastic){
+      NdbDataReaders();
+      for(int i=0; i<num_readers; i++){
+        mDataReaders.push_back(new ProvenanceDataReader(connections[i], hopsworks, elastic));
+      }
+    }
 };
 
 #endif /* PROVENANCEDATAREADER_H */

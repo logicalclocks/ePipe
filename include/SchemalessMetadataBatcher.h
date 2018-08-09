@@ -32,11 +32,11 @@
 class SchemalessMetadataBatcher : public RCBatcher<MetadataLogEntry, MConn, FSKeys> {
 public:
 
-    SchemalessMetadataBatcher(MetadataLogTailer* table_tailer,
-            SchemalessMetadataReader* data_reader, const int time_before_issuing_ndb_reqs,
-            const int batch_size) : RCBatcher<MetadataLogEntry, MConn, FSKeys>(table_tailer,
-    data_reader, time_before_issuing_ndb_reqs, batch_size, Schemaless) {
-    }
+  SchemalessMetadataBatcher(MetadataLogTailer* table_tailer,
+          SchemalessMetadataReaders* data_reader, const int time_before_issuing_ndb_reqs,
+          const int batch_size) : RCBatcher<MetadataLogEntry, MConn, FSKeys>(table_tailer,
+  data_reader, time_before_issuing_ndb_reqs, batch_size, Schemaless) {
+  }
 };
 
 

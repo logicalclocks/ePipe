@@ -26,31 +26,37 @@
 #define FSMUTATIONSDATAREADER_H
 
 #include "FsMutationsTableTailer.h"
-#include "NdbDataReader.h"
 #include "ProjectsElasticSearch.h"
+#include "tables/INodeTable.h"
+#include "tables/DatasetTable.h"
+#include "NdbDataReaders.h"
 
-typedef vector<Row> Rows;
 
-class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn, FSKeys>{
+class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn, FSKeys> {
 public:
-    FsMutationsDataReader(MConn* connections, const int num_readers, const bool hopsworks, 
-            ProjectsElasticSearch* elastic, ProjectDatasetINodeCache* cache, const int lru_cap);
-    virtual ~FsMutationsDataReader();
-private:    
-    Cache<int, string> mUsersCache;
-    Cache<int, string> mGroupsCache;
-        
-    virtual void processAddedandDeleted(MConn connection, Fmq* data_batch, FSBulk& bulk);
-    void updateProjectIds(Ndb* metaConnection, Fmq* data_batch);
-    
-    void readINodes(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Fmq* data_batch, Rows& inodes);
-    void getUsersAndGroups(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, Rows& inodes);
-    UIRowMap getUsersFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
-    UIRowMap getGroupsFromDB(const NdbDictionary::Dictionary* database, NdbTransaction* transaction, UISet ids);
-    
-    void createJSON(Fmq* pending, Rows& inodes, FSBulk& bulk);
-    void deleteINodeJSON(FsMutationRow &row, stringstream &out);
+  FsMutationsDataReader(MConn connection, const bool hopsworks,
+          ProjectsElasticSearch* elastic, const int lru_cap);
+  virtual ~FsMutationsDataReader();
+private:
+  INodeTable mInodesTable;
+  DatasetTable mDatasetTable;
+
+  virtual void processAddedandDeleted(Fmq* data_batch, FSBulk& bulk);
+
+  void createJSON(Fmq* pending, INodeMap& inodes, FSBulk& bulk);
 };
+
+class FsMutationsDataReaders : public NdbDataReaders<FsMutationRow, MConn, FSKeys>{
+public:
+  FsMutationsDataReaders(MConn* connections, int num_readers, const bool hopsworks,
+          ProjectsElasticSearch* elastic, const int lru_cap){
+    NdbDataReaders();
+    for(int i=0; i< num_readers; i++){
+      mDataReaders.push_back(new FsMutationsDataReader(connections[i], hopsworks, elastic, lru_cap));
+    }
+  }
+};
+
 
 #endif /* FSMUTATIONSDATAREADER_H */
 

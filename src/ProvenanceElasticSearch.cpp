@@ -23,34 +23,34 @@
 
 #include "ProvenanceElasticSearch.h"
 
-ProvenanceElasticSearch::ProvenanceElasticSearch(string elastic_addr, 
+ProvenanceElasticSearch::ProvenanceElasticSearch(string elastic_addr,
         string index, int time_to_wait_before_inserting,
-        int bulk_size, const bool stats, SConn conn) : 
-ElasticSearchBase(elastic_addr,time_to_wait_before_inserting,bulk_size), 
-        mIndex(index), mStats(stats), mConn(conn){
-    mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
+        int bulk_size, const bool stats, SConn conn) :
+ElasticSearchBase(elastic_addr, time_to_wait_before_inserting, bulk_size),
+mIndex(index), mStats(stats), mConn(conn) {
+  mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
-void ProvenanceElasticSearch::process(vector<PBulk>* bulks){
-    PKeys keys;
-    string batch;
-    for (vector<PBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
-        PBulk bulk = *it;
-        batch.append(bulk.mJSON);
-        keys.insert(keys.end(), bulk.mPKs.begin(), bulk.mPKs.end());
+void ProvenanceElasticSearch::process(vector<PBulk>* bulks) {
+  PKeys keys;
+  string batch;
+  for (vector<PBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
+    PBulk bulk = *it;
+    batch.append(bulk.mJSON);
+    keys.insert(keys.end(), bulk.mPKs.begin(), bulk.mPKs.end());
+  }
+
+  //TODO: handle failures
+  if (elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch)) {
+    if (!keys.empty()) {
+      ProvenanceLogTable().removeLogs(mConn, keys);
     }
 
-    //TODO: handle failures
-    if(elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch)){
-        if(!keys.empty()){
-            ProvenanceTableTailer::removeLogs(mConn, keys);
-        }
-
-    }
-   //TODO: stats
+  }
+  //TODO: stats
 }
 
-ProvenanceElasticSearch::~ProvenanceElasticSearch(){
-    
+ProvenanceElasticSearch::~ProvenanceElasticSearch() {
+
 }
 

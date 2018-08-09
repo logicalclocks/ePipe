@@ -30,6 +30,21 @@
 #include "boost/bimap/unordered_set_of.hpp"
 #include "boost/optional.hpp"
 
+template<typename T>
+class CacheSingleton {
+public:
+
+  static T& getInstance(const int lru_cap = DEFAULT_MAX_CAPACITY, const char* prefix = "") {
+    static T instance(lru_cap, prefix);
+    return instance;
+  }
+private:
+
+  CacheSingleton() {
+  }
+  CacheSingleton(CacheSingleton const&);
+  void operator=(CacheSingleton const&);
+};
 
 /*
  * LRU Cache based on the design described in http://timday.bitbucket.org/lru.html
@@ -37,128 +52,127 @@
 template<typename Key, typename Value>
 class Cache {
 public:
-    
-    typedef boost::bimaps::bimap<boost::bimaps::unordered_set_of<Key>,
-            boost::bimaps::list_of<Value> > CacheContainer;
-    
-    Cache();
-    Cache(const int max_capacity);
-    Cache(const int max_capacity, const char* trace_prefix);
-    void put(Key key, Value value);
-    boost::optional<Value> get(Key key);
-    void remove(Key key);
-    bool contains(Key key);
-    void stats();
-    virtual ~Cache();
-        
+
+  typedef boost::bimaps::bimap<boost::bimaps::unordered_set_of<Key>,
+  boost::bimaps::list_of<Value> > CacheContainer;
+
+  Cache();
+  Cache(const int max_capacity);
+  Cache(const int max_capacity, const char* trace_prefix);
+  void put(Key key, Value value);
+  boost::optional<Value> get(Key key);
+  void remove(Key key);
+  bool contains(Key key);
+  void stats();
+  virtual ~Cache();
+
 private:
-    const int mCapacity;
-    const char* mTracePrefix;
-    CacheContainer mCache;
-    
-    int mHits;
-    int mMisses;
-    
-    int mEvictions;
-    int mInserts;
-    
-    mutable boost::mutex mLock;
-    
+  const int mCapacity;
+  const char* mTracePrefix;
+  CacheContainer mCache;
+
+  int mHits;
+  int mMisses;
+
+  int mEvictions;
+  int mInserts;
+
+  mutable boost::mutex mLock;
+
 };
 
 template<typename Key, typename Value>
-Cache<Key,Value>::Cache() : mCapacity(DEFAULT_MAX_CAPACITY), mTracePrefix(""),
-        mHits(0), mMisses(0), mEvictions(0), mInserts(0) {
-    
+Cache<Key, Value>::Cache() : mCapacity(DEFAULT_MAX_CAPACITY), mTracePrefix(""),
+mHits(0), mMisses(0), mEvictions(0), mInserts(0) {
+  LOG_INFO(mTracePrefix << " Cache created with Capacity of " << mCapacity);
 }
 
 template<typename Key, typename Value>
-Cache<Key,Value>::Cache(const int max_capacity) : mCapacity(max_capacity),
-        mTracePrefix(""), mHits(0), mMisses(0), mEvictions(0), mInserts(0){
-    
+Cache<Key, Value>::Cache(const int max_capacity) : mCapacity(max_capacity),
+mTracePrefix(""), mHits(0), mMisses(0), mEvictions(0), mInserts(0) {
+  LOG_INFO(mTracePrefix << " Cache created with Capacity of " << mCapacity);
 }
 
 template<typename Key, typename Value>
-Cache<Key,Value>::Cache(const int max_capacity, const char* trace_prefix) 
-    : mCapacity(max_capacity), mTracePrefix(trace_prefix), mHits(0), mMisses(0),
-        mEvictions(0), mInserts(0){
-    
+Cache<Key, Value>::Cache(const int max_capacity, const char* trace_prefix)
+: mCapacity(max_capacity), mTracePrefix(trace_prefix), mHits(0), mMisses(0),
+mEvictions(0), mInserts(0) {
+  LOG_INFO(mTracePrefix << " Cache created with Capacity of " << mCapacity);
 }
 
 template<typename Key, typename Value>
-Cache<Key,Value>::~Cache(){
-    
+Cache<Key, Value>::~Cache() {
+
 }
 
 template<typename Key, typename Value>
-void Cache<Key,Value>::put(Key key, Value value){
-    LOG_TRACE("PUT " << mTracePrefix << " [" << key << "]");
-    boost::mutex::scoped_lock lock(mLock);
-    const typename CacheContainer::left_iterator it = mCache.left.find(key);
-    if(it == mCache.left.end()){
-        //new key
-        if(mCache.size() == mCapacity){
-            LOG_TRACE( "EVICT " << mTracePrefix << " [" << mCache.right.begin()->second << "]");
-            mCache.right.erase(mCache.right.begin());
-            mEvictions++;
-        }
-        mCache.insert(typename CacheContainer::value_type(key, value));
-        mInserts++;
-    }else{
-        //update to most recent
-        mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+void Cache<Key, Value>::put(Key key, Value value) {
+  LOG_TRACE("PUT " << mTracePrefix << " [" << key << "]");
+  boost::mutex::scoped_lock lock(mLock);
+  const typename CacheContainer::left_iterator it = mCache.left.find(key);
+  if (it == mCache.left.end()) {
+    //new key
+    if (mCache.size() == mCapacity) {
+      LOG_TRACE("EVICT " << mTracePrefix << " [" << mCache.right.begin()->second << "]");
+      mCache.right.erase(mCache.right.begin());
+      mEvictions++;
     }
+    mCache.insert(typename CacheContainer::value_type(key, value));
+    mInserts++;
+  } else {
+    //update to most recent
+    mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+  }
 }
 
 template<typename Key, typename Value>
-boost::optional<Value> Cache<Key,Value>::get(Key key){
-    LOG_TRACE("GET " << mTracePrefix << " [" << key << "]");
-    boost::mutex::scoped_lock lock(mLock);
-    const typename CacheContainer::left_iterator it = mCache.left.find(key);
-    if(it != mCache.left.end()){
-        //update to most recent
-        mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
-        mHits++;
-        return it->second;
-    }
-    mMisses++;
-    return boost::none;
+boost::optional<Value> Cache<Key, Value>::get(Key key) {
+  LOG_TRACE("GET " << mTracePrefix << " [" << key << "]");
+  boost::mutex::scoped_lock lock(mLock);
+  const typename CacheContainer::left_iterator it = mCache.left.find(key);
+  if (it != mCache.left.end()) {
+    //update to most recent
+    mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+    mHits++;
+    return it->second;
+  }
+  mMisses++;
+  return boost::none;
 }
 
 template<typename Key, typename Value>
-void Cache<Key,Value>::remove(Key key){
-    LOG_TRACE("REMOVE " << mTracePrefix << " [" << key << "] " << (mCache.size() - 1) << "/" << mCapacity);
-    boost::mutex::scoped_lock lock(mLock);
-    const typename CacheContainer::left_iterator it = mCache.left.find(key);
-    if(it != mCache.left.end()){
-        mCache.left.erase(it);
-    }
+void Cache<Key, Value>::remove(Key key) {
+  LOG_TRACE("REMOVE " << mTracePrefix << " [" << key << "] " << (mCache.size() - 1) << "/" << mCapacity);
+  boost::mutex::scoped_lock lock(mLock);
+  const typename CacheContainer::left_iterator it = mCache.left.find(key);
+  if (it != mCache.left.end()) {
+    mCache.left.erase(it);
+  }
 }
 
 template<typename Key, typename Value>
-bool Cache<Key,Value>::contains(Key key){
-    LOG_TRACE("CONTAINS " << mTracePrefix << " [" << key << "]");
-    boost::mutex::scoped_lock lock(mLock);
-    const typename CacheContainer::left_iterator it = mCache.left.find(key);
-    if(it != mCache.left.end()){
-        //update to most recent
-        mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
-        mHits++;
-        return true;
-    }
-    mMisses++;
-    return false;
+bool Cache<Key, Value>::contains(Key key) {
+  LOG_TRACE("CONTAINS " << mTracePrefix << " [" << key << "]");
+  boost::mutex::scoped_lock lock(mLock);
+  const typename CacheContainer::left_iterator it = mCache.left.find(key);
+  if (it != mCache.left.end()) {
+    //update to most recent
+    mCache.right.relocate(mCache.right.end(), mCache.project_right(it));
+    mHits++;
+    return true;
+  }
+  mMisses++;
+  return false;
 }
 
-
 template<typename Key, typename Value>
-void Cache<Key,Value>::stats(){
-    float hitsRate = (mHits * 100.0)/ (mHits + mMisses);
-    float missesRate = ( mMisses * 100.0) / (mHits + mMisses);
-    float evictionsRate = (mEvictions * 100.0) / mInserts;
-    
-    LOG_INFO(mTracePrefix << " Cache Stats: Hits=" << hitsRate << ", Misses=" 
-            << missesRate << ", EvictionsRate=" << evictionsRate << ", Size=" << mCache.size() << "/" << mCapacity );
+void Cache<Key, Value>::stats() {
+  float hitsRate = (mHits * 100.0) / (mHits + mMisses);
+  float missesRate = (mMisses * 100.0) / (mHits + mMisses);
+  float evictionsRate = (mEvictions * 100.0) / mInserts;
+
+  LOG_INFO(mTracePrefix << " Cache Stats: Hits=" << hitsRate << ", Misses="
+          << missesRate << ", EvictionsRate=" << evictionsRate << ", Size=" << mCache.size() << "/" << mCapacity);
 }
 #endif /* CACHE_H */
 

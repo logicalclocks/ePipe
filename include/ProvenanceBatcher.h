@@ -27,13 +27,14 @@
 #include "ProvenanceTableTailer.h"
 #include "ProvenanceDataReader.h"
 
-class ProvenanceBatcher : public RCBatcher<ProvenanceRow, SConn, PKeys>{
+class ProvenanceBatcher : public RCBatcher<ProvenanceRow, SConn, PKeys> {
 public:
-    ProvenanceBatcher(ProvenanceTableTailer* table_tailer, ProvenanceDataReader* data_reader, 
-            const int time_before_issuing_ndb_reqs, const int batch_size) 
-    : RCBatcher(table_tailer, data_reader, time_before_issuing_ndb_reqs, batch_size){
-                
-    }
+
+  ProvenanceBatcher(ProvenanceTableTailer* table_tailer, ProvenanceDataReaders* data_reader,
+          const int time_before_issuing_ndb_reqs, const int batch_size)
+  : RCBatcher(table_tailer, data_reader, time_before_issuing_ndb_reqs, batch_size) {
+
+  }
 
 };
 

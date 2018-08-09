@@ -41,10 +41,14 @@
 #include "vector"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#include "rapidjson/document.h"
 #include "Logger.h"
+#include "queue"
 
 using namespace std;
 
+typedef queue<int> IQueue;
+typedef vector<int> IVec;
 typedef boost::unordered_set<int> UISet;
 typedef boost::unordered_map<int, int> UIMap;
 
@@ -56,67 +60,66 @@ typedef boost::unordered_map<int, int> UIMap;
 #define WAIT_UNTIL_READY 30
 #define DEFAULT_MAX_CAPACITY 10000
 
-enum MetadataType{
-    Schemabased = 0,
-    Schemaless = 1
+enum MetadataType {
+  Schemabased = 0,
+  Schemaless = 1
 };
 
-enum OperationType{
-    Add = 0,
-    Delete = 1,
-    Update = 2,
+enum OperationType {
+  Add = 0,
+  Delete = 1,
+  Update = 2,
 };
 
-enum OpsLogOn{
-    Dataset = 0,
-    Project = 1,
-    Schema = 2
+enum OpsLogOn {
+  Dataset = 0,
+  Project = 1,
+  Schema = 2
 };
 
 struct TableUnitConf {
-    int mWaitTime;
-    int mBatchSize;
-    int mNumReaders;
+  int mWaitTime;
+  int mBatchSize;
+  int mNumReaders;
 
-    TableUnitConf(){
-        mWaitTime = 0;
-        mBatchSize = 0;
-        mNumReaders = 0;
-    }
-    
-    TableUnitConf(int wait_time, int batch_size, int num_readers) {
-        mWaitTime = wait_time;
-        mBatchSize = batch_size;
-        mNumReaders = num_readers;
-    }
+  TableUnitConf() {
+    mWaitTime = 0;
+    mBatchSize = 0;
+    mNumReaders = 0;
+  }
 
-    vector<int> getVector() {
-        vector<int> d;
-        d.push_back(mWaitTime);
-        d.push_back(mBatchSize);
-        d.push_back(mNumReaders);
-        return d;
-    }
+  TableUnitConf(int wait_time, int batch_size, int num_readers) {
+    mWaitTime = wait_time;
+    mBatchSize = batch_size;
+    mNumReaders = num_readers;
+  }
 
-    void update(vector<int> v) {
-        if (v.size() == 3) {
-            mWaitTime = v[0];
-            mBatchSize = v[1];
-            mNumReaders = v[2];
-        }
-    }
+  vector<int> getVector() {
+    vector<int> d;
+    d.push_back(mWaitTime);
+    d.push_back(mBatchSize);
+    d.push_back(mNumReaders);
+    return d;
+  }
 
-    string getString() {
-        stringstream str;
-        str << mWaitTime << " " << mBatchSize << " " << mNumReaders;
-        return str.str();
+  void update(vector<int> v) {
+    if (v.size() == 3) {
+      mWaitTime = v[0];
+      mBatchSize = v[1];
+      mNumReaders = v[2];
     }
-    
-    bool isEnabled() const{
-        return mWaitTime > 0 && mBatchSize > 0 && mNumReaders > 0;
-    }
+  }
+
+  string getString() {
+    stringstream str;
+    str << mWaitTime << " " << mBatchSize << " " << mNumReaders;
+    return str.str();
+  }
+
+  bool isEnabled() const {
+    return mWaitTime > 0 && mBatchSize > 0 && mNumReaders > 0;
+  }
 };
-
 
 #endif /* COMMON_H */
 
