@@ -28,6 +28,31 @@
 #include "ConcurrentPriorityQueue.h"
 #include "ConcurrentQueue.h"
 
+enum FsOpType {
+  FsAdd = 0,
+  FsDelete = 1,
+  FsUpdate = 2,
+  FsRename = 3,
+  FsChangeDataset = 4
+};
+
+inline static const char* FsOpTypeToStr(FsOpType optype) {
+  switch (optype) {
+    case FsAdd:
+      return "Add";
+    case FsUpdate:
+      return "Update";
+    case FsDelete:
+      return "Delete";
+    case FsRename:
+      return "Rename";
+    case FsChangeDataset:
+      return "ChangeDataset";
+    default:
+      return "Unkown";
+  }
+}
+
 struct FsMutationPK {
   int mDatasetId;
   int mInodeId;
@@ -47,7 +72,7 @@ struct FsMutationRow {
   int mParentId;
   string mInodeName;
   int mLogicalTime;
-  OperationType mOperation;
+  FsOpType mOperation;
 
   ptime mEventCreationTime;
 
@@ -64,7 +89,7 @@ struct FsMutationRow {
     stream << "ParentId = " << mParentId << endl;
     stream << "InodeName = " << mInodeName << endl;
     stream << "LogicalTime = " << mLogicalTime << endl;
-    stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
+    stream << "Operation = " << FsOpTypeToStr(mOperation) << endl;
     stream << "-------------------------" << endl;
     return stream.str();
   }
@@ -137,7 +162,7 @@ public:
     row.mPartitionId = value[3]->int32_value();
     row.mParentId = value[4]->int32_value();
     row.mInodeName = get_string(value[5]);
-    row.mOperation = static_cast<OperationType> (value[6]->int8_value());
+    row.mOperation = static_cast<FsOpType> (value[6]->int8_value());
     return row;
   }
 

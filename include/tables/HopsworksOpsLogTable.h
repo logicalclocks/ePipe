@@ -26,11 +26,49 @@
 
 #include "DBWatchTable.h"
 
+enum HopsworksOpType {
+  HopsworksAdd = 0,
+  HopsworksDelete = 1,
+  HopsworksUpdate = 2,
+};
+
+enum OpsLogOn {
+  Dataset = 0,
+  Project = 1,
+  Schema = 2
+};
+
+inline static const char* OpsLogOnToStr(OpsLogOn op) {
+  switch (op) {
+    case Dataset:
+      return "Dataset";
+    case Project:
+      return "Project";
+    case Schema:
+      return "Schema";
+    default:
+      return "Unkown";
+  }
+}
+
+inline static const char* HopsworksOpTypeToStr(HopsworksOpType optype) {
+  switch (optype) {
+    case HopsworksAdd:
+      return "Add";
+    case HopsworksUpdate:
+      return "Update";
+    case HopsworksDelete:
+      return "Delete";
+    default:
+      return "Unkown";
+  }
+}
+
 struct HopsworksOpRow {
   int mId;
   int mOpId;
   OpsLogOn mOpOn;
-  OperationType mOpType;
+  HopsworksOpType mOpType;
   int mProjectId;
   int mDatasetId;
   int mInodeId;
@@ -41,7 +79,7 @@ struct HopsworksOpRow {
             << "ID = " << mId << endl
             << "OpID = " << mOpId << endl
             << "OpOn = " << OpsLogOnToStr(mOpOn) << endl
-            << "OpType = " << OperationTypeToStr(mOpType) << endl
+            << "OpType = " << HopsworksOpTypeToStr(mOpType) << endl
             << "ProjectID = " << mProjectId << endl
             << "DatasetID = " << mDatasetId << endl
             << "INodeID = " << mInodeId;
@@ -70,7 +108,7 @@ public:
     //op_id is the dataset_id or project_id or schema_id depending on the operation type
     row.mOpId = value[1]->int32_value();
     row.mOpOn = static_cast<OpsLogOn> (value[2]->int8_value());
-    row.mOpType = static_cast<OperationType> (value[3]->int8_value());
+    row.mOpType = static_cast<HopsworksOpType> (value[3]->int8_value());
     row.mProjectId = value[4]->int32_value();
     row.mDatasetId = value[5]->int32_value();
     row.mInodeId = value[6]->int32_value();

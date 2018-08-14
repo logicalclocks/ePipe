@@ -32,6 +32,10 @@
 
 #define DOC_TYPE_INODE "inode"
 
+inline static bool requiresINode(FsMutationRow row){
+  return row.mOperation == FsAdd || row.mOperation == FsUpdate;
+}
+
 struct INodeRow {
   int mParentId;
   string mName;
@@ -44,7 +48,7 @@ struct INodeRow {
   string mGroupName;
   
   int mLogicalTime;
-  OperationType mOperation;
+  FsOpType mOperation;
   bool mIsDir;
   
   bool is_equal(ProjectRow proj){
@@ -142,6 +146,112 @@ struct INodeRow {
     out << sbDoc.GetString() << endl;
     return out.str();
   }
+  
+  static string to_rename_json(FsMutationRow row){
+    stringstream out;
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    opWriter.String("update");
+    opWriter.StartObject();
+
+    opWriter.String("_id");
+    opWriter.Int(row.mInodeId);
+
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+
+    out << sbOp.GetString() << endl;
+
+    rapidjson::StringBuffer sbDoc;
+    rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
+
+    docWriter.StartObject();
+    docWriter.String("doc");
+    docWriter.StartObject();
+
+    docWriter.String("parent_id");
+    docWriter.Int(row.mParentId);
+
+    docWriter.String("partition_id");
+    docWriter.Int(row.mPartitionId);
+
+    docWriter.String("name");
+    docWriter.String(row.mInodeName.c_str());
+
+    docWriter.String("operation");
+    docWriter.Int(row.mOperation);
+
+    docWriter.String("timestamp");
+    docWriter.Int(row.mLogicalTime);
+
+    docWriter.EndObject();
+
+    docWriter.String("doc_as_upsert");
+    docWriter.Bool(true);
+
+    docWriter.EndObject();
+
+    out << sbDoc.GetString() << endl;
+    return out.str();
+  }
+  
+  static string to_change_dataset_json(FsMutationRow row){
+    stringstream out;
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    opWriter.String("update");
+    opWriter.StartObject();
+
+    opWriter.String("_id");
+    opWriter.Int(row.mInodeId);
+
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+
+    out << sbOp.GetString() << endl;
+
+    rapidjson::StringBuffer sbDoc;
+    rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
+
+    docWriter.StartObject();
+    docWriter.String("doc");
+    docWriter.StartObject();
+
+    docWriter.String("dataset_id");
+    docWriter.Int(row.mDatasetId);
+
+    docWriter.String("timestamp");
+    docWriter.Int(row.mLogicalTime);
+
+    docWriter.EndObject();
+
+    docWriter.String("doc_as_upsert");
+    docWriter.Bool(true);
+
+    docWriter.EndObject();
+
+    out << sbDoc.GetString() << endl;
+    return out.str();
+  }
+  
+  static string to_json(FsMutationRow row){
+    if(row.mOperation == FsDelete){
+      return to_delete_json(row.mInodeId);
+    }else if(row.mOperation == FsRename){
+      return to_rename_json(row);
+    }else if(row.mOperation == FsChangeDataset){
+      return to_change_dataset_json(row);
+    }
+    return "";
+  }
 };
 
 typedef boost::unordered_map<int, INodeRow> INodeMap;
@@ -224,7 +334,7 @@ public:
     boost::unordered_map<int, FsMutationRow> mutationsByInode;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
-      if (row.mOperation == Delete) {
+      if (!requiresINode(row)) {
         continue;
       }
       mutationsByInode[row.mInodeId] = row;

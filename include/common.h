@@ -60,23 +60,6 @@ typedef boost::unordered_map<int, int> UIMap;
 #define WAIT_UNTIL_READY 30
 #define DEFAULT_MAX_CAPACITY 10000
 
-enum MetadataType {
-  Schemabased = 0,
-  Schemaless = 1
-};
-
-enum OperationType {
-  Add = 0,
-  Delete = 1,
-  Update = 2,
-};
-
-enum OpsLogOn {
-  Dataset = 0,
-  Project = 1,
-  Schema = 2
-};
-
 struct TableUnitConf {
   int mWaitTime;
   int mBatchSize;

@@ -36,7 +36,7 @@ struct SchemabasedMetadataEntry {
   FieldRow mField;
   TupleRow mTuple;
   string mMetadata;
-  OperationType mOperation;
+  HopsworksOpType mOperation;
 
   ptime mEventCreationTime;
 
@@ -68,7 +68,7 @@ struct SchemabasedMetadataEntry {
     stream << "FieldId = " << mField.mId << endl;
     stream << "TupleId = " << mTuple.mId << endl;
     stream << "Data = " << mMetadata << endl;
-    stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
+    stream << "Operation = " << HopsworksOpTypeToStr(mOperation) << endl;
     stream << "-------------------------" << endl;
     return stream.str();
   }
@@ -125,7 +125,7 @@ struct SchemabasedMetadataEntry {
       {
         try {
           int intVal = DONT_EXIST_INT();
-          if (mOperation != Delete) {
+          if (mOperation != HopsworksDelete) {
             intVal = boost::lexical_cast<int>(mMetadata);
           }
           docWriter.Int(intVal);
@@ -139,7 +139,7 @@ struct SchemabasedMetadataEntry {
       {
         try {
           double doubleVal = DONT_EXIST_INT();
-          if (mOperation != Delete) {
+          if (mOperation != HopsworksDelete) {
             doubleVal = boost::lexical_cast<double>(mMetadata);
           }
           docWriter.Double(doubleVal);
@@ -152,7 +152,7 @@ struct SchemabasedMetadataEntry {
       case TEXT:
       {
         string stringVal = mMetadata;
-        if (mOperation == Delete) {
+        if (mOperation == HopsworksDelete) {
           stringVal = DONT_EXIST_STR();
         }
         docWriter.String(stringVal.c_str());
@@ -222,7 +222,7 @@ public:
       
       schemaBasedQ.push_back(ml);
       
-      if (ml.mOperation == Delete) {
+      if (ml.mOperation == HopsworksDelete) {
         continue;
       }
       
@@ -248,7 +248,7 @@ public:
     int i=0;
     for(SchemabasedMq::iterator it=schemaBasedQ.begin(); it != schemaBasedQ.end(); ++it, i++){
       SchemabasedMetadataEntry row = *it;
-      if(row.mOperation != Delete){
+      if(row.mOperation != HopsworksDelete){
         SchemabasedMetadataEntry read = readFromDb[i];
         if(!read.is_equal(row)){
           LOG_WARN("Ignore " << row.to_string() << " since it seems to be deleted");

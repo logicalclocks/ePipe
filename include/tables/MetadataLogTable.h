@@ -25,8 +25,25 @@
 #define METADATALOGTABLE_H
 #include "DBWatchTable.h"
 #include "ConcurrentPriorityQueue.h"
+#include "HopsworksOpsLogTable.h"
 
 #define XATTR_FIELD_NAME "xattr"
+
+enum MetadataType {
+  Schemabased = 0,
+  Schemaless = 1
+};
+
+inline static const char* MetadataTypeToStr(MetadataType metaType) {
+  switch (metaType) {
+    case Schemabased:
+      return "SchemaBased";
+    case Schemaless:
+      return "SchemaLess";
+    default:
+      return "Unkown";
+  }
+}
 
 struct MetadataKey {
   int mPK1;
@@ -67,7 +84,7 @@ struct MetadataKeyHasher {
 struct MetadataLogEntry {
   int mId;
   MetadataKey mMetaPK;
-  OperationType mMetaOpType;
+  HopsworksOpType mMetaOpType;
   MetadataType mMetaType;
 
   ptime mEventCreationTime;
@@ -76,9 +93,9 @@ struct MetadataLogEntry {
     stringstream stream;
     stream << "-------------------------" << endl;
     stream << "Id = " << mId << endl;
-    stream << "MetaType = " << Utils::MetadataTypeToStr(mMetaType) << endl;
+    stream << "MetaType = " << MetadataTypeToStr(mMetaType) << endl;
     stream << "MetaPK = " << mMetaPK.to_string() << endl;
-    stream << "MetaOpType = " << Utils::OperationTypeToStr(mMetaOpType) << endl;
+    stream << "MetaOpType = " << HopsworksOpTypeToStr(mMetaOpType) << endl;
     stream << "-------------------------" << endl;
     return stream.str();
   }
@@ -117,7 +134,7 @@ public:
     int PK3 = value[3]->int32_value();
     row.mMetaPK = MetadataKey(PK1, PK2, PK3);
     row.mMetaType = static_cast<MetadataType> (value[4]->int8_value());
-    row.mMetaOpType = static_cast<OperationType> (value[5]->int8_value());
+    row.mMetaOpType = static_cast<HopsworksOpType> (value[5]->int8_value());
     return row;
   }
 
