@@ -55,44 +55,7 @@ namespace Utils {
     buf.append(b);
     return buf;
   }
-
-  inline static const char* OpsLogOnToStr(OpsLogOn op) {
-    switch (op) {
-      case Dataset:
-        return "Dataset";
-      case Project:
-        return "Project";
-      case Schema:
-        return "Schema";
-      default:
-        return "Unkown";
-    }
-  }
-
-  inline static const char* OperationTypeToStr(OperationType optype) {
-    switch (optype) {
-      case Add:
-        return "Add";
-      case Update:
-        return "Update";
-      case Delete:
-        return "Delete";
-      default:
-        return "Unkown";
-    }
-  }
-
-  inline static const char* MetadataTypeToStr(MetadataType metaType) {
-    switch (metaType) {
-      case Schemabased:
-        return "SchemaBased";
-      case Schemaless:
-        return "SchemaLess";
-      default:
-        return "Unkown";
-    }
-  }
-
+  
   inline static string to_string(UISet& set) {
     stringstream out;
     out << "[";

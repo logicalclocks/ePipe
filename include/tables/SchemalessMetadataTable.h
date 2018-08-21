@@ -35,7 +35,7 @@ struct SchemalessMetadataEntry {
   int mINodeId;
   int mParentId;
   string mJSONData;
-  OperationType mOperation;
+  HopsworksOpType mOperation;
   ptime mEventCreationTime;
 
   SchemalessMetadataEntry() {
@@ -79,15 +79,15 @@ struct SchemalessMetadataEntry {
     out << sbOp.GetString() << endl;
 
     switch (mOperation) {
-      case Add:
+      case HopsworksAdd:
         out << REMOVE_DOC_SCRIPT << endl;
         out << sbOp.GetString() << endl;
         out << upsertMetadata(mJSONData) << endl;
         break;
-      case Update:
+      case HopsworksUpdate:
         out << upsertMetadata(mJSONData) << endl;
         break;
-      case Delete:
+      case HopsworksDelete:
         out << REMOVE_DOC_SCRIPT << endl;
         break;
     }
@@ -121,7 +121,7 @@ struct SchemalessMetadataEntry {
     stream << "Id = " << mId << endl;
     stream << "INodeId = " << mParentId << endl;
     stream << "ParentId = " << mParentId << endl;
-    stream << "Operation = " << Utils::OperationTypeToStr(mOperation) << endl;
+    stream << "Operation = " << HopsworksOpTypeToStr(mOperation) << endl;
     stream << "Data = " << mJSONData << endl;
     stream << "-------------------------" << endl;
     return stream.str();
@@ -161,7 +161,7 @@ public:
       SchemalessMetadataEntry ml = SchemalessMetadataEntry(le);
       schemalessQ.push_back(ml);
       
-      if (ml.mOperation == Delete) {
+      if (ml.mOperation == HopsworksDelete) {
         continue;
       }
 
@@ -182,7 +182,7 @@ public:
     int i =0;
     for (SchemalessMq::iterator it = schemalessQ.begin(); it != schemalessQ.end(); ++it, i++) {
       SchemalessMetadataEntry row = *it;
-      if(row.mOperation != Delete){
+      if(row.mOperation != HopsworksDelete){
         SchemalessMetadataEntry read = readFromDB[i];
         if(!read.is_equal(row)){
           LOG_WARN("Ignore " << row.to_string() << " since it seems to be deleted");

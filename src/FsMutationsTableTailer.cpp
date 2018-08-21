@@ -37,18 +37,13 @@ FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeT
 }
 
 void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, FsMutationRow pre, FsMutationRow row) {
-  if (row.mOperation == Add || row.mOperation == Delete) {
-    mLock.lock();
-    mCurrentPriorityQueue->push(row);
-    int size = mCurrentPriorityQueue->size();
-    mLock.unlock();
+  mLock.lock();
+  mCurrentPriorityQueue->push(row);
+  int size = mCurrentPriorityQueue->size();
+  mLock.unlock();
 
-    LOG_DEBUG(" push inode [" << row.mInodeId << "] to queue[" << size << "], Op [" << row.mOperation << "]");
-
-  } else {
-    LOG_ERROR("Unknown Operation [" << row.mOperation << "] for " << " INode [" << row.mInodeId << "]");
-  }
-
+  LOG_DEBUG(" push inode [" << row.mInodeId << "] to queue[" << size << "], Op [" << FsOpTypeToStr(row.mOperation) << "]");
+  
   //    ptime t = EPOCH_TIME + boost::posix_time::milliseconds(row.mTimestamp);
   //    mTimeTakenForEventsToArrive += Utils::getTimeDiffInMilliseconds(t, row.mEventCreationTime);
   //    mNumOfEvents++;

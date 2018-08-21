@@ -41,7 +41,7 @@ void MetadataLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, 
     return;
   }
 
-  LOG_DEBUG(" push metalog " << row.mMetaPK.to_string() << " to queue, Op [" << Utils::OperationTypeToStr(row.mMetaOpType) << "]");
+  LOG_DEBUG(" push metalog " << row.mMetaPK.to_string() << " to queue, Op [" << HopsworksOpTypeToStr(row.mMetaOpType) << "]");
 }
 
 MetadataLogEntry MetadataLogTailer::consumeMultiQueue(int queue_id) {

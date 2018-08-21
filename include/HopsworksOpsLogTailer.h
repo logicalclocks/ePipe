@@ -42,15 +42,15 @@ private:
   HopsworksOpsLogTable mHopsworksLogTable;
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, HopsworksOpRow pre, HopsworksOpRow row);
 
-  bool handleDataset(int opId, OperationType opType, int datasetId, int projectId);
-  bool handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId);
+  bool handleDataset(int opId, HopsworksOpType opType, int datasetId, int projectId);
+  bool handleUpsertDataset(int opId, HopsworksOpType opType, int datasetId, int projectId);
   bool handleDeleteDataset(int datasetId);
 
-  bool handleProject(int projectId, int inodeId, OperationType opType);
+  bool handleProject(int projectId, int inodeId, HopsworksOpType opType);
   bool handleDeleteProject(int projectId);
-  bool handleUpsertProject(int projectId, int inodeId, OperationType opType);
+  bool handleUpsertProject(int projectId, int inodeId, HopsworksOpType opType);
 
-  bool handleSchema(int schemaId, OperationType opType, int inodeId);
+  bool handleSchema(int schemaId, HopsworksOpType opType, int inodeId);
   bool handleSchemaDelete(int schemaId, int inodeId);
 
   void removeLog(int pk);

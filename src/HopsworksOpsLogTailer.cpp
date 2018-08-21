@@ -53,24 +53,24 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
   }
 }
 
-bool HopsworksOpsLogTailer::handleDataset(int opId, OperationType opType,
+bool HopsworksOpsLogTailer::handleDataset(int opId, HopsworksOpType opType,
         int datasetId, int projectId) {
-  if (opType == Delete) {
+  if (opType == HopsworksDelete) {
     return handleDeleteDataset(datasetId);
   } else {
     return handleUpsertDataset(opId, opType, datasetId, projectId);
   }
 }
 
-bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, OperationType opType, int datasetId, int projectId) {
+bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType opType, int datasetId, int projectId) {
   DatasetRow row = mDatasetTable.get(mNdbConnection, opId);
   bool success = mElasticSearch->addDoc(datasetId, row.to_create_json());
   if (success) {
     switch (opType) {
-      case Add:
+      case HopsworksAdd:
         LOG_INFO("Add Dataset[" << datasetId << "]: Succeeded");
         break;
-      case Update:
+      case HopsworksUpdate:
         LOG_INFO("Update Dataset[" << datasetId << "]: Succeeded");
         break;
     }
@@ -91,8 +91,8 @@ bool HopsworksOpsLogTailer::handleDeleteDataset(int datasetId) {
   return success;
 }
 
-bool HopsworksOpsLogTailer::handleProject(int projectId, int inodeId, OperationType opType) {
-  if (opType == Delete) {
+bool HopsworksOpsLogTailer::handleProject(int projectId, int inodeId, HopsworksOpType opType) {
+  if (opType == HopsworksDelete) {
     return handleDeleteProject(projectId);
   } else {
     return handleUpsertProject(projectId, inodeId, opType);
@@ -112,16 +112,16 @@ bool HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
   return success;
 }
 
-bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, int inodeId, OperationType opType) {
+bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, int inodeId, HopsworksOpType opType) {
 
   ProjectRow row = mProjectTable.get(mNdbConnection, projectId);
   bool success = mElasticSearch->addDoc(inodeId, row.to_create_json());
   if (success) {
     switch (opType) {
-      case Add:
+      case HopsworksAdd:
         LOG_INFO("Add Project[" << projectId << "]: Succeeded");
         break;
-      case Update:
+      case HopsworksUpdate:
         LOG_INFO("Update Project[" << projectId << "]: Succeeded");
         break;
     }
@@ -131,11 +131,11 @@ bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, int inodeId, Oper
 
 }
 
-bool HopsworksOpsLogTailer::handleSchema(int schemaId, OperationType opType, int inodeId) {
-  if (opType == Delete) {
+bool HopsworksOpsLogTailer::handleSchema(int schemaId, HopsworksOpType opType, int inodeId) {
+  if (opType == HopsworksDelete) {
     return handleSchemaDelete(schemaId, inodeId);
   } else {
-    LOG_ERROR("Unsupported Schema Operation [" << Utils::OperationTypeToStr(opType) << "]. Only Delete is supported.");
+    LOG_ERROR("Unsupported Schema Operation [" << HopsworksOpTypeToStr(opType) << "]. Only Delete is supported.");
     return true;
   }
 }

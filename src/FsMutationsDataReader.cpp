@@ -57,9 +57,9 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes, FSBulk& b
     arrivalTimes[i] = row.mEventCreationTime;
     bulk.mPKs.mFSPKs.push_back(row.getPK());
 
-    if (row.mOperation == Delete) {
-      //Handle the delete
-      out << INodeRow::to_delete_json(row.mInodeId);
+    if (!requiresINode(row)) {
+      //Handle the delete, rename, and change dataset
+      out << INodeRow::to_json(row);
       out << endl;
       continue;
     }
