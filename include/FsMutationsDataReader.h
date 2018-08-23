@@ -34,8 +34,7 @@
 
 class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn, FSKeys> {
 public:
-  FsMutationsDataReader(MConn connection, const bool hopsworks,
-          ProjectsElasticSearch* elastic, const int lru_cap);
+  FsMutationsDataReader(MConn connection, const bool hopsworks, const int lru_cap);
   virtual ~FsMutationsDataReader();
 private:
   INodeTable mInodesTable;
@@ -49,10 +48,11 @@ private:
 class FsMutationsDataReaders : public NdbDataReaders<FsMutationRow, MConn, FSKeys>{
 public:
   FsMutationsDataReaders(MConn* connections, int num_readers, const bool hopsworks,
-          ProjectsElasticSearch* elastic, const int lru_cap){
-    NdbDataReaders();
+          ProjectsElasticSearch* elastic, const int lru_cap) : NdbDataReaders(elastic){
     for(int i=0; i< num_readers; i++){
-      mDataReaders.push_back(new FsMutationsDataReader(connections[i], hopsworks, elastic, lru_cap));
+      FsMutationsDataReader* dr = new FsMutationsDataReader(connections[i], hopsworks, lru_cap);
+      dr->start(i, this);
+      mDataReaders.push_back(dr);
     }
   }
 };

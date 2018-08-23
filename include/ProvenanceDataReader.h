@@ -29,8 +29,7 @@
 
 class ProvenanceDataReader : public NdbDataReader<ProvenanceRow, SConn, PKeys> {
 public:
-  ProvenanceDataReader(SConn connection, const bool hopsworks,
-          ProvenanceElasticSearch* elastic);
+  ProvenanceDataReader(SConn connection, const bool hopsworks);
   virtual ~ProvenanceDataReader();
 private:
   virtual void processAddedandDeleted(Pq* data_batch, PBulk& bulk);
@@ -39,10 +38,11 @@ private:
 class ProvenanceDataReaders :  public NdbDataReaders<ProvenanceRow, SConn, PKeys>{
   public:
     ProvenanceDataReaders(SConn* connections, int num_readers,const bool hopsworks,
-          ProvenanceElasticSearch* elastic){
-      NdbDataReaders();
+          ProvenanceElasticSearch* elastic) : NdbDataReaders(elastic){
       for(int i=0; i<num_readers; i++){
-        mDataReaders.push_back(new ProvenanceDataReader(connections[i], hopsworks, elastic));
+        ProvenanceDataReader* dr = new ProvenanceDataReader(connections[i], hopsworks);
+        dr->start(i, this);
+        mDataReaders.push_back(dr);
       }
     }
 };

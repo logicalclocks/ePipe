@@ -26,8 +26,8 @@
 #include "HopsworksOpsLogTailer.h"
 
 FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopsworks,
-        ProjectsElasticSearch* elastic, const int lru_cap)
-: NdbDataReader<FsMutationRow, MConn, FSKeys>(connection, hopsworks, elastic),
+        const int lru_cap)
+: NdbDataReader<FsMutationRow, MConn, FSKeys>(connection, hopsworks),
         mInodesTable(lru_cap), mDatasetTable(lru_cap) {
 }
 

@@ -32,8 +32,11 @@ class ConcurrentPriorityQueue {
 public:
   ConcurrentPriorityQueue();
   void push(Data data);
+  void top(Data& result);
+  void pop();
   void wait_and_pop(Data &result);
   bool empty();
+  int size();
   virtual ~ConcurrentPriorityQueue();
 private:
   boost::heap::priority_queue<Data, boost::heap::compare<DataCompartor> > mQueue;
@@ -65,10 +68,29 @@ void ConcurrentPriorityQueue<Data, DataCompartor>::wait_and_pop(Data& result) {
 }
 
 template<typename Data, typename DataCompartor>
+void ConcurrentPriorityQueue<Data, DataCompartor>::top(Data& result) {
+  boost::mutex::scoped_lock lock(mLock);
+  result = mQueue.top();
+}
+
+template<typename Data, typename DataCompartor>
+void ConcurrentPriorityQueue<Data, DataCompartor>::pop() {
+  boost::mutex::scoped_lock lock(mLock);
+  mQueue.pop();
+}
+
+template<typename Data, typename DataCompartor>
 bool ConcurrentPriorityQueue<Data, DataCompartor>::empty() {
   boost::mutex::scoped_lock lock(mLock);
   return mQueue.empty();
 }
+
+template<typename Data, typename DataCompartor>
+int ConcurrentPriorityQueue<Data, DataCompartor>::size() {
+  boost::mutex::scoped_lock lock(mLock);
+  return mQueue.size();
+}
+
 
 template<typename Data, typename DataCompartor>
 ConcurrentPriorityQueue<Data, DataCompartor>::~ConcurrentPriorityQueue() {

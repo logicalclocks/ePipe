@@ -25,8 +25,8 @@
 #include "SchemabasedMetadataReader.h"
 
 SchemabasedMetadataReader::SchemabasedMetadataReader(MConn connection,
-        const bool hopsworks, ProjectsElasticSearch* elastic, const int lru_cap)
-: NdbDataReader<MetadataLogEntry, MConn, FSKeys>(connection, hopsworks, elastic)
+        const bool hopsworks, const int lru_cap)
+: NdbDataReader<MetadataLogEntry, MConn, FSKeys>(connection, hopsworks)
 , mSchemabasedTable(lru_cap) {
 
 }

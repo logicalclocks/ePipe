@@ -25,8 +25,8 @@
 #include "SchemalessMetadataReader.h"
 
 SchemalessMetadataReader::SchemalessMetadataReader(MConn connection,
-        const bool hopsworks, ProjectsElasticSearch* elastic)
-: NdbDataReader<MetadataLogEntry, MConn, FSKeys>(connection, hopsworks, elastic) {
+        const bool hopsworks)
+: NdbDataReader<MetadataLogEntry, MConn, FSKeys>(connection, hopsworks) {
 }
 
 void SchemalessMetadataReader::processAddedandDeleted(MetaQ* data_batch, FSBulk& bulk) {

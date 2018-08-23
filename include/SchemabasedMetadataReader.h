@@ -33,8 +33,7 @@
 
 class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn, FSKeys> {
 public:
-  SchemabasedMetadataReader(MConn connection, const bool hopsworks,
-          ProjectsElasticSearch* elastic, const int lru_cap);
+  SchemabasedMetadataReader(MConn connection, const bool hopsworks, const int lru_cap);
   virtual ~SchemabasedMetadataReader();
 private:
   virtual void processAddedandDeleted(MetaQ* data_batch, FSBulk& bulk);
@@ -46,10 +45,11 @@ private:
 class SchemabasedMetadataReaders : public NdbDataReaders<MetadataLogEntry, MConn, FSKeys>{
   public:
     SchemabasedMetadataReaders(MConn* connections, int num_readers, const bool hopsworks,
-          ProjectsElasticSearch* elastic, const int lru_cap){
-      NdbDataReaders();
+          ProjectsElasticSearch* elastic, const int lru_cap) : NdbDataReaders(elastic){
       for(int i=0; i<num_readers; i++){
-        mDataReaders.push_back(new SchemabasedMetadataReader(connections[i], hopsworks, elastic, lru_cap));
+        SchemabasedMetadataReader* dr = new SchemabasedMetadataReader(connections[i], hopsworks, lru_cap);
+        dr->start(i, this);
+        mDataReaders.push_back(dr);
       }
     }
 };

@@ -33,8 +33,7 @@
 
 class SchemalessMetadataReader : public NdbDataReader<MetadataLogEntry, MConn, FSKeys> {
 public:
-  SchemalessMetadataReader(MConn connection, const bool hopsworks,
-          ProjectsElasticSearch* elastic);
+  SchemalessMetadataReader(MConn connection, const bool hopsworks);
   virtual ~SchemalessMetadataReader();
 private:
   SchemalessMetadataTable mSchemalessTable;
@@ -45,10 +44,11 @@ private:
 class SchemalessMetadataReaders : public NdbDataReaders<MetadataLogEntry, MConn, FSKeys> {
 public:
   SchemalessMetadataReaders(MConn* connections, int num_readers, const bool hopsworks,
-          ProjectsElasticSearch* elastic) {
-    NdbDataReaders();
+          ProjectsElasticSearch* elastic) : NdbDataReaders(elastic) {
     for (int i = 0; i < num_readers; i++) {
-      mDataReaders.push_back(new SchemalessMetadataReader(connections[i], hopsworks, elastic));
+      SchemalessMetadataReader* dr = new SchemalessMetadataReader(connections[i], hopsworks);
+      dr->start(i, this);
+      mDataReaders.push_back(dr);
     }
   }
 };

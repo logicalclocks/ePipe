@@ -25,30 +25,55 @@
 #define NDBDATAREADERS_H
 
 #include "NdbDataReader.h"
+#include "ConcurrentPriorityQueue.h"
+#include <boost/atomic.hpp>
+
+typedef boost::atomic<unsigned long> AtomicLong;
+
+template<typename Keys>
+struct BulkIndexComparator {
+  
+  bool operator()(const Bulk<Keys> &r1, const Bulk<Keys> &r2) const {
+    return r1.mProcessingIndex > r2.mProcessingIndex;
+  }
+};
 
 template<typename Data, typename Conn, typename Keys> 
-class NdbDataReaders {
+class NdbDataReaders : public DataReaderOutHandler<Keys>{
 public:
-  NdbDataReaders();
+  NdbDataReaders(ElasticSearchBase<Keys>* elastic);
   void start();
   void processBatch(vector<Data>* data_batch);
+  void writeOutput(Bulk<Keys> out);
   virtual ~NdbDataReaders();
-
-private:
-  bool mStarted;
-  vector<boost::thread* > mThreads;
-  ConcurrentQueue<vector<Data>*>* mBatchedQueue;
   
-  void readerThread(int connectionId);
+private:
+  ElasticSearchBase<Keys>* mElasticSearch;
+  bool mStarted;
+  boost::thread mThread;
+  
+  ConcurrentQueue<vector<Data>*>* mBatchedQueue;
+  ConcurrentPriorityQueue<Bulk<Keys>, BulkIndexComparator<Keys> >* mWaitingOutQueue;
+  
+  AtomicLong mLastSent;
+  AtomicLong mCurrIndex;
+  int mRoundRobinDrIndex;
+  
+  void run();
+  void processWaiting();
   
 protected:
   vector<NdbDataReader<Data, Conn, Keys>* > mDataReaders;
 };
 
 template<typename Data, typename Conn, typename Keys>
-NdbDataReaders<Data, Conn, Keys>::NdbDataReaders(){
+NdbDataReaders<Data, Conn, Keys>::NdbDataReaders(ElasticSearchBase<Keys>* elastic) : mElasticSearch(elastic) {
   mStarted = false;
   mBatchedQueue = new ConcurrentQueue<vector<Data>*>();
+  mWaitingOutQueue = new ConcurrentPriorityQueue<Bulk<Keys>, BulkIndexComparator<Keys> >();
+  mLastSent = 0; 
+  mCurrIndex = 0;
+  mRoundRobinDrIndex = -1;
 }
 
 template<typename Data, typename Conn, typename Keys>
@@ -56,30 +81,55 @@ void NdbDataReaders<Data, Conn, Keys>::start() {
   if (mStarted) {
     return;
   }
-
-  for (int i = 0; i < mDataReaders.size(); i++) {
-    boost::thread* th = new boost::thread(&NdbDataReaders::readerThread, this, i);
-    LOG_DEBUG(" Reader Thread [" << th->get_id() << "] created");
-    mThreads.push_back(th);
-  }
+  
+  mThread = boost::thread(&NdbDataReaders::run, this);
   mStarted = true;
 }
 
+
 template<typename Data, typename Conn, typename Keys>
-void NdbDataReaders<Data, Conn, Keys>::readerThread(int connIndex) {
+void NdbDataReaders<Data, Conn, Keys>::run() {
   while (true) {
     vector<Data>* curr;
     mBatchedQueue->wait_and_pop(curr);
-    LOG_DEBUG(" Process Batch ");
-    mDataReaders[connIndex]->processBatch(curr);
-    delete curr;
+    
+    if(mRoundRobinDrIndex < mDataReaders.size()){
+      mRoundRobinDrIndex++;
+    }
+    
+    if(mRoundRobinDrIndex >= mDataReaders.size()){
+      mRoundRobinDrIndex = 0;
+    }
+    
+    mDataReaders[mRoundRobinDrIndex]->processBatch(++mCurrIndex, curr);
   }
 }
-
 
 template<typename Data, typename Conn, typename Keys>
 void NdbDataReaders<Data, Conn, Keys>::processBatch(vector<Data>* data_batch) {
   mBatchedQueue->push(data_batch);
+}
+
+template<typename Data, typename Conn, typename Keys>
+void NdbDataReaders<Data, Conn, Keys>::writeOutput(Bulk<Keys> out) {
+  mWaitingOutQueue->push(out);
+  processWaiting();
+}
+
+template<typename Data, typename Conn, typename Keys>
+void NdbDataReaders<Data, Conn, Keys>::processWaiting() {
+  while(!mWaitingOutQueue->empty()){
+    Bulk<Keys> out;
+    mWaitingOutQueue->top(out);
+    if(out.mProcessingIndex == mLastSent + 1){
+      LOG_INFO("publish enriched events with index ["  << out.mProcessingIndex << "] to Elastic");
+      mElasticSearch->addData(out);
+      mLastSent++;
+      mWaitingOutQueue->pop();
+    }else{
+      break;
+    }
+  }
 }
 
 template<typename Data, typename Conn, typename Keys>
