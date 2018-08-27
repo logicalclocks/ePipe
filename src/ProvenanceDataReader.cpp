@@ -23,9 +23,8 @@
 
 #include "ProvenanceDataReader.h"
 
-ProvenanceDataReader::ProvenanceDataReader(SConn connection,
-        const bool hopsworks, ProvenanceElasticSearch* elastic)
-: NdbDataReader(connection, hopsworks, elastic) {
+ProvenanceDataReader::ProvenanceDataReader(SConn connection, const bool hopsworks)
+: NdbDataReader(connection, hopsworks) {
 }
 
 void ProvenanceDataReader::processAddedandDeleted(Pq* data_batch, PBulk& bulk) {

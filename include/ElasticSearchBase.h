@@ -61,6 +61,7 @@ static const char* getStr(HttpOp op) {
 
 template<typename Keys>
 struct Bulk {
+  long mProcessingIndex;
   string mJSON;
   vector<ptime> mArrivalTimes;
   ptime mStartProcessing;
@@ -139,7 +140,7 @@ void ElasticSearchBase<Keys>::run() {
     }
     Bulk<Keys> msg;
     mQueue.wait_and_pop(msg);
-
+    
     mLock.lock();
     mToProcess->push_back(msg);
     mToProcessLength += msg.mJSON.length();

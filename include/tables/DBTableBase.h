@@ -58,6 +58,17 @@ public:
     return mColumns.size();
   }
 
+ const char** getColumns() {
+    const char** columns = new const char*[getNoColumns()];
+    for (int i = 0; i < getNoColumns(); i++) {
+      string colStr = getColumn(i);
+      char* col = new char[colStr.size()];
+      strcpy(col, colStr.c_str());
+      columns[i] = col;
+    }
+    return columns;
+  }
+  
 private:
   const string mTableName;
   StrVec mColumns;

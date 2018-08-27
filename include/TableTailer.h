@@ -131,12 +131,7 @@ void TableTailer<TableRow>::createListenerEvent() {
     myEvent.addTableEvent(mTable->getEvent(i));
   }
 
-  const char* columns[mTable->getNoColumns()];
-  for (int i = 0; i < mTable->getNoColumns(); i++) {
-    columns[i] = mTable->getColumn(i).c_str();
-  }
-
-  myEvent.addEventColumns(mTable->getNoColumns(), columns);
+  myEvent.addEventColumns(mTable->getNoColumns(), mTable->getColumns());
   //myEvent.mergeEvents(merge_events);
 
   // Add event to database
