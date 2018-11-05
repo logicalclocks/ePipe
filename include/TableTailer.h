@@ -267,7 +267,7 @@ void TableTailer<TableRow>::checkIfBarrierReached(Uint64 epoch) {
 
   if (mLastReportedBarrier == 0) {
     mLastReportedBarrier = currentBarrier;
-  } else if (mLastReportedBarrier != currentBarrier) {
+  } else if (currentBarrier > mLastReportedBarrier) {
     barrierChanged();
     mLastReportedBarrier = currentBarrier;
     LOG_TRACE("************************** NEW BARRIER [" << currentBarrier << "] ************ ");
