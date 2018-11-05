@@ -65,7 +65,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes, FSBulk& b
     }
 
     if (inodes.find(row.mInodeId) == inodes.end()) {
-      LOG_WARN(" Data for " << row.mParentId << ", " << row.mInodeName
+      LOG_DEBUG(" Data for " << row.mParentId << ", " << row.mInodeName
               << ", " << row.mInodeId << " was not found");
       out << INodeRow::to_delete_json(row.mInodeId);
       out << endl;
