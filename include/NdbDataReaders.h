@@ -120,13 +120,13 @@ template<typename Data, typename Conn, typename Keys>
 void NdbDataReaders<Data, Conn, Keys>::processWaiting() {
   while(!mWaitingOutQueue->empty()){
     Bulk<Keys> out;
-    mWaitingOutQueue->top(out);
+    mWaitingOutQueue->pop(out);
     if(out.mProcessingIndex == mLastSent + 1){
       LOG_INFO("publish enriched events with index ["  << out.mProcessingIndex << "] to Elastic");
       mElasticSearch->addData(out);
       mLastSent++;
-      mWaitingOutQueue->pop();
     }else{
+      mWaitingOutQueue->push(out);
       break;
     }
   }
