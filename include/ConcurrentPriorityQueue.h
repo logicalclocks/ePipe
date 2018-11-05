@@ -32,7 +32,7 @@ class ConcurrentPriorityQueue {
 public:
   ConcurrentPriorityQueue();
   void push(Data data);
-  void top(Data& result);
+  void pop(Data& result);
   void pop();
   void wait_and_pop(Data &result);
   bool empty();
@@ -68,9 +68,10 @@ void ConcurrentPriorityQueue<Data, DataCompartor>::wait_and_pop(Data& result) {
 }
 
 template<typename Data, typename DataCompartor>
-void ConcurrentPriorityQueue<Data, DataCompartor>::top(Data& result) {
+void ConcurrentPriorityQueue<Data, DataCompartor>::pop(Data& result) {
   boost::mutex::scoped_lock lock(mLock);
   result = mQueue.top();
+  mQueue.pop();
 }
 
 template<typename Data, typename DataCompartor>
