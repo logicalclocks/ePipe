@@ -28,7 +28,7 @@
 #include "ConcurrentPriorityQueue.h"
 #include <boost/atomic.hpp>
 
-typedef boost::atomic<unsigned long> AtomicLong;
+typedef boost::atomic<Uint64> AtomicLong;
 
 template<typename Keys>
 struct BulkIndexComparator {
