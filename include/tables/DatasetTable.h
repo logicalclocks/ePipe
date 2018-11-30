@@ -31,8 +31,8 @@
 
 struct DatasetRow {
   int mId;
-  int mInodeId;
-  int mInodeParentId;
+  Int64 mInodeId;
+  Int64 mInodeParentId;
   string mInodeName;
   int mProjectId;
   string mDescription;
@@ -51,13 +51,13 @@ struct DatasetRow {
     docWriter.String(DOC_TYPE_DATASET);
 
     docWriter.String("dataset_id");
-    docWriter.Int(mInodeId);
+    docWriter.Int64(mInodeId);
 
     docWriter.String("project_id");
     docWriter.Int(mProjectId);
 
     docWriter.String("parent_id");
-    docWriter.Int(mInodeParentId);
+    docWriter.Int64(mInodeParentId);
 
     docWriter.String("name");
     docWriter.String(mInodeName.c_str());
@@ -124,8 +124,8 @@ public:
   DatasetRow getRow(NdbRecAttr* values[]) {
     DatasetRow row;
     row.mId = values[0]->int32_value();
-    row.mInodeId = values[1]->int32_value();
-    row.mInodeParentId = values[2]->int32_value();
+    row.mInodeId = values[1]->int64_value();
+    row.mInodeParentId = values[2]->int64_value();
     row.mInodeName = get_string(values[3]);
     row.mProjectId = values[4]->int32_value();
     row.mDescription = get_string(values[5]);
@@ -140,22 +140,22 @@ public:
     return ds;
   }
 
-  void removeDatasetFromCache(int datasetId) {
-    DatasetProjectCache::getInstance().removeKey(datasetId);
+  void removeDatasetFromCache(Int64 datasetINodeId) {
+    DatasetProjectCache::getInstance().removeKey(datasetINodeId);
   }
 
   void removeProjectFromCache(int projectId) {
     DatasetProjectCache::getInstance().removeValue(projectId);
   }
 
-  int getProjectIdFromCache(int datasetId) {
-    return DatasetProjectCache::getInstance().getValue(datasetId);
+  int getProjectIdFromCache(Int64 datasetINodeId) {
+    return DatasetProjectCache::getInstance().getValue(datasetINodeId);
   }
 
-  void loadProjectIds(Ndb* connection, UISet& datasets) {
-    UISet dataset_inode_ids;
-    for (UISet::iterator it = datasets.begin(); it != datasets.end(); ++it) {
-      int datasetId = *it;
+  void loadProjectIds(Ndb* connection, ULSet& datasetsINodeIds) {
+    ULSet dataset_inode_ids;
+    for (ULSet::iterator it = datasetsINodeIds.begin(); it != datasetsINodeIds.end(); ++it) {
+      Int64 datasetId = *it;
       if (!DatasetProjectCache::getInstance().containsKey(datasetId)) {
         dataset_inode_ids.insert(datasetId);
       }
@@ -166,8 +166,8 @@ public:
       return;
     }
 
-    for (UISet::iterator it = dataset_inode_ids.begin(); it != dataset_inode_ids.end(); ++it) {
-      int dataset_inode_id = *it;
+    for (ULSet::iterator it = dataset_inode_ids.begin(); it != dataset_inode_ids.end(); ++it) {
+      Int64 dataset_inode_id = *it;
       AnyMap args;
       //DatasetInodeId
       args[1] = dataset_inode_id;

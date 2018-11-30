@@ -54,24 +54,24 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
 }
 
 bool HopsworksOpsLogTailer::handleDataset(int opId, HopsworksOpType opType,
-        int datasetId, int projectId) {
+        Int64 datasetINodeId, int projectId) {
   if (opType == HopsworksDelete) {
-    return handleDeleteDataset(datasetId);
+    return handleDeleteDataset(datasetINodeId);
   } else {
-    return handleUpsertDataset(opId, opType, datasetId, projectId);
+    return handleUpsertDataset(opId, opType, datasetINodeId, projectId);
   }
 }
 
-bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType opType, int datasetId, int projectId) {
+bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType opType, Int64 datasetINodeId, int projectId) {
   DatasetRow row = mDatasetTable.get(mNdbConnection, opId);
-  bool success = mElasticSearch->addDoc(datasetId, row.to_create_json());
+  bool success = mElasticSearch->addDoc(datasetINodeId, row.to_create_json());
   if (success) {
     switch (opType) {
       case HopsworksAdd:
-        LOG_INFO("Add Dataset[" << datasetId << "]: Succeeded");
+        LOG_INFO("Add Dataset[" << datasetINodeId << "]: Succeeded");
         break;
       case HopsworksUpdate:
-        LOG_INFO("Update Dataset[" << datasetId << "]: Succeeded");
+        LOG_INFO("Update Dataset[" << datasetINodeId << "]: Succeeded");
         break;
     }
   }
@@ -79,19 +79,19 @@ bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType opType
   return success;
 }
 
-bool HopsworksOpsLogTailer::handleDeleteDataset(int datasetId) {
-  string query = DatasetRow::to_delete_json(datasetId);
+bool HopsworksOpsLogTailer::handleDeleteDataset(Int64 datasetINodeId) {
+  string query = DatasetRow::to_delete_json(datasetINodeId);
   //TODO: handle failures in elastic search
   bool success = mElasticSearch->deleteDocsByQuery(query);
   if (success) {
-    LOG_INFO("Delete Dataset[" << datasetId << "] and all children inodes: Succeeded");
+    LOG_INFO("Delete Dataset[" << datasetINodeId << "] and all children inodes: Succeeded");
   }
 
-  mDatasetTable.removeDatasetFromCache(datasetId);
+  mDatasetTable.removeDatasetFromCache(datasetINodeId);
   return success;
 }
 
-bool HopsworksOpsLogTailer::handleProject(int projectId, int inodeId, HopsworksOpType opType) {
+bool HopsworksOpsLogTailer::handleProject(int projectId, Int64 inodeId, HopsworksOpType opType) {
   if (opType == HopsworksDelete) {
     return handleDeleteProject(projectId);
   } else {
@@ -112,7 +112,7 @@ bool HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
   return success;
 }
 
-bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, int inodeId, HopsworksOpType opType) {
+bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, Int64 inodeId, HopsworksOpType opType) {
 
   ProjectRow row = mProjectTable.get(mNdbConnection, projectId);
   bool success = mElasticSearch->addDoc(inodeId, row.to_create_json());
@@ -131,7 +131,7 @@ bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, int inodeId, Hops
 
 }
 
-bool HopsworksOpsLogTailer::handleSchema(int schemaId, HopsworksOpType opType, int inodeId) {
+bool HopsworksOpsLogTailer::handleSchema(int schemaId, HopsworksOpType opType, Int64 inodeId) {
   if (opType == HopsworksDelete) {
     return handleSchemaDelete(schemaId, inodeId);
   } else {
@@ -140,7 +140,7 @@ bool HopsworksOpsLogTailer::handleSchema(int schemaId, HopsworksOpType opType, i
   }
 }
 
-bool HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, int inodeId) {
+bool HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, Int64 inodeId) {
   boost::optional<TemplateRow> tmplate_ptr = mTemplateTable.get(mNdbConnection, schemaId);
   if (tmplate_ptr) {
     TemplateRow tmplate = tmplate_ptr.get();

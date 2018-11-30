@@ -29,12 +29,12 @@
 #include "ConcurrentQueue.h"
 
 struct ProvenancePK {
-  int mInodeId;
+  Int64 mInodeId;
   int mUserId;
   string mAppId;
   int mLogicalTime;
 
-  ProvenancePK(int inodeId, int userId, string appId, int logicalTime) {
+  ProvenancePK(Int64 inodeId, int userId, string appId, int logicalTime) {
     mInodeId = inodeId;
     mUserId = userId;
     mAppId = appId;
@@ -49,19 +49,19 @@ struct ProvenancePK {
 };
 
 struct ProvenanceRow {
-  int mInodeId;
+  Int64 mInodeId;
   int mUserId;
   string mAppId;
   int mLogicalTime;
-  int mPartitionId;
-  int mParentId;
+  Int64 mPartitionId;
+  Int64 mParentId;
   string mProjectName;
   string mDatasetName;
   string mInodeName;
   string mUserName;
   int mLogicalTimeBatch;
-  long mTimestamp;
-  long mTimestampBatch;
+  Int64 mTimestamp;
+  Int64 mTimestampBatch;
   short mOperation;
 
   ptime mEventCreationTime;
@@ -118,7 +118,7 @@ struct ProvenanceRow {
     docWriter.StartObject();
 
     docWriter.String("inode_id");
-    docWriter.Int(mInodeId);
+    docWriter.Int64(mInodeId);
 
     docWriter.String("user_id");
     docWriter.Int(mUserId);
@@ -130,10 +130,10 @@ struct ProvenanceRow {
     docWriter.Int(mLogicalTime);
 
     docWriter.String("partition_id");
-    docWriter.Int(mPartitionId);
+    docWriter.Int64(mPartitionId);
 
     docWriter.String("parent_id");
-    docWriter.Int(mParentId);
+    docWriter.Int64(mParentId);
 
     docWriter.String("project_name");
     docWriter.String(mProjectName.c_str());
@@ -236,12 +236,12 @@ public:
   ProvenanceRow getRow(NdbRecAttr* value[]) {
     ProvenanceRow row;
     row.mEventCreationTime = Utils::getCurrentTime();
-    row.mInodeId = value[0]->int32_value();
+    row.mInodeId = value[0]->int64_value();
     row.mUserId = value[1]->int32_value();
     row.mAppId = get_string(value[2]);
     row.mLogicalTime = value[3]->int32_value();
-    row.mPartitionId = value[4]->int32_value();
-    row.mParentId = value[5]->int32_value();
+    row.mPartitionId = value[4]->int64_value();
+    row.mParentId = value[5]->int64_value();
     row.mProjectName = get_string(value[6]);
     row.mDatasetName = get_string(value[7]);
     row.mInodeName = get_string(value[8]);

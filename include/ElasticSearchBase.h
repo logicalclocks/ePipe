@@ -88,8 +88,8 @@ protected:
   virtual void process(vector<Bulk<Keys> >* data) = 0;
 
   string getElasticSearchUrlonIndex(string index);
-  string getElasticSearchUrlOnDoc(string index, int doc);
-  string getElasticSearchUpdateDocUrl(string index, int doc);
+  string getElasticSearchUrlOnDoc(string index, Int64 doc);
+  string getElasticSearchUpdateDocUrl(string index, Int64 doc);
   string getElasticSearchBulkUrl(string index);
   string getElasticSearchDeleteByQuery(string index);
 
@@ -302,14 +302,14 @@ string ElasticSearchBase<Keys>::getElasticSearchUrlonIndex(string index) {
 }
 
 template<typename Keys>
-string ElasticSearchBase<Keys>::getElasticSearchUrlOnDoc(string index, int doc) {
+string ElasticSearchBase<Keys>::getElasticSearchUrlOnDoc(string index, Int64 doc) {
   stringstream out;
   out << getElasticSearchUrlonIndex(index) << "/" << DEFAULT_TYPE << "/" << doc;
   return out.str();
 }
 
 template<typename Keys>
-string ElasticSearchBase<Keys>::getElasticSearchUpdateDocUrl(string index, int doc) {
+string ElasticSearchBase<Keys>::getElasticSearchUpdateDocUrl(string index, Int64 doc) {
   string str = getElasticSearchUrlOnDoc(index, doc) + "/_update";
   return str;
 }

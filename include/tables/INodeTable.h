@@ -37,11 +37,11 @@ inline static bool requiresINode(FsMutationRow row){
 }
 
 struct INodeRow {
-  int mParentId;
+  Int64 mParentId;
   string mName;
-  int mPartitionId;
-  int mId;
-  long mSize;
+  Int64 mPartitionId;
+  Int64 mId;
+  Int64 mSize;
   int mUserId;
   int mGroupId;
   string mUserName;
@@ -56,7 +56,7 @@ struct INodeRow {
             && proj.mInodePartitionId == mPartitionId;
   }
   
-  static string to_delete_json(int inodeId) {
+  static string to_delete_json(Int64 inodeId) {
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -67,7 +67,7 @@ struct INodeRow {
     opWriter.StartObject();
 
     opWriter.String("_id");
-    opWriter.Int(inodeId);
+    opWriter.Int64(inodeId);
 
     opWriter.EndObject();
 
@@ -76,7 +76,7 @@ struct INodeRow {
     return sbOp.GetString();
   }
 
-  string to_create_json(int datasetId, int projectId) {
+  string to_create_json(Int64 datasetId, int projectId) {
     stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -87,7 +87,7 @@ struct INodeRow {
     opWriter.StartObject();
 
     opWriter.String("_id");
-    opWriter.Int(mId);
+    opWriter.Int64(mId);
 
     opWriter.EndObject();
 
@@ -106,13 +106,13 @@ struct INodeRow {
     docWriter.String(DOC_TYPE_INODE);
 
     docWriter.String("parent_id");
-    docWriter.Int(mParentId);
+    docWriter.Int64(mParentId);
 
     docWriter.String("partition_id");
-    docWriter.Int(mPartitionId);
+    docWriter.Int64(mPartitionId);
 
     docWriter.String("dataset_id");
-    docWriter.Int(datasetId);
+    docWriter.Int64(datasetId);
 
     docWriter.String("project_id");
     docWriter.Int(projectId);
@@ -158,7 +158,7 @@ struct INodeRow {
     opWriter.StartObject();
 
     opWriter.String("_id");
-    opWriter.Int(row.mInodeId);
+    opWriter.Int64(row.mInodeId);
 
     opWriter.EndObject();
 
@@ -174,10 +174,10 @@ struct INodeRow {
     docWriter.StartObject();
 
     docWriter.String("parent_id");
-    docWriter.Int(row.mParentId);
+    docWriter.Int64(row.mParentId);
 
     docWriter.String("partition_id");
-    docWriter.Int(row.mPartitionId);
+    docWriter.Int64(row.mPartitionId);
 
     docWriter.String("name");
     docWriter.String(row.mInodeName.c_str());
@@ -210,7 +210,7 @@ struct INodeRow {
     opWriter.StartObject();
 
     opWriter.String("_id");
-    opWriter.Int(row.mInodeId);
+    opWriter.Int64(row.mInodeId);
 
     opWriter.EndObject();
 
@@ -226,7 +226,7 @@ struct INodeRow {
     docWriter.StartObject();
 
     docWriter.String("dataset_id");
-    docWriter.Int(row.mDatasetId);
+    docWriter.Int64(row.mDatasetINodeId);
 
     docWriter.String("timestamp");
     docWriter.Int(row.mLogicalTime);
@@ -275,10 +275,10 @@ public:
 
   INodeRow getRow(NdbRecAttr* values[]) {
     INodeRow row;
-    row.mParentId = values[0]->int32_value();
+    row.mParentId = values[0]->int64_value();
     row.mName = get_string(values[1]);
-    row.mPartitionId = values[2]->int32_value();
-    row.mId = values[3]->int32_value();
+    row.mPartitionId = values[2]->int64_value();
+    row.mId = values[3]->int64_value();
     row.mSize = values[4]->int64_value();
     row.mUserId = values[5]->int32_value();
     row.mGroupId = values[6]->int32_value();
@@ -287,7 +287,7 @@ public:
     return row;
   }
 
-  INodeVec getByParentId(Ndb* connection, int parentId){
+  INodeVec getByParentId(Ndb* connection, Int64 parentId){
     AnyMap key;
     key[0] = parentId;
     INodeVec inodes = doRead(connection, "pidex", key);
@@ -301,7 +301,7 @@ public:
     return results;
   }
 
-  INodeRow getByInodeId(Ndb* connection, int inodeId) {
+  INodeRow getByInodeId(Ndb* connection, Int64 inodeId) {
     AnyMap key;
     key[3] = inodeId;
     INodeVec inodes = doRead(connection, "inode_idx", key);
@@ -321,7 +321,7 @@ public:
     return row;
   }
   
-  INodeRow get(Ndb* connection, int parentId, string name, int partitionId) {
+  INodeRow get(Ndb* connection, Int64 parentId, string name, Int64 partitionId) {
     AnyMap a;
     a[0] = parentId;
     a[1] = name;

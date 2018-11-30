@@ -36,10 +36,10 @@ void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk
   INodeMap inodes = mInodesTable.get(mNdbConnection.inodeConnection, data_batch);
 
   if (mHopsworksEnalbed) {
-    UISet dataset_inode_ids;
+    ULSet dataset_inode_ids;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
-      dataset_inode_ids.insert(row.mDatasetId);
+      dataset_inode_ids.insert(row.mDatasetINodeId);
     }
     mDatasetTable.loadProjectIds(mNdbConnection.metadataConnection, dataset_inode_ids);
   }
@@ -74,14 +74,14 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes, FSBulk& b
 
     INodeRow inode = inodes[row.mInodeId];
 
-    int datasetId = DONT_EXIST_INT();
+    Int64 datasetINodeId = DONT_EXIST_INT();
     int projectId = DONT_EXIST_INT();
     if (mHopsworksEnalbed) {
-      datasetId = row.mDatasetId;
-      projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetId);
+      datasetINodeId = row.mDatasetINodeId;
+      projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetINodeId);
     }
 
-    string inodeJSON = inode.to_create_json(datasetId, projectId);
+    string inodeJSON = inode.to_create_json(datasetINodeId, projectId);
 
     out << inodeJSON << endl;
   }

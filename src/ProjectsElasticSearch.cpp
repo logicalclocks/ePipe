@@ -131,7 +131,7 @@ void ProjectsElasticSearch::stats(FSBulk bulk, ptime t_elastic_done) {
   mTotalNumOfBulksProcessed++;
 }
 
-bool ProjectsElasticSearch::addDoc(int inodeId, string json) {
+bool ProjectsElasticSearch::addDoc(Int64 inodeId, string json) {
   string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
   return elasticSearchHttpRequest(HTTP_POST, url, json);
 }
@@ -145,7 +145,7 @@ bool ProjectsElasticSearch::deleteDocsByQuery(string json) {
   return elasticSearchHttpRequest(HTTP_POST, deleteProjUrl, json);
 }
 
-bool ProjectsElasticSearch::deleteSchemaForINode(int inodeId, string json) {
+bool ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, string json) {
   string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
   return elasticSearchHttpRequest(HTTP_POST, url, json);
 }
