@@ -61,7 +61,7 @@ static const char* getStr(HttpOp op) {
 
 template<typename Keys>
 struct Bulk {
-  long mProcessingIndex;
+  Uint64 mProcessingIndex;
   string mJSON;
   vector<ptime> mArrivalTimes;
   ptime mStartProcessing;
