@@ -54,22 +54,22 @@ inline static const char* FsOpTypeToStr(FsOpType optype) {
 }
 
 struct FsMutationPK {
-  int mDatasetId;
-  int mInodeId;
+  Int64 mDatasetINodeId;
+  Int64 mInodeId;
   int mLogicalTime;
 
-  FsMutationPK(int datasetId, int inodeId, int logicalTime) {
-    mDatasetId = datasetId;
+  FsMutationPK(Int64 datasetId, Int64 inodeId, int logicalTime) {
+    mDatasetINodeId = datasetId;
     mInodeId = inodeId;
     mLogicalTime = logicalTime;
   }
 };
 
 struct FsMutationRow {
-  int mDatasetId;
-  int mInodeId;
-  int mPartitionId;
-  int mParentId;
+  Int64 mDatasetINodeId;
+  Int64 mInodeId;
+  Int64 mPartitionId;
+  Int64 mParentId;
   string mInodeName;
   int mLogicalTime;
   FsOpType mOperation;
@@ -77,13 +77,13 @@ struct FsMutationRow {
   ptime mEventCreationTime;
 
   FsMutationPK getPK() {
-    return FsMutationPK(mDatasetId, mInodeId, mLogicalTime);
+    return FsMutationPK(mDatasetINodeId, mInodeId, mLogicalTime);
   }
 
   string to_string() {
     stringstream stream;
     stream << "-------------------------" << endl;
-    stream << "DatasetId = " << mDatasetId << endl;
+    stream << "DatasetId = " << mDatasetINodeId << endl;
     stream << "InodeId = " << mInodeId << endl;
     stream << "PartitionId = " << mPartitionId << endl;
     stream << "ParentId = " << mParentId << endl;
@@ -98,7 +98,7 @@ struct FsMutationRow {
 struct FsMutationRowEqual {
 
   bool operator()(const FsMutationRow &lhs, const FsMutationRow &rhs) const {
-    return lhs.mDatasetId == rhs.mDatasetId && lhs.mParentId == rhs.mParentId
+    return lhs.mDatasetINodeId == rhs.mDatasetINodeId && lhs.mParentId == rhs.mParentId
             && lhs.mInodeName == rhs.mInodeName && lhs.mInodeId == rhs.mInodeId;
   }
 };
@@ -107,7 +107,7 @@ struct FsMutationRowHash {
 
   std::size_t operator()(const FsMutationRow &a) const {
     std::size_t seed = 0;
-    boost::hash_combine(seed, a.mDatasetId);
+    boost::hash_combine(seed, a.mDatasetINodeId);
     boost::hash_combine(seed, a.mPartitionId);
     boost::hash_combine(seed, a.mParentId);
     boost::hash_combine(seed, a.mInodeName);
@@ -156,11 +156,11 @@ public:
   FsMutationRow getRow(NdbRecAttr* value[]) {
     FsMutationRow row;
     row.mEventCreationTime = Utils::getCurrentTime();
-    row.mDatasetId = value[0]->int32_value();
-    row.mInodeId = value[1]->int32_value();
+    row.mDatasetINodeId = value[0]->int64_value();
+    row.mInodeId = value[1]->int64_value();
     row.mLogicalTime = value[2]->int32_value();
-    row.mPartitionId = value[3]->int32_value();
-    row.mParentId = value[4]->int32_value();
+    row.mPartitionId = value[3]->int64_value();
+    row.mParentId = value[4]->int64_value();
     row.mInodeName = get_string(value[5]);
     row.mOperation = static_cast<FsOpType> (value[6]->int8_value());
     return row;
@@ -171,11 +171,11 @@ public:
     for (FPK::iterator it = pks.begin(); it != pks.end(); ++it) {
       FsMutationPK pk = *it;
       AnyMap a;
-      a[0] = pk.mDatasetId;
+      a[0] = pk.mDatasetINodeId;
       a[1] = pk.mInodeId;
       a[2] = pk.mLogicalTime;
       doDelete(a);
-      LOG_DEBUG("Delete log row: Dataset[" << pk.mDatasetId << "], INode["
+      LOG_DEBUG("Delete log row: Dataset[" << pk.mDatasetINodeId << "], INode["
               << pk.mInodeId << "], Timestamp[" << pk.mLogicalTime << "]");
     }
     end();

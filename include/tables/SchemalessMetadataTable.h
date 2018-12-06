@@ -32,8 +32,8 @@
 
 struct SchemalessMetadataEntry {
   int mId;
-  int mINodeId;
-  int mParentId;
+  Int64 mINodeId;
+  Int64 mParentId;
   string mJSONData;
   HopsworksOpType mOperation;
   ptime mEventCreationTime;
@@ -71,7 +71,7 @@ struct SchemalessMetadataEntry {
     opWriter.StartObject();
 
     opWriter.String("_id");
-    opWriter.Int(mINodeId);
+    opWriter.Int64(mINodeId);
 
     opWriter.EndObject();
     opWriter.EndObject();
@@ -143,8 +143,8 @@ public:
   SchemalessMetadataEntry getRow(NdbRecAttr* values[]) {
     SchemalessMetadataEntry row;
     row.mId = values[0]->int32_value();
-    row.mINodeId = values[1]->int32_value();
-    row.mParentId = values[2]->int32_value();
+    row.mINodeId = values[1]->int64_value();
+    row.mParentId = values[2]->int64_value();
     row.mJSONData = get_string(values[3]);
     return row;
   }

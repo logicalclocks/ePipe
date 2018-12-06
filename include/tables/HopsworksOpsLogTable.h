@@ -70,8 +70,8 @@ struct HopsworksOpRow {
   OpsLogOn mOpOn;
   HopsworksOpType mOpType;
   int mProjectId;
-  int mDatasetId;
-  int mInodeId;
+  Int64 mDatasetINodeId;
+  Int64 mInodeId;
 
   string to_string() {
     stringstream out;
@@ -81,7 +81,7 @@ struct HopsworksOpRow {
             << "OpOn = " << OpsLogOnToStr(mOpOn) << endl
             << "OpType = " << HopsworksOpTypeToStr(mOpType) << endl
             << "ProjectID = " << mProjectId << endl
-            << "DatasetID = " << mDatasetId << endl
+            << "DatasetID = " << mDatasetINodeId << endl
             << "INodeID = " << mInodeId;
     return out.str();
   }
@@ -110,8 +110,8 @@ public:
     row.mOpOn = static_cast<OpsLogOn> (value[2]->int8_value());
     row.mOpType = static_cast<HopsworksOpType> (value[3]->int8_value());
     row.mProjectId = value[4]->int32_value();
-    row.mDatasetId = value[5]->int32_value();
-    row.mInodeId = value[6]->int32_value();
+    row.mDatasetINodeId = value[5]->int64_value();
+    row.mInodeId = value[6]->int64_value();
     return row;
   }
 

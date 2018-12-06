@@ -30,8 +30,8 @@
 
 struct ProjectRow {
   int mId;
-  int mInodeParentId;
-  int mInodePartitionId;
+  Int64 mInodeParentId;
+  Int64 mInodePartitionId;
   string mInodeName;
   string mUserName;
   string mDescription;
@@ -51,10 +51,10 @@ struct ProjectRow {
     docWriter.Int(mId);
 
     docWriter.String("parent_id");
-    docWriter.Int(mInodeParentId);
+    docWriter.Int64(mInodeParentId);
 
     docWriter.String("partition_id");
-    docWriter.Int(mInodePartitionId);
+    docWriter.Int64(mInodePartitionId);
     
     docWriter.String("name");
     docWriter.String(mInodeName.c_str());
@@ -113,8 +113,8 @@ public:
   ProjectRow getRow(NdbRecAttr* values[]) {
     ProjectRow row;
     row.mId = values[0]->int32_value();
-    row.mInodeParentId = values[1]->int32_value();
-    row.mInodePartitionId = values[2]->int32_value();
+    row.mInodeParentId = values[1]->int64_value();
+    row.mInodePartitionId = values[2]->int64_value();
     row.mInodeName = get_string(values[3]);
     row.mUserName = get_string(values[4]);
     row.mDescription = get_string(values[5]);

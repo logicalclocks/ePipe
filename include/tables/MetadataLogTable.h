@@ -47,13 +47,13 @@ inline static const char* MetadataTypeToStr(MetadataType metaType) {
 
 struct MetadataKey {
   int mPK1;
-  int mPK2;
-  int mPK3;
+  Int64 mPK2;
+  Int64 mPK3;
 
   MetadataKey() {
   }
 
-  MetadataKey(int pk1, int pk2, int pk3) {
+  MetadataKey(int pk1, Int64 pk2, Int64 pk3) {
     mPK1 = pk1;
     mPK2 = pk2;
     mPK3 = pk3;
@@ -130,8 +130,8 @@ public:
     row.mEventCreationTime = Utils::getCurrentTime();
     row.mId = value[0]->int32_value();
     int PK1 = value[1]->int32_value();
-    int PK2 = value[2]->int32_value();
-    int PK3 = value[3]->int32_value();
+    Int64 PK2 = value[2]->int64_value();
+    Int64 PK3 = value[3]->int64_value();
     row.mMetaPK = MetadataKey(PK1, PK2, PK3);
     row.mMetaType = static_cast<MetadataType> (value[4]->int8_value());
     row.mMetaOpType = static_cast<HopsworksOpType> (value[5]->int8_value());

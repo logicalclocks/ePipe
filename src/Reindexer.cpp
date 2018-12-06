@@ -30,10 +30,10 @@
 #include "tables/SchemalessMetadataTable.h"
 
 struct DatasetInodes {
-  int mDatasetId;
+  Int64 mDatasetId;
   int mTotalNumberOfInodes;
 
-  DatasetInodes(int datasetId, int totalInodes) {
+  DatasetInodes(Int64 datasetId, int totalInodes) {
     mDatasetId = datasetId;
     mTotalNumberOfInodes = totalInodes;
   }
@@ -57,7 +57,7 @@ struct DatasetInfo{
 
 typedef vector<DatasetInodes> DatasetInodesVec;
 
-typedef boost::unordered_map<int, DatasetInfo> DatasetInfoMap;
+typedef boost::unordered_map<Int64, DatasetInfo> DatasetInfoMap;
 
 Reindexer::Reindexer(const char* connection_string, const char* database_name,
         const char* meta_database_name, const string elastic_addr,
@@ -120,7 +120,7 @@ void Reindexer::run() {
   DatasetInodesVec datasetStats;
 
   for (DatasetInfoMap::iterator mapIt = dsInfoMap.begin(); mapIt != dsInfoMap.end(); ++mapIt) {
-    int datasetId = mapIt->first;
+    Int64 datasetId = mapIt->first;
     int projectId = mapIt->second.mProjectId;
     LOG_INFO("Copy Dataset " << mapIt->second.mName  << " [" << datasetId << "]");
 
@@ -129,7 +129,7 @@ void Reindexer::run() {
 
     int datasetInodes = 0;
     while (!dirs.empty()) {
-      int dirInodeId = dirs.front();
+      Int64 dirInodeId = dirs.front();
       dirs.pop();
       LOG_DEBUG("Copy Dir " << dirInodeId << " : remaining " << dirs.size() << " dirs");
       INodeVec inodes = inodesTable.getByParentId(conn, dirInodeId);

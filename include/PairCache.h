@@ -35,17 +35,17 @@ public:
 
   }
 
-  void addPair(int key, int value) {
+  void addPair(Int64 key, int value) {
     mKeyValue.put(key, value);
 
     if (!mValueKeys.contains(value)) {
-      mValueKeys.put(value, new UISet());
+      mValueKeys.put(value, new ULSet());
     }
     mValueKeys.get(value).get()->insert(key);
     LOG_TRACE("ADD Key[" << key << "] to Value[" << value << "]");
   }
 
-  int getValue(int key) {
+  int getValue(Int64 key) {
     int value = DONT_EXIST_INT();
     boost::optional<int> res = mKeyValue.get(key);
     if (!res) {
@@ -57,20 +57,20 @@ public:
     return value;
   }
 
-  UISet getKeys(int value) {
-    UISet keys;
-    UISet* keysInCache = getKeysInternal(value);
+  ULSet getKeys(int value) {
+    ULSet keys;
+    ULSet* keysInCache = getKeysInternal(value);
     if (keysInCache != NULL) {
       keys.insert(keysInCache->begin(), keysInCache->end());
     }
     return keys;
   }
 
-  void removeKey(int key) {
+  void removeKey(Int64 key) {
     int value = getValue(key);
     mKeyValue.remove(key);
     if (value != DONT_EXIST_INT()) {
-      UISet* keysInCache = getKeysInternal(value);
+      ULSet* keysInCache = getKeysInternal(value);
       if (keysInCache != NULL) {
         keysInCache->erase(key);
       }
@@ -78,10 +78,10 @@ public:
     LOG_TRACE("REMOVE Key[" << key << "]");
   }
 
-  UISet removeValue(int value) {
-    UISet keys = getKeys(value);
-    for (UISet::iterator it = keys.begin(); it != keys.end(); ++it) {
-      int key = *it;
+  ULSet removeValue(int value) {
+    ULSet keys = getKeys(value);
+    for (ULSet::iterator it = keys.begin(); it != keys.end(); ++it) {
+      Int64 key = *it;
       removeKey(key);
     }
     return keys;
@@ -92,11 +92,11 @@ public:
   }
 
 private:
-  Cache<int, int> mKeyValue;
-  Cache<int, UISet*> mValueKeys;
+  Cache<Int64, int> mKeyValue;
+  Cache<int, ULSet*> mValueKeys;
 
-  UISet* getKeysInternal(int value) {
-    boost::optional<UISet*> res = mValueKeys.get(value);
+  ULSet* getKeysInternal(int value) {
+    boost::optional<ULSet*> res = mValueKeys.get(value);
     if (!res) {
       LOG_TRACE("Keys not in the cache for Value[" << value << "]");
       return NULL;

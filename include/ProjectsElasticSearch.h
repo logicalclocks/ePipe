@@ -52,10 +52,10 @@ public:
           int time_to_wait_before_inserting, int bulk_size,
           const bool stats, MConn conn);
 
-  bool addDoc(int inodeId, string json);
+  bool addDoc(Int64 inodeId, string json);
   bool addBulk(string json);
   bool deleteDocsByQuery(string json);
-  bool deleteSchemaForINode(int inodeId, string json);
+  bool deleteSchemaForINode(Int64 inodeId, string json);
 
   virtual ~ProjectsElasticSearch();
 private:

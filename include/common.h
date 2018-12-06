@@ -52,6 +52,10 @@ typedef vector<int> IVec;
 typedef boost::unordered_set<int> UISet;
 typedef boost::unordered_map<int, int> UIMap;
 
+//long
+typedef boost::unordered_set<Int64> ULSet;
+typedef vector<Int64> LVec;
+
 //Constansts
 
 #define RETRIES 5

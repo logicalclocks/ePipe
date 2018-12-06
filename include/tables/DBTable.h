@@ -71,6 +71,8 @@ protected:
   TableRow doRead(Ndb* connection, AnyMap& any);
   vector<TableRow> doRead(Ndb* connection, AnyVec& pks);
   boost::unordered_map<int, TableRow> doRead(Ndb* connection, UISet& ids);
+  boost::unordered_map<Int64, TableRow> doRead(Ndb* connection, ULSet& ids);
+    
   vector<TableRow> doRead(Ndb* connection, string index, AnyMap& anys);
   
   void doDelete(Any any);
@@ -84,6 +86,7 @@ protected:
   
   virtual void applyConditionOnGetAll(NdbScanFilter& filter);
   void convert(UISet& ids, AnyVec& resultAny, IVec& resultVec);
+  void convert(ULSet& ids, AnyVec& resultAny, LVec& resultVec);
 };
 
 template<typename TableRow>
@@ -263,6 +266,20 @@ boost::unordered_map<int, TableRow> DBTable<TableRow>::doRead(Ndb* connection, U
 }
 
 template<typename TableRow>
+boost::unordered_map<Int64, TableRow> DBTable<TableRow>::doRead(Ndb* connection, ULSet& ids){
+  AnyVec anyVec;
+  LVec idsVec;
+  convert(ids, anyVec, idsVec);
+  vector<TableRow> rows = doRead(connection, anyVec);
+  boost::unordered_map<Int64, TableRow> results;
+  int i=0;
+  for(typename vector<TableRow>::iterator it = rows.begin(); it!=rows.end(); ++it, i++){
+    results[idsVec[i]]=*it;
+  }
+  return results;
+}
+
+template<typename TableRow>
 vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, AnyVec& pks){
   start(connection);
   LOG_DEBUG(getName() << " -- doRead : " << pks.size() << " rows");
@@ -315,7 +332,11 @@ void DBTable<TableRow>::applyConditionOnOperation(NdbOperation* operation, AnyMa
       int pk = boost::any_cast<int>(a);
       log << colName << " = " << pk << endl;
       operation->equal(colName.c_str(), pk);
-    } else if (a.type() == typeid (string)) {
+    } else if(a.type() == typeid(Int64)){
+      int pk = boost::any_cast<Int64>(a);
+      log << colName << " = " << pk << endl;
+      operation->equal(colName.c_str(), pk);
+    }else if (a.type() == typeid (string)) {
       string pk = boost::any_cast<string>(a);
       log << colName << " = " << pk << endl;
       operation->equal(colName.c_str(), get_ndb_varchar(pk,
@@ -331,6 +352,17 @@ template<typename TableRow>
 void DBTable<TableRow>::convert(UISet& ids, AnyVec& resultAny, IVec& resultVec){
   for(UISet::iterator it=ids.begin(); it != ids.end(); ++it){
     int id = *it;
+    AnyMap a;
+    a[0]=id;
+    resultAny.push_back(a);
+    resultVec.push_back(id);
+  }
+}
+
+template<typename TableRow>
+void DBTable<TableRow>::convert(ULSet& ids, AnyVec& resultAny, LVec& resultVec){
+  for(ULSet::iterator it=ids.begin(); it != ids.end(); ++it){
+    Int64 id = *it;
     AnyMap a;
     a[0]=id;
     resultAny.push_back(a);

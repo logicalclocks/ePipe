@@ -27,11 +27,11 @@
 #include "DBTable.h"
 
 struct INodeDatasetLookupRow {
-  int mInodeId;
-  int mDatasetId;
+  Int64 mInodeId;
+  Int64 mDatasetINodeId;
 };
 
-typedef boost::unordered_map<int, INodeDatasetLookupRow> INodeDatasetLookupMap;
+typedef boost::unordered_map<Int64, INodeDatasetLookupRow> INodeDatasetLookupMap;
 
 class INodeDatasetLookupTable : public DBTable<INodeDatasetLookupRow> {
 public:
@@ -43,12 +43,12 @@ public:
 
   INodeDatasetLookupRow getRow(NdbRecAttr* values[]) {
     INodeDatasetLookupRow row;
-    row.mInodeId = values[0]->int32_value();
-    row.mDatasetId = values[1]->int32_value();
+    row.mInodeId = values[0]->int64_value();
+    row.mDatasetINodeId = values[1]->int64_value();
     return row;
   }
 
-  INodeDatasetLookupMap get(Ndb* connection, UISet inodes_ids) {
+  INodeDatasetLookupMap get(Ndb* connection, ULSet inodes_ids) {
     return doRead(connection, inodes_ids);
   }
 

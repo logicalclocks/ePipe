@@ -27,7 +27,7 @@
 
 struct TupleRow {
   int mId;
-  int mInodeId;
+  Int64 mInodeId;
 };
 
 typedef boost::unordered_map<int, TupleRow> TupleMap;
@@ -43,7 +43,7 @@ public:
   TupleRow getRow(NdbRecAttr* values[]) {
     TupleRow row;
     row.mId = values[0]->int32_value();
-    row.mInodeId = values[1]->int32_value();
+    row.mInodeId = values[1]->int64_value();
     return row;
   }
 
