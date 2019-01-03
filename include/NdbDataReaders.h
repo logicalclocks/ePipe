@@ -118,15 +118,19 @@ void NdbDataReaders<Data, Conn, Keys>::writeOutput(Bulk<Keys> out) {
 
 template<typename Data, typename Conn, typename Keys>
 void NdbDataReaders<Data, Conn, Keys>::processWaiting() {
-  while(!mWaitingOutQueue->empty()){
-    Bulk<Keys> out;
-    mWaitingOutQueue->pop(out);
-    if(out.mProcessingIndex == mLastSent + 1){
-      LOG_INFO("publish enriched events with index ["  << out.mProcessingIndex << "] to Elastic");
-      mElasticSearch->addData(out);
-      mLastSent++;
-    }else{
-      mWaitingOutQueue->push(out);
+  while (!mWaitingOutQueue->empty()) {
+    boost::optional<Bulk<Keys> > out_ptr = mWaitingOutQueue->pop();
+    if (out_ptr) {
+      Bulk<Keys> out = out_ptr.get();
+      if (out.mProcessingIndex == mLastSent + 1) {
+        LOG_INFO("publish enriched events with index [" << out.mProcessingIndex << "] to Elastic");
+        mElasticSearch->addData(out);
+        mLastSent++;
+      } else {
+        mWaitingOutQueue->push(out);
+        break;
+      }
+    } else {
       break;
     }
   }
