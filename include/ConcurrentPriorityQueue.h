@@ -26,14 +26,14 @@
 #define CONCURRENTPRIORITYQUEUE_H
 #include "common.h"
 #include <boost/heap/priority_queue.hpp>
+#include <boost/optional.hpp>
 
 template<typename Data, typename DataCompartor>
 class ConcurrentPriorityQueue {
 public:
   ConcurrentPriorityQueue();
   void push(Data data);
-  void pop(Data& result);
-  void pop();
+  boost::optional<Data> pop();
   void wait_and_pop(Data &result);
   bool empty();
   int size();
@@ -68,16 +68,14 @@ void ConcurrentPriorityQueue<Data, DataCompartor>::wait_and_pop(Data& result) {
 }
 
 template<typename Data, typename DataCompartor>
-void ConcurrentPriorityQueue<Data, DataCompartor>::pop(Data& result) {
+boost::optional<Data> ConcurrentPriorityQueue<Data, DataCompartor>::pop() {
   boost::mutex::scoped_lock lock(mLock);
-  result = mQueue.top();
-  mQueue.pop();
-}
-
-template<typename Data, typename DataCompartor>
-void ConcurrentPriorityQueue<Data, DataCompartor>::pop() {
-  boost::mutex::scoped_lock lock(mLock);
-  mQueue.pop();
+  if(!mQueue.empty()){
+    Data result = mQueue.top();
+    mQueue.pop();
+    return result;
+  }
+  return boost::none;
 }
 
 template<typename Data, typename DataCompartor>
