@@ -28,7 +28,7 @@
 
 #include "Cache.h"
 #include "Utils.h"
-#include "ElasticSearchBase.h"
+#include "TimedRestBatcher.h"
 
 using namespace Utils;
 

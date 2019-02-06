@@ -41,14 +41,14 @@ struct BulkIndexComparator {
 template<typename Data, typename Conn, typename Keys> 
 class NdbDataReaders : public DataReaderOutHandler<Keys>{
 public:
-  NdbDataReaders(ElasticSearchBase<Keys>* elastic);
+  NdbDataReaders(TimedRestBatcher<Keys>* elastic);
   void start();
   void processBatch(vector<Data>* data_batch);
   void writeOutput(Bulk<Keys> out);
   virtual ~NdbDataReaders();
   
 private:
-  ElasticSearchBase<Keys>* mElasticSearch;
+  TimedRestBatcher<Keys>* timedRestBatcher;
   bool mStarted;
   boost::thread mThread;
   
@@ -67,7 +67,7 @@ protected:
 };
 
 template<typename Data, typename Conn, typename Keys>
-NdbDataReaders<Data, Conn, Keys>::NdbDataReaders(ElasticSearchBase<Keys>* elastic) : mElasticSearch(elastic) {
+NdbDataReaders<Data, Conn, Keys>::NdbDataReaders(TimedRestBatcher<Keys>* batcher) : timedRestBatcher(batcher) {
   mStarted = false;
   mBatchedQueue = new ConcurrentQueue<vector<Data>*>();
   mWaitingOutQueue = new ConcurrentPriorityQueue<Bulk<Keys>, BulkIndexComparator<Keys> >();
@@ -124,7 +124,7 @@ void NdbDataReaders<Data, Conn, Keys>::processWaiting() {
       Bulk<Keys> out = out_ptr.get();
       if (out.mProcessingIndex == mLastSent + 1) {
         LOG_INFO("publish enriched events with index [" << out.mProcessingIndex << "] to Elastic");
-        mElasticSearch->addData(out);
+        timedRestBatcher->addData(out);
         mLastSent++;
       } else {
         mWaitingOutQueue->push(out);

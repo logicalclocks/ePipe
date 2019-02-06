@@ -41,7 +41,7 @@ void ProvenanceElasticSearch::process(vector<PBulk>* bulks) {
   }
 
   //TODO: handle failures
-  if (elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch)) {
+  if (httpRequest(HTTP_POST, mElasticBulkAddr, batch)) {
     if (!keys.empty()) {
       ProvenanceLogTable().removeLogs(mConn, keys);
     }
