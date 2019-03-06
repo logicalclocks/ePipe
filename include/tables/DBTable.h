@@ -333,7 +333,7 @@ void DBTable<TableRow>::applyConditionOnOperation(NdbOperation* operation, AnyMa
       log << colName << " = " << pk << endl;
       operation->equal(colName.c_str(), pk);
     } else if(a.type() == typeid(Int64)){
-      int pk = boost::any_cast<Int64>(a);
+      Int64 pk = boost::any_cast<Int64>(a);
       log << colName << " = " << pk << endl;
       operation->equal(colName.c_str(), pk);
     }else if (a.type() == typeid (string)) {
