@@ -85,6 +85,7 @@ protected:
   bool httpRequest(HttpOp op, string requestUrl, string json);
 
   virtual void process(vector<Bulk<Keys> >* data) = 0;
+  virtual bool parseResponse(string response) = 0;
 
 private:
   ConcurrentQueue<Bulk<Keys> > mQueue;
@@ -94,7 +95,6 @@ private:
   bool mShutdown;
   
   bool httpRequestInternal(HttpOp op, string requestUrl, string json);
-  bool parseResponse(string response);
   Response perform(HttpOp op, string requestUrl, string json);
 
   virtual void run();
@@ -231,60 +231,6 @@ Response TimedRestBatcher<Keys>::perform(HttpOp op, string requestUrl, string js
   curl_easy_cleanup(curl);
 
   return response;
-}
-
-template<typename Keys>
-bool TimedRestBatcher<Keys>::parseResponse(string response) {
-  try {
-    rapidjson::Document d;
-    if (!d.Parse<0>(response.c_str()).HasParseError()) {
-      if (d.HasMember("errors")) {
-        const rapidjson::Value &bulkErrors = d["errors"];
-        if (bulkErrors.IsBool() && bulkErrors.GetBool()) {
-          const rapidjson::Value &items = d["items"];
-          stringstream errors;
-          for (rapidjson::SizeType i = 0; i < items.Size(); ++i) {
-            const rapidjson::Value &obj = items[i];
-            for (rapidjson::Value::ConstMemberIterator itr = obj.MemberBegin(); itr != obj.MemberEnd(); ++itr) {
-              const rapidjson::Value & opObj = itr->value;
-              if (opObj.HasMember("error")) {
-                const rapidjson::Value & error = opObj["error"];
-                if (error.IsObject()) {
-                  const rapidjson::Value & errorType = error["type"];
-                  const rapidjson::Value & errorReason = error["reason"];
-                  errors << errorType.GetString() << ":" << errorReason.GetString();
-                } else if (error.IsString()) {
-                  errors << error.GetString();
-                }
-                errors << ", ";
-              }
-            }
-          }
-          string errorsStr = errors.str();
-          LOG_ERROR(" ES got errors: " << errorsStr);
-          return false;
-        }
-      } else if (d.HasMember("error")) {
-        const rapidjson::Value &error = d["error"];
-        if (error.IsObject()) {
-          const rapidjson::Value & errorType = error["type"];
-          const rapidjson::Value & errorReason = error["reason"];
-          LOG_ERROR(" ES got error: " << errorType.GetString() << ":" << errorReason.GetString());
-        } else if (error.IsString()) {
-          LOG_ERROR(" ES got error: " << error.GetString());
-        }
-        return false;
-      }
-    } else {
-      LOG_ERROR(" ES got json error (" << d.GetParseError() << ") while parsing (" << response << ")");
-      return false;
-    }
-
-  } catch (std::exception &e) {
-    LOG_ERROR(e.what());
-    return false;
-  }
-  return true;
 }
 
 template<typename Keys>
