@@ -53,7 +53,7 @@ void ProjectsElasticSearch::process(vector<FSBulk>* bulks) {
   }
 
   //TODO: handle failures
-  if (elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, batch)) {
+  if (httpRequest(HTTP_POST, mElasticBulkAddr, batch)) {
     if (!keys.mMetaPKs.empty()) {
       MetadataLogTable().removeLogs(mConn.metadataConnection, keys.mMetaPKs);
     }
@@ -133,21 +133,21 @@ void ProjectsElasticSearch::stats(FSBulk bulk, ptime t_elastic_done) {
 
 bool ProjectsElasticSearch::addDoc(Int64 inodeId, string json) {
   string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
-  return elasticSearchHttpRequest(HTTP_POST, url, json);
+  return httpRequest(HTTP_POST, url, json);
 }
 
 bool ProjectsElasticSearch::addBulk(string json) {
-  return elasticSearchHttpRequest(HTTP_POST, mElasticBulkAddr, json);
+  return httpRequest(HTTP_POST, mElasticBulkAddr, json);
 }
 
 bool ProjectsElasticSearch::deleteDocsByQuery(string json) {
   string deleteProjUrl = getElasticSearchDeleteByQuery(mIndex);
-  return elasticSearchHttpRequest(HTTP_POST, deleteProjUrl, json);
+  return httpRequest(HTTP_POST, deleteProjUrl, json);
 }
 
 bool ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, string json) {
   string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
-  return elasticSearchHttpRequest(HTTP_POST, url, json);
+  return httpRequest(HTTP_POST, url, json);
 }
 
 ProjectsElasticSearch::~ProjectsElasticSearch() {
