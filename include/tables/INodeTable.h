@@ -254,7 +254,7 @@ struct INodeRow {
   }
 };
 
-typedef boost::unordered_map<int, INodeRow> INodeMap;
+typedef boost::unordered_map<Int64, INodeRow> INodeMap;
 typedef vector<INodeRow> INodeVec;
 
 class INodeTable : public DBTable<INodeRow> {
@@ -331,7 +331,7 @@ public:
 
   INodeMap get(Ndb* connection, Fmq* data_batch) {
     AnyVec anyVec;
-    boost::unordered_map<int, FsMutationRow> mutationsByInode;
+    boost::unordered_map<Int64, FsMutationRow> mutationsByInode;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
       if (!requiresINode(row)) {
