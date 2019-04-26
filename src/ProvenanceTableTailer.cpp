@@ -73,7 +73,7 @@ void ProvenanceTableTailer::pushToQueue(PRpq *curr) {
 
 void ProvenanceTableTailer::pushToQueue(Pv* curr) {
   std::sort(curr->begin(), curr->end(), ProvenanceRowComparator());
-  for (Pv::iterator it = curr->begin(); it != curr->end(); ++it) {
+  for (Pv::reverse_iterator it = curr->rbegin(); it != curr->rend(); ++it) {
     mQueue->push(*it);
   }
   delete curr;

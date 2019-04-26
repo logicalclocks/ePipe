@@ -97,7 +97,7 @@ void FsMutationsTableTailer::pushToQueue(FSpq* curr) {
 
 void FsMutationsTableTailer::pushToQueue(FSv* curr) {
   std::sort(curr->begin(), curr->end(), FsMutationRowComparator());
-  for (FSv::iterator it = curr->begin(); it != curr->end(); ++it) {
+  for (FSv::reverse_iterator it = curr->rbegin(); it != curr->rend(); ++it) {
     mQueue->push(*it);
   }
   delete curr;
