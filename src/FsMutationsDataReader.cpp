@@ -34,7 +34,7 @@ FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopswo
 void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk) {
 
   INodeMap inodes = mInodesTable.get(mNdbConnection.inodeConnection, data_batch);
-
+  XAttrMap xattrs = mXAttrTable.get(mNdbConnection.inodeConnection, data_batch);
   if (mHopsworksEnalbed) {
     ULSet dataset_inode_ids;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
@@ -44,10 +44,11 @@ void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk
     mDatasetTable.loadProjectIds(mNdbConnection.metadataConnection, dataset_inode_ids);
   }
 
-  createJSON(data_batch, inodes, bulk);
+  createJSON(data_batch, inodes, xattrs, bulk);
 }
 
-void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes, FSBulk& bulk) {
+void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
+    XAttrMap& xattrs, FSBulk& bulk) {
 
   vector<ptime> arrivalTimes(pending->size());
   stringstream out;
@@ -57,33 +58,71 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes, FSBulk& b
     arrivalTimes[i] = row.mEventCreationTime;
     bulk.mPKs.mFSPKs.push_back(row.getPK());
 
-    if (!requiresINode(row)) {
-      //Handle the delete, rename, and change dataset
-      out << INodeRow::to_json(row);
-      out << endl;
-      continue;
+    if(row.isINodeOperation()) {
+      if (!row.requiresReadingINode()) {
+        //Handle the delete, rename, and change dataset
+        out << INodeRow::to_json(row);
+        out << endl;
+        continue;
+      }
+
+      if (inodes.find(row.mInodeId) == inodes.end()) {
+        LOG_DEBUG(
+            " Data for inode: " << row.getParentId() << ", " << row
+            .getINodeName() << ", " << row.mInodeId << " was not found");
+        out << INodeRow::to_delete_json(row.mInodeId);
+        out << endl;
+        continue;
+      }
+
+      INodeRow inode = inodes[row.mInodeId];
+
+      Int64 datasetINodeId = DONT_EXIST_INT();
+      int projectId = DONT_EXIST_INT();
+      if (mHopsworksEnalbed) {
+        datasetINodeId = row.mDatasetINodeId;
+        projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetINodeId);
+      }
+
+      string inodeJSON = inode.to_create_json(datasetINodeId, projectId);
+
+      out << inodeJSON << endl;
+    } else if(row.isXAttrOperation()){
+      if(!row.requiresReadingXAttr()){
+        //handle delete xattr
+        out << XAttrRow::to_delete_json(row);
+        out << endl;
+        continue;
+      }
+
+      string mutationpk = row.getPKStr();
+
+      if(xattrs.find(mutationpk) == xattrs.end()){
+        LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
+        << row.getNamespace() <<  " for inode " << row.mInodeId
+        << " was not ""found");
+        out << XAttrRow::to_delete_json(row);
+        out << endl;
+        continue;
+      }
+
+      XAttrVec xattr = xattrs[mutationpk];
+      for(XAttrVec::iterator it = xattr.begin(); it != xattr.end() ; ++it){
+        XAttrRow xAttrRow = *it;
+        if(xAttrRow.mInodeId ==  row.mInodeId){
+          out << xAttrRow.to_upsert_json();
+          out << endl;
+        }else{
+          LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
+          << row.getNamespace() <<  " for inode " << row.mInodeId
+          << " was not ""found");
+          out << XAttrRow::to_delete_json(row);
+          out << endl;
+        }
+      }
+    }else{
+      LOG_ERROR("Unknown fs operation " << row.to_string());
     }
-
-    if (inodes.find(row.mInodeId) == inodes.end()) {
-      LOG_DEBUG(" Data for " << row.mParentId << ", " << row.mInodeName
-              << ", " << row.mInodeId << " was not found");
-      out << INodeRow::to_delete_json(row.mInodeId);
-      out << endl;
-      continue;
-    }
-
-    INodeRow inode = inodes[row.mInodeId];
-
-    Int64 datasetINodeId = DONT_EXIST_INT();
-    int projectId = DONT_EXIST_INT();
-    if (mHopsworksEnalbed) {
-      datasetINodeId = row.mDatasetINodeId;
-      projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetINodeId);
-    }
-
-    string inodeJSON = inode.to_create_json(datasetINodeId, projectId);
-
-    out << inodeJSON << endl;
   }
 
   bulk.mArrivalTimes = arrivalTimes;

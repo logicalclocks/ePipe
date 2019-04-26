@@ -25,6 +25,8 @@
 #define DBWATCHTABLE_H
 #include "DBTable.h"
 
+#define PRIMARY_INDEX "PRIMARY"
+
 typedef vector<NdbDictionary::Event::TableEvent> TEventVec;
 
 template<typename TableRow>

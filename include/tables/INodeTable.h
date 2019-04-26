@@ -32,10 +32,6 @@
 
 #define DOC_TYPE_INODE "inode"
 
-inline static bool requiresINode(FsMutationRow row){
-  return row.mOperation == FsAdd || row.mOperation == FsUpdate;
-}
-
 struct INodeRow {
   Int64 mParentId;
   string mName;
@@ -50,7 +46,8 @@ struct INodeRow {
   int mLogicalTime;
   FsOpType mOperation;
   bool mIsDir;
-  
+  Int8 mNumXAttrs;
+
   bool is_equal(ProjectRow proj){
     return proj.mInodeName == mName && proj.mInodeParentId == mParentId 
             && proj.mInodePartitionId == mPartitionId;
@@ -174,13 +171,13 @@ struct INodeRow {
     docWriter.StartObject();
 
     docWriter.String("parent_id");
-    docWriter.Int64(row.mParentId);
+    docWriter.Int64(row.getParentId());
 
     docWriter.String("partition_id");
-    docWriter.Int64(row.mPartitionId);
+    docWriter.Int64(row.getPartitionId());
 
     docWriter.String("name");
-    docWriter.String(row.mInodeName.c_str());
+    docWriter.String(row.getINodeName().c_str());
 
     docWriter.String("operation");
     docWriter.Int(row.mOperation);
@@ -271,6 +268,7 @@ public:
     addColumn("group_id");
     addColumn("logical_time");
     addColumn("is_dir");
+    addColumn("num_xattrs");
   }
 
   INodeRow getRow(NdbRecAttr* values[]) {
@@ -284,6 +282,7 @@ public:
     row.mGroupId = values[6]->int32_value();
     row.mLogicalTime = values[7]->int32_value();
     row.mIsDir = values[8]->int8_value() == 1;
+    row.mNumXAttrs = values[9]->int8_value();
     return row;
   }
 
@@ -334,15 +333,15 @@ public:
     boost::unordered_map<Int64, FsMutationRow> mutationsByInode;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
-      if (!requiresINode(row)) {
+      if (!row.requiresReadingINode() || !row.isINodeOperation()) {
         continue;
       }
       mutationsByInode[row.mInodeId] = row;
 
       AnyMap pk;
-      pk[0] = row.mParentId;
-      pk[1] = row.mInodeName;
-      pk[2] = row.mPartitionId;
+      pk[0] = row.getParentId();
+      pk[1] = row.getINodeName();
+      pk[2] = row.getPartitionId();
       anyVec.push_back(pk);
     }
 

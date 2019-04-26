@@ -33,10 +33,15 @@ enum FsOpType {
   FsDelete = 1,
   FsUpdate = 2,
   FsRename = 3,
-  FsChangeDataset = 4
+  FsChangeDataset = 4,
+
+  XAttrAdd = 10,
+  XAttrAddAll = 11,
+  XAttrUpdate = 12,
+  XAttrDelete = 13
 };
 
-inline static const char* FsOpTypeToStr(FsOpType optype) {
+inline static const char *FsOpTypeToStr(FsOpType optype) {
   switch (optype) {
     case FsAdd:
       return "Add";
@@ -48,6 +53,14 @@ inline static const char* FsOpTypeToStr(FsOpType optype) {
       return "Rename";
     case FsChangeDataset:
       return "ChangeDataset";
+    case XAttrAdd:
+      return "XAttrAdd";
+    case XAttrAddAll:
+      return "XAttrAddAll";
+    case XAttrUpdate:
+      return "XAttrUpdate";
+    case XAttrDelete:
+      return "XAttrDelete";
     default:
       return "Unkown";
   }
@@ -68,10 +81,11 @@ struct FsMutationPK {
 struct FsMutationRow {
   Int64 mDatasetINodeId;
   Int64 mInodeId;
-  Int64 mPartitionId;
-  Int64 mParentId;
-  string mInodeName;
   int mLogicalTime;
+
+  Int64 mPk1;
+  Int64 mPk2;
+  string mPk3;
   FsOpType mOperation;
 
   ptime mEventCreationTime;
@@ -80,26 +94,71 @@ struct FsMutationRow {
     return FsMutationPK(mDatasetINodeId, mInodeId, mLogicalTime);
   }
 
+  string getPKStr(){
+    stringstream stream;
+    stream << mDatasetINodeId << "-" << mInodeId << "-" << mLogicalTime;
+    return stream.str();
+  }
+
   string to_string() {
     stringstream stream;
     stream << "-------------------------" << endl;
     stream << "DatasetId = " << mDatasetINodeId << endl;
     stream << "InodeId = " << mInodeId << endl;
-    stream << "PartitionId = " << mPartitionId << endl;
-    stream << "ParentId = " << mParentId << endl;
-    stream << "InodeName = " << mInodeName << endl;
+    stream << "Pk1 = " << mPk1 << endl;
+    stream << "Pk2 = " << mPk2 << endl;
+    stream << "Pk3 = " << mPk3 << endl;
     stream << "LogicalTime = " << mLogicalTime << endl;
     stream << "Operation = " << FsOpTypeToStr(mOperation) << endl;
     stream << "-------------------------" << endl;
     return stream.str();
+  }
+
+  bool isINodeOperation(){
+    return mOperation == FsAdd || mOperation == FsDelete || mOperation ==
+    FsUpdate || mOperation == FsRename || mOperation == FsChangeDataset;
+  }
+
+  bool requiresReadingINode(){
+    return mOperation == FsAdd || mOperation == FsUpdate;
+  }
+
+  Int64 getPartitionId(){
+    return mPk1;
+  }
+
+  Int64 getParentId(){
+    return mPk2;
+  }
+
+  string getINodeName(){
+    return mPk3;
+  }
+
+  bool isXAttrOperation(){
+    return mOperation == XAttrAdd || mOperation == XAttrAddAll || mOperation
+    == XAttrUpdate || mOperation == XAttrDelete;
+  }
+
+  bool requiresReadingXAttr(){
+    return mOperation == XAttrAdd || mOperation == XAttrUpdate || mOperation
+    == XAttrAddAll ;
+  }
+
+  Int8 getNamespace(){
+    return static_cast<Int8>(mPk2);
+  }
+
+  string getXAttrName(){
+    return mPk3;
   }
 };
 
 struct FsMutationRowEqual {
 
   bool operator()(const FsMutationRow &lhs, const FsMutationRow &rhs) const {
-    return lhs.mDatasetINodeId == rhs.mDatasetINodeId && lhs.mParentId == rhs.mParentId
-            && lhs.mInodeName == rhs.mInodeName && lhs.mInodeId == rhs.mInodeId;
+    return lhs.mDatasetINodeId == rhs.mDatasetINodeId && lhs.mInodeId == rhs
+    .mInodeId && lhs.mLogicalTime == rhs.mLogicalTime;
   }
 };
 
@@ -108,10 +167,11 @@ struct FsMutationRowHash {
   std::size_t operator()(const FsMutationRow &a) const {
     std::size_t seed = 0;
     boost::hash_combine(seed, a.mDatasetINodeId);
-    boost::hash_combine(seed, a.mPartitionId);
-    boost::hash_combine(seed, a.mParentId);
-    boost::hash_combine(seed, a.mInodeName);
     boost::hash_combine(seed, a.mInodeId);
+    boost::hash_combine(seed, a.mLogicalTime);
+    boost::hash_combine(seed, a.mPk1);
+    boost::hash_combine(seed, a.mPk2);
+    boost::hash_combine(seed, a.mPk3);
 
     return seed;
   }
@@ -145,9 +205,9 @@ public:
     addColumn("dataset_id");
     addColumn("inode_id");
     addColumn("logical_time");
-    addColumn("inode_partition_id");
-    addColumn("inode_parent_id");
-    addColumn("inode_name");
+    addColumn("pk1");
+    addColumn("pk2");
+    addColumn("pk3");
     addColumn("operation");
     addRecoveryIndex("logical_time");
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
@@ -159,9 +219,9 @@ public:
     row.mDatasetINodeId = value[0]->int64_value();
     row.mInodeId = value[1]->int64_value();
     row.mLogicalTime = value[2]->int32_value();
-    row.mPartitionId = value[3]->int64_value();
-    row.mParentId = value[4]->int64_value();
-    row.mInodeName = get_string(value[5]);
+    row.mPk1 = value[3]->int64_value();
+    row.mPk2 = value[4]->int64_value();
+    row.mPk3 = get_string(value[5]);
     row.mOperation = static_cast<FsOpType> (value[6]->int8_value());
     return row;
   }

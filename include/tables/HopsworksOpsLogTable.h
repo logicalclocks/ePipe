@@ -98,7 +98,7 @@ public:
     addColumn("project_id");
     addColumn("dataset_id");
     addColumn("inode_id");
-    addRecoveryIndex("PRIMARY");
+    addRecoveryIndex(PRIMARY_INDEX);
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
   }
 

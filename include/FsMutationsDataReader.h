@@ -30,7 +30,7 @@
 #include "tables/INodeTable.h"
 #include "tables/DatasetTable.h"
 #include "NdbDataReaders.h"
-
+#include "tables/XAttrTable.h"
 
 class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn, FSKeys> {
 public:
@@ -39,10 +39,12 @@ public:
 private:
   INodeTable mInodesTable;
   DatasetTable mDatasetTable;
+  XAttrTable mXAttrTable;
 
   virtual void processAddedandDeleted(Fmq* data_batch, FSBulk& bulk);
 
-  void createJSON(Fmq* pending, INodeMap& inodes, FSBulk& bulk);
+  void createJSON(Fmq* pending, INodeMap& inodes, XAttrMap& xattrs, FSBulk&
+  bulk);
 };
 
 class FsMutationsDataReaders : public NdbDataReaders<FsMutationRow, MConn, FSKeys>{

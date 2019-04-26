@@ -28,6 +28,7 @@
 #include "tables/DatasetTable.h"
 #include "tables/SchemabasedMetadataTable.h"
 #include "tables/SchemalessMetadataTable.h"
+#include "tables/XAttrTable.h"
 
 struct DatasetInodes {
   Int64 mDatasetId;
@@ -80,6 +81,7 @@ void Reindexer::run() {
   DatasetTable datasetsTable(mLRUCap);
   SchemabasedMetadataTable schemaBasedTable(mLRUCap);
   SchemalessMetadataTable schemalessTable;
+  XAttrTable xAttrTable;
 
   int projects = 0;
   int nonExistentProject = 0;
@@ -119,6 +121,8 @@ void Reindexer::run() {
 
   DatasetInodesVec datasetStats;
 
+  ULSet inodesWithXAttrs;
+
   for (DatasetInfoMap::iterator mapIt = dsInfoMap.begin(); mapIt != dsInfoMap.end(); ++mapIt) {
     Int64 datasetId = mapIt->first;
     int projectId = mapIt->second.mProjectId;
@@ -140,6 +144,11 @@ void Reindexer::run() {
         if (inode.mIsDir) {
           dirs.push(inode.mId);
         }
+
+        if(inode.mNumXAttrs > 0){
+          inodesWithXAttrs.insert(inode.mId);
+        }
+
         out << inode.to_create_json(datasetId, projectId) << endl;
         totalInodes++;
         datasetInodes++;
@@ -162,6 +171,30 @@ void Reindexer::run() {
     DatasetInodes dsi = *it;
     LOG_INFO("Dataset [ " << dsi.mDatasetId << ", " << dsInfoMap[dsi.mDatasetId].mName << " ] has " << dsi.mTotalNumberOfInodes << " files/dirs.");
   }
+
+  int numXAttrs = 0;
+  int nonExistentXAttrs = 0;
+  for(ULSet::iterator it = inodesWithXAttrs.begin(); it != inodesWithXAttrs
+  .end(); ++it){
+    Int64 inodeId = *it;
+    FSBulk bulk;
+    XAttrVec xattrs = xAttrTable.getByInodeId(conn, inodeId);
+    for(XAttrVec::iterator xit = xattrs.begin(); xit != xattrs.end(); ++xit){
+      XAttrRow xAttrRow = *xit;
+      if(xAttrRow.mInodeId == inodeId){
+        bulk.mJSON += xAttrRow.to_upsert_json();
+      }else{
+        LOG_WARN("XAttrs doesn't exists for ["
+                     << inodeId << "] - " << xAttrRow.to_string());
+        nonExistentXAttrs++;
+      }
+      mElasticSearch->addData(bulk);
+      numXAttrs++;
+    }
+  }
+
+  LOG_INFO((numXAttrs - nonExistentXAttrs) << " XAttrs added, "
+  << nonExistentXAttrs << " doesn't exists");
 
   int extMetadata = 0;
   int nonExistentMetadata = 0;
