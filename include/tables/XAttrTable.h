@@ -50,6 +50,7 @@ struct XAttrPK {
     key[0] = mInodeId;
     key[1] = mNamespace;
     key[2] = mName;
+    return key;
   }
 };
 
@@ -79,6 +80,13 @@ class XAttrTable : public DBTable<XAttrRow> {
 public:
 
   XAttrTable(string table_name) : DBTable(table_name){
+    addColumn("inode_id");
+    addColumn("namespace");
+    addColumn("name");
+    addColumn("value");
+  }
+
+  XAttrTable() : DBTable("hdfs_xattrs") {
     addColumn("inode_id");
     addColumn("namespace");
     addColumn("name");

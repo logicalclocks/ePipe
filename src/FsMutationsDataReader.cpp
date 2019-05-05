@@ -28,7 +28,7 @@
 FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopsworks,
         const int lru_cap)
 : NdbDataReader<FsMutationRow, MConn, FSKeys>(connection, hopsworks),
-        mInodesTable(lru_cap), mDatasetTable(lru_cap), mXAttrTable("hdfs_xattrs") {
+        mInodesTable(lru_cap), mDatasetTable(lru_cap) {
 }
 
 void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk) {
