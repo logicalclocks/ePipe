@@ -24,6 +24,7 @@
 #ifndef EPIPE_XATTRTABLE_H
 #define EPIPE_XATTRTABLE_H
 #include "DBTable.h"
+#include "FsMutationsLogTable.h"
 
 #define XATTR_FIELD_NAME "xattr"
 
