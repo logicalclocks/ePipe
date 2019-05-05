@@ -58,21 +58,6 @@ struct XAttrRow {
   string mName;
   string mValue;
 
-
-  string to_upsert_json(){
-    stringstream out;
-    out << getDocUpdatePrefix(mInodeId) << endl;
-    out << upsert() << endl;
-    return out.str();
-  }
-
-  static string to_delete_json(Int64 inodeId, string name){
-    stringstream out;
-    out << getDocUpdatePrefix(inodeId) << endl;
-    out << removeXAttrScript(name) << endl;
-    return out.str();
-  }
-
   string to_string(){
     stringstream stream;
     stream << "-------------------------" << endl;
@@ -83,101 +68,6 @@ struct XAttrRow {
     stream << "-------------------------" << endl;
     return stream.str();
   }
-private:
-
-  string upsert() {
-    rapidjson::Document doc;
-    doc.Parse(getXAttrDoc(true).c_str());
-    rapidjson::Document xattr(&doc.GetAllocator());
-    if (!xattr.Parse(mValue.c_str()).HasParseError()) {
-      mergeDoc(doc, xattr);
-      rapidjson::StringBuffer sbDoc;
-      rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
-      doc.Accept(docWriter);
-      return string(sbDoc.GetString());
-    } else {
-      LOG_DEBUG("XAttr is non json " << mName << "=" << mValue);
-      return getXAttrDoc(false);
-    }
-
-  }
-
-  void mergeDoc(rapidjson::Document& target, rapidjson::Document& source) {
-    for (rapidjson::Document::MemberIterator itr = source.MemberBegin(); itr != source.MemberEnd(); ++itr) {
-      target["doc"][XATTR_FIELD_NAME][mName.c_str()].AddMember(itr->name,
-          itr->value, target.GetAllocator());
-    }
-  }
-
-  static string getDocUpdatePrefix(Int64 inodeId){
-    rapidjson::StringBuffer sbOp;
-    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
-
-    opWriter.StartObject();
-
-    opWriter.String("update");
-    opWriter.StartObject();
-
-    opWriter.String("_id");
-    opWriter.Int64(inodeId);
-
-    opWriter.EndObject();
-    opWriter.EndObject();
-
-    return string(sbOp.GetString());
-  }
-
-  static string removeXAttrScript(string xattrname){
-
-    rapidjson::StringBuffer sbOp;
-    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
-
-    opWriter.StartObject();
-
-    opWriter.String("script");
-
-    stringstream rmout;
-    rmout << "ctx._source." << XATTR_FIELD_NAME << ".remove(\"" << xattrname <<  "\")";
-    opWriter.String(rmout.str().c_str());
-
-    opWriter.EndObject();
-
-    return string(sbOp.GetString());
-
-  }
-
-  string getXAttrDoc(bool isJSONVal){
-
-    rapidjson::StringBuffer sbOp;
-    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
-
-    opWriter.StartObject();
-
-    opWriter.String("doc");
-    opWriter.StartObject();
-
-    opWriter.String(XATTR_FIELD_NAME);
-    opWriter.StartObject();
-
-    opWriter.String(mName.c_str());
-    if(isJSONVal) {
-      opWriter.StartObject();
-      opWriter.EndObject();
-    }else{
-      opWriter.String(mValue.c_str());
-    }
-    opWriter.EndObject();
-
-
-    opWriter.EndObject();
-    opWriter.String("doc_as_upsert");
-    opWriter.Bool(true);
-
-    opWriter.EndObject();
-
-    return string(sbOp.GetString());
-  }
-
 };
 
 typedef vector<XAttrRow> XAttrVec;
