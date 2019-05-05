@@ -28,7 +28,7 @@
 FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopsworks,
         const int lru_cap)
 : NdbDataReader<FsMutationRow, MConn, FSKeys>(connection, hopsworks),
-        mInodesTable(lru_cap), mDatasetTable(lru_cap) {
+        mInodesTable(lru_cap), mDatasetTable(lru_cap), mXAttrTable("hdfs_xattrs") {
 }
 
 void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk) {
@@ -90,7 +90,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
     } else if(row.isXAttrOperation()){
       if(!row.requiresReadingXAttr()){
         //handle delete xattr
-        out << XAttrRow::to_delete_json(row);
+        out << XAttrRow::to_delete_json(row.mInodeId, row.getXAttrName());
         out << endl;
         continue;
       }
@@ -101,7 +101,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
         << row.getNamespace() <<  " for inode " << row.mInodeId
         << " was not ""found");
-        out << XAttrRow::to_delete_json(row);
+        out << XAttrRow::to_delete_json(row.mInodeId, row.getXAttrName());
         out << endl;
         continue;
       }
@@ -116,7 +116,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
           LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
           << row.getNamespace() <<  " for inode " << row.mInodeId
           << " was not ""found");
-          out << XAttrRow::to_delete_json(row);
+          out << XAttrRow::to_delete_json(row.mInodeId, row.getXAttrName());
           out << endl;
         }
       }

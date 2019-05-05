@@ -27,8 +27,6 @@
 #include "ConcurrentPriorityQueue.h"
 #include "HopsworksOpsLogTable.h"
 
-#define XATTR_FIELD_NAME "xattr"
-
 enum MetadataType {
   Schemabased = 0,
   Schemaless = 1

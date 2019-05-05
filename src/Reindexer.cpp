@@ -81,7 +81,7 @@ void Reindexer::run() {
   DatasetTable datasetsTable(mLRUCap);
   SchemabasedMetadataTable schemaBasedTable(mLRUCap);
   SchemalessMetadataTable schemalessTable;
-  XAttrTable xAttrTable;
+  XAttrTable xAttrTable("hdfs_xattrs");
 
   int projects = 0;
   int nonExistentProject = 0;

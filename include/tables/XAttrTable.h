@@ -24,9 +24,33 @@
 #ifndef EPIPE_XATTRTABLE_H
 #define EPIPE_XATTRTABLE_H
 #include "DBTable.h"
-#include "FsMutationsLogTable.h"
-#include "MetadataLogTable.h"
 
+#define XATTR_FIELD_NAME "xattr"
+
+struct XAttrPK {
+  Int64 mInodeId;
+  Int8 mNamespace;
+  string mName;
+
+  XAttrPK(Int64 inodeId, Int8 nameSpace, string name) {
+    mInodeId = inodeId;
+    mNamespace = nameSpace;
+    mName = name;
+  }
+
+  string to_string() {
+    stringstream out;
+    out << mInodeId << "-" << mNamespace << "-" << mName;
+    return out.str();
+  }
+
+  AnyMap readKey() {
+    AnyMap key;
+    key[0] = mInodeId;
+    key[1] = mNamespace;
+    key[2] = mName;
+  }
+};
 
 struct XAttrRow {
   Int64 mInodeId;
@@ -42,10 +66,10 @@ struct XAttrRow {
     return out.str();
   }
 
-  static string to_delete_json(FsMutationRow row){
+  static string to_delete_json(Int64 inodeId, string name){
     stringstream out;
-    out << getDocUpdatePrefix(row.mInodeId) << endl;
-    out << removeXAttrScript(row.getXAttrName()) << endl;
+    out << getDocUpdatePrefix(inodeId) << endl;
+    out << removeXAttrScript(name) << endl;
     return out.str();
   }
 
@@ -163,7 +187,7 @@ class XAttrTable : public DBTable<XAttrRow> {
 
 public:
 
-  XAttrTable() : DBTable("hdfs_xattrs"){
+  XAttrTable(string table_name) : DBTable(table_name){
     addColumn("inode_id");
     addColumn("namespace");
     addColumn("name");
