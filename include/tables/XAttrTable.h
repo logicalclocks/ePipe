@@ -186,14 +186,14 @@ class FsMutationsHelper {
 
 class XAttrTable : public DBTable<XAttrRow> {
 
-public:
-
+protected:
   XAttrTable(string table_name) : DBTable(table_name){
     addColumn("inode_id");
     addColumn("namespace");
     addColumn("name");
     addColumn("value");
   }
+public:
 
   XAttrTable() : DBTable("hdfs_xattrs") {
     addColumn("inode_id");
