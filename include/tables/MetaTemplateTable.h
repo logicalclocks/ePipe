@@ -26,7 +26,6 @@
 
 #include "DBTable.h"
 #include "MetadataLogTable.h"
-#include "XAttrTable.h"
 
 struct TemplateRow {
   int mId;
