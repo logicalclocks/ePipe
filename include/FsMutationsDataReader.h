@@ -31,7 +31,6 @@
 #include "tables/DatasetTable.h"
 #include "NdbDataReaders.h"
 #include "tables/XAttrTable.h"
-#include "tables/XAttrHelper.h"
 
 class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn, FSKeys> {
 public:

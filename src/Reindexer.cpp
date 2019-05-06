@@ -29,7 +29,6 @@
 #include "tables/SchemabasedMetadataTable.h"
 #include "tables/SchemalessMetadataTable.h"
 #include "tables/XAttrTable.h"
-#include "tables/XAttrHelper.h"
 
 struct DatasetInodes {
   Int64 mDatasetId;
@@ -183,7 +182,7 @@ void Reindexer::run() {
     for(XAttrVec::iterator xit = xattrs.begin(); xit != xattrs.end(); ++xit){
       XAttrRow xAttrRow = *xit;
       if(xAttrRow.mInodeId == inodeId){
-        bulk.mJSON += XAttrHelper::to_upsert_json(xAttrRow);
+        bulk.mJSON += FsMutationsHelper::to_upsert_json(xAttrRow);
       }else{
         LOG_WARN("XAttrs doesn't exists for ["
                      << inodeId << "] - " << xAttrRow.to_string());

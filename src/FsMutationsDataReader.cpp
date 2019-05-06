@@ -90,7 +90,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
     } else if(row.isXAttrOperation()){
       if(!row.requiresReadingXAttr()){
         //handle delete xattr
-        out << XAttrHelper::to_delete_json(row.mInodeId, row.getXAttrName());
+        out << FsMutationsHelper::to_delete_json(row.mInodeId, row.getXAttrName());
         out << endl;
         continue;
       }
@@ -101,7 +101,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
         << row.getNamespace() <<  " for inode " << row.mInodeId
         << " was not ""found");
-        out << XAttrHelper::to_delete_json(row.mInodeId, row.getXAttrName());
+        out << FsMutationsHelper::to_delete_json(row.mInodeId, row.getXAttrName());
         out << endl;
         continue;
       }
@@ -110,13 +110,13 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       for(XAttrVec::iterator it = xattr.begin(); it != xattr.end() ; ++it){
         XAttrRow xAttrRow = *it;
         if(xAttrRow.mInodeId ==  row.mInodeId){
-          out << XAttrHelper::to_upsert_json(xAttrRow);
+          out << FsMutationsHelper::to_upsert_json(xAttrRow);
           out << endl;
         }else{
           LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
           << row.getNamespace() <<  " for inode " << row.mInodeId
           << " was not ""found");
-          out << XAttrHelper::to_delete_json(row.mInodeId, row.getXAttrName());
+          out << FsMutationsHelper::to_delete_json(row.mInodeId, row.getXAttrName());
           out << endl;
         }
       }
