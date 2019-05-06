@@ -43,14 +43,6 @@ struct XAttrPK {
     out << mInodeId << "-" << mNamespace << "-" << mName;
     return out.str();
   }
-
-  AnyMap readKey() {
-    AnyMap key;
-    key[0] = mInodeId;
-    key[1] = mNamespace;
-    key[2] = mName;
-    return key;
-  }
 };
 
 struct XAttrRow {
