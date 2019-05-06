@@ -175,6 +175,13 @@ class FsMutationsHelper {
     }
 };
 
+class Util {
+public:
+  static bool readCheckExists(XAttrPK key, XAttrRow row) {
+    return key.mInodeId == row.mInodeId && key.mNamespace == row.mNamespace && key.mName == row.mName;
+  }
+}
+
 class XAttrTable : public DBTable<XAttrRow> {
 
 protected:
