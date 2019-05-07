@@ -121,7 +121,7 @@ public:
     addColumn("meta_pk3");
     addColumn("meta_type");
     addColumn("meta_op_type");
-    addRecoveryIndex("PRIMARY");
+    addRecoveryIndex(PRIMARY_INDEX);
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
   }
 

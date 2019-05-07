@@ -74,7 +74,7 @@ protected:
   boost::unordered_map<Int64, TableRow> doRead(Ndb* connection, ULSet& ids);
     
   vector<TableRow> doRead(Ndb* connection, string index, AnyMap& anys);
-  
+
   void doDelete(Any any);
   void doDelete(AnyMap& any);
 
@@ -336,7 +336,11 @@ void DBTable<TableRow>::applyConditionOnOperation(NdbOperation* operation, AnyMa
       Int64 pk = boost::any_cast<Int64>(a);
       log << colName << " = " << pk << endl;
       operation->equal(colName.c_str(), pk);
-    }else if (a.type() == typeid (string)) {
+    } else if(a.type() == typeid(Int8)){
+      Int8 pk = boost::any_cast<Int8>(a);
+      log << colName << " = " << (int) pk << endl;
+      operation->equal(colName.c_str(), pk);
+    } else if (a.type() == typeid (string)) {
       string pk = boost::any_cast<string>(a);
       log << colName << " = " << pk << endl;
       operation->equal(colName.c_str(), get_ndb_varchar(pk,
