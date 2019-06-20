@@ -260,7 +260,6 @@ struct INodeRow {
 
   string getHopsworkUserName(){
     string hopsworkUser = mUserName.substr(mUserName.find("__")+2);
-    LOG_INFO("XXXX: hopsworksUser is " << hopsworkUser << " for " + mUserName);
     return hopsworkUser;
   }
 
