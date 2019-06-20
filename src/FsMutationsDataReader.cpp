@@ -44,6 +44,12 @@ void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk
     mDatasetTable.loadProjectIds(mNdbConnection.metadataConnection, dataset_inode_ids);
   }
 
+  for(INodeMap::iterator it = inodes.begin(); it != inodes.end(); ++it){
+    HopsworksUserRow user = mHopsworksUserTable.getByUserName(mNdbConnection
+    .metadataConnection, it->second.getHopsworkUserName());
+    it->second.mUserName = user.getUser();
+  }
+  
   createJSON(data_batch, inodes, bulk);
 }
 

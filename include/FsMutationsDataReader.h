@@ -30,7 +30,7 @@
 #include "tables/INodeTable.h"
 #include "tables/DatasetTable.h"
 #include "NdbDataReaders.h"
-
+#include "tables/HopsworksUserTable.h"
 
 class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn, FSKeys> {
 public:
@@ -39,6 +39,7 @@ public:
 private:
   INodeTable mInodesTable;
   DatasetTable mDatasetTable;
+  HopsworksUserTable mHopsworksUserTable;
 
   virtual void processAddedandDeleted(Fmq* data_batch, FSBulk& bulk);
 

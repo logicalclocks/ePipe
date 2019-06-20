@@ -26,10 +26,12 @@
 
 using namespace Utils;
 
-HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier,
+HopsworksOpsLogTailer::HopsworksOpsLogTailer(MConn conn, const int
+poll_maxTimeToWait, const Barrier barrier,
         ProjectsElasticSearch* elastic, const int lru_cap)
-: TableTailer(ndb, new HopsworksOpsLogTable(), poll_maxTimeToWait, barrier), mElasticSearch(elastic),
-mDatasetTable(lru_cap), mTemplateTable(lru_cap) {
+: TableTailer(conn.metadataConnection, new HopsworksOpsLogTable(), poll_maxTimeToWait, barrier),
+mElasticSearch(elastic), mDatasetTable(lru_cap), mTemplateTable(lru_cap),
+mINodeConnection(conn.inodeConnection), mINodeTable(lru_cap) {
 
 }
 
@@ -64,6 +66,12 @@ bool HopsworksOpsLogTailer::handleDataset(int opId, HopsworksOpType opType,
 
 bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType opType, Int64 datasetINodeId, int projectId) {
   DatasetRow row = mDatasetTable.get(mNdbConnection, opId);
+  ProjectRow projectRow = mProjectTable.get(mNdbConnection, projectId);
+  INodeRow inodeRow = mINodeTable.get(mINodeConnection, row.mInodeParentId, row
+      .mInodeName, row.mInodePartitionId);
+  row.mModificationTime = inodeRow.mModificationTime;
+  row.mUserName = projectRow.mUserName;
+
   bool success = mElasticSearch->addDoc(datasetINodeId, row.to_create_json());
   if (success) {
     switch (opType) {
@@ -115,6 +123,10 @@ bool HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
 bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, Int64 inodeId, HopsworksOpType opType) {
 
   ProjectRow row = mProjectTable.get(mNdbConnection, projectId);
+  INodeRow inodeRow = mINodeTable.get(mINodeConnection, row.mInodeParentId, row
+  .mInodeName, row.mInodePartitionId);
+  row.mModificationTime = inodeRow.mModificationTime;
+
   bool success = mElasticSearch->addDoc(inodeId, row.to_create_json());
   if (success) {
     switch (opType) {

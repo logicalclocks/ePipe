@@ -31,11 +31,12 @@
 #include "tables/ProjectTable.h"
 #include "tables/DatasetTable.h"
 #include "tables/MetaTemplateTable.h"
+#include "tables/INodeTable.h"
 
 class HopsworksOpsLogTailer : public TableTailer<HopsworksOpRow> {
 public:
-  HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier,
-          ProjectsElasticSearch* elastic, const int lru_cap);
+  HopsworksOpsLogTailer(MConn conn, const int poll_maxTimeToWait, const
+  Barrier barrier, ProjectsElasticSearch* elastic, const int lru_cap);
 
   virtual ~HopsworksOpsLogTailer();
 private:
@@ -60,6 +61,9 @@ private:
   ProjectTable mProjectTable;
   DatasetTable mDatasetTable;
   MetaTemplateTable mTemplateTable;
+  INodeTable mINodeTable;
+
+  Ndb* mINodeConnection;
 };
 
 #endif /* HOPSWORKSOPSLOGTAILER_H */

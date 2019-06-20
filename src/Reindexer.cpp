@@ -28,6 +28,7 @@
 #include "tables/DatasetTable.h"
 #include "tables/SchemabasedMetadataTable.h"
 #include "tables/SchemalessMetadataTable.h"
+#include "tables/HopsworksUserTable.h"
 
 struct DatasetInodes {
   Int64 mDatasetId;
@@ -80,6 +81,7 @@ void Reindexer::run() {
   DatasetTable datasetsTable(mLRUCap);
   SchemabasedMetadataTable schemaBasedTable(mLRUCap);
   SchemalessMetadataTable schemalessTable;
+  HopsworksUserTable hopsworksUserTable;
 
   int projects = 0;
   int nonExistentProject = 0;
@@ -90,6 +92,7 @@ void Reindexer::run() {
             project.mInodeName, project.mInodePartitionId);
 
     if (projectInode.is_equal(project)) {
+      project.mModificationTime = projectInode.mModificationTime;
       mElasticSearch->addDoc(projectInode.mId, project.to_create_json());
     } else {
       LOG_WARN("Project [" << project.mId << ", " << project.mInodeName
@@ -107,6 +110,11 @@ void Reindexer::run() {
   datasetsTable.getAll(metaConn);
   while (datasetsTable.next()) {
     DatasetRow dataset = datasetsTable.currRow();
+    ProjectRow projectRow = projectsTable.get(metaConn, dataset.mProjectId);
+    INodeRow inodeRow = inodesTable.get(conn, dataset.mInodeParentId, dataset
+        .mInodeName, dataset.mInodePartitionId);
+    dataset.mModificationTime = inodeRow.mModificationTime;
+    dataset.mUserName = projectRow.mUserName;
     mElasticSearch->addDoc(dataset.mInodeId, dataset.to_create_json());
     dsInfoMap[dataset.mInodeId] = DatasetInfo(dataset.mProjectId, dataset.mInodeName);
     totalDatasets++;
@@ -140,6 +148,11 @@ void Reindexer::run() {
         if (inode.mIsDir) {
           dirs.push(inode.mId);
         }
+
+        HopsworksUserRow userRow = hopsworksUserTable.getByUserName(metaConn,
+            inode.getHopsworkUserName());
+        inode.mUserName = userRow.getUser();
+        
         out << inode.to_create_json(datasetId, projectId) << endl;
         totalInodes++;
         datasetInodes++;

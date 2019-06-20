@@ -37,6 +37,7 @@ struct ProjectRow {
   string mUserName;
   string mDescription;
   string mEmail;
+  Int64 mModificationTime;
 
   string to_create_json() {
     rapidjson::StringBuffer sbDoc;
@@ -66,6 +67,9 @@ struct ProjectRow {
 
     docWriter.String("description");
     docWriter.String(mDescription.c_str());
+
+    docWriter.String("modification");
+    docWriter.Int64(mModificationTime);
 
     docWriter.EndObject();
     docWriter.String("doc_as_upsert");

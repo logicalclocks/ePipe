@@ -173,7 +173,9 @@ void Notifier::setup() {
   }
 
   if (mHopsworksEnabled) {
-    Ndb* ops_log_tailer_connection = create_ndb_connection(mMetaDatabaseName);
+    MConn ops_log_tailer_connection;
+    ops_log_tailer_connection.metadataConnection = create_ndb_connection(mMetaDatabaseName);
+    ops_log_tailer_connection.inodeConnection = create_ndb_connection(mDatabaseName);
     mhopsworksOpsLogTailer = new HopsworksOpsLogTailer(ops_log_tailer_connection, mPollMaxTimeToWait, mBarrier,
             mProjectsElasticSearch, mLRUCap);
   }

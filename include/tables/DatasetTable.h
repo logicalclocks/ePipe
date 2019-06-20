@@ -38,6 +38,10 @@ struct DatasetRow {
   string mDescription;
   bool mPublicDS;
   bool mShared;
+  Int64 mModificationTime;
+  string mUserName;
+
+  Int64 mInodePartitionId;
 
   string to_create_json() {
     rapidjson::StringBuffer sbDoc;
@@ -64,6 +68,12 @@ struct DatasetRow {
 
     docWriter.String("description");
     docWriter.String(mDescription.c_str());
+
+    docWriter.String("modification");
+    docWriter.Int64(mModificationTime);
+
+    docWriter.String("user");
+    docWriter.String(mUserName.c_str());
 
     docWriter.String("public_ds");
     docWriter.Bool(mPublicDS);
@@ -118,6 +128,7 @@ public:
     addColumn("description");
     addColumn("public_ds");
     addColumn("shared");
+    addColumn("partition_id");
     DatasetProjectCache::getInstance(lru_cap, "DatasetProject");
   }
 
@@ -131,6 +142,7 @@ public:
     row.mDescription = get_string(values[5]);
     row.mPublicDS = values[6]->int8_value() == 1;
     row.mShared = values[7]->int8_value() == 1;
+    row.mInodePartitionId = values[8]->int64_value();
     return row;
   }
 
