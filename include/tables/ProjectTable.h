@@ -25,6 +25,7 @@
 #define PROJECTTABLE_H
 
 #include "DBTable.h"
+#include "HopsworksUserTable.h"
 
 #define DOC_TYPE_PROJECT "proj"
 
@@ -35,6 +36,7 @@ struct ProjectRow {
   string mInodeName;
   string mUserName;
   string mDescription;
+  string mEmail;
 
   string to_create_json() {
     rapidjson::StringBuffer sbDoc;
@@ -107,7 +109,11 @@ public:
   }
 
   ProjectRow get(Ndb* connection, int projectId) {
-    return doRead(connection, projectId);
+    ProjectRow row = doRead(connection, projectId);
+    HopsworksUserRow user = mHopsworksUserTable.getByEmail(connection, row
+    .mEmail);
+    row.mUserName = user.getUser();
+    return row;
   }
 
   ProjectRow getRow(NdbRecAttr* values[]) {
@@ -116,10 +122,13 @@ public:
     row.mInodeParentId = values[1]->int64_value();
     row.mInodePartitionId = values[2]->int64_value();
     row.mInodeName = get_string(values[3]);
-    row.mUserName = get_string(values[4]);
+    row.mEmail = get_string(values[4]);
     row.mDescription = get_string(values[5]);
     return row;
   }
+
+private:
+  HopsworksUserTable mHopsworksUserTable;
 };
 
 #endif /* PROJECTTABLE_H */

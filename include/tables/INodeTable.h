@@ -46,11 +46,13 @@ struct INodeRow {
   int mGroupId;
   string mUserName;
   string mGroupName;
-  
+
   int mLogicalTime;
   FsOpType mOperation;
   bool mIsDir;
-  
+
+  Int64 mModificationTime;
+
   bool is_equal(ProjectRow proj){
     return proj.mInodeName == mName && proj.mInodeParentId == mParentId 
             && proj.mInodePartitionId == mPartitionId;
@@ -135,6 +137,9 @@ struct INodeRow {
 
     docWriter.String("group");
     docWriter.String(mGroupName.c_str());
+
+    docWriter.String("modification");
+    docWriter.Int64(mModificationTime);
 
     docWriter.EndObject();
 
@@ -271,6 +276,7 @@ public:
     addColumn("group_id");
     addColumn("logical_time");
     addColumn("is_dir");
+    addColumn("modification_time");
   }
 
   INodeRow getRow(NdbRecAttr* values[]) {
@@ -284,6 +290,7 @@ public:
     row.mGroupId = values[6]->int32_value();
     row.mLogicalTime = values[7]->int32_value();
     row.mIsDir = values[8]->int8_value() == 1;
+    row.mModificationTime = values[9]->int64_value();
     return row;
   }
 
