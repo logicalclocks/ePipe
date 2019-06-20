@@ -92,6 +92,9 @@ void Reindexer::run() {
             project.mInodeName, project.mInodePartitionId);
 
     if (projectInode.is_equal(project)) {
+      HopsworksUserRow userRow = hopsworksUserTable.getByEmail(metaConn,
+                                                               project.mEmail);
+      project.mUserName = userRow.getUser();
       project.mModificationTime = projectInode.mModificationTime;
       mElasticSearch->addDoc(projectInode.mId, project.to_create_json());
     } else {
@@ -152,7 +155,7 @@ void Reindexer::run() {
         HopsworksUserRow userRow = hopsworksUserTable.getByUserName(metaConn,
             inode.getHopsworkUserName());
         inode.mUserName = userRow.getUser();
-        
+
         out << inode.to_create_json(datasetId, projectId) << endl;
         totalInodes++;
         datasetInodes++;
