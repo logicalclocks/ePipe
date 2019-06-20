@@ -258,9 +258,16 @@ struct INodeRow {
     return "";
   }
 
+  bool readHopsworkUser(){
+    return mUserName.find("__") != string::npos;
+  }
+
   string getHopsworkUserName(){
-    string hopsworkUser = mUserName.substr(mUserName.find("__")+2);
-    return hopsworkUser;
+    size_t found = mUserName.find("__");
+    if (found != string::npos) {
+      return mUserName.substr(found + 2);
+    }
+    return mUserName;
   }
 
 };

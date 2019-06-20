@@ -152,9 +152,11 @@ void Reindexer::run() {
           dirs.push(inode.mId);
         }
 
-        HopsworksUserRow userRow = hopsworksUserTable.getByUserName(metaConn,
-            inode.getHopsworkUserName());
-        inode.mUserName = userRow.getUser();
+        if(inode.readHopsworkUser()) {
+          HopsworksUserRow userRow = hopsworksUserTable.getByUserName(metaConn,
+              inode.getHopsworkUserName());
+          inode.mUserName = userRow.getUser();
+        }
 
         out << inode.to_create_json(datasetId, projectId) << endl;
         totalInodes++;
