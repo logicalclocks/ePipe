@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2019 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,30 +15,40 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-/* 
- * File:   Reindexer.h
- * Author: Mahmoud Ismail <maism@kth.se>
+
+/*
+ * File:   SERDESTable.h
+ * Author: Mahmoud Ismail<mahmoud@logicalclocks.com>
  *
  */
 
-#ifndef REINDEXER_H
-#define REINDEXER_H
-#include "ClusterConnectionBase.h"
-#include "ProjectsElasticSearch.h"
+#ifndef EPIPE_SERDESTABLE_H
+#define EPIPE_SERDESTABLE_H
+#include "tables/DBTable.h"
 
-class Reindexer : public ClusterConnectionBase {
-public:
-  Reindexer(const char* connection_string, const char* database_name,
-          const char* meta_database_name, const char* hive_meta_database_name,
-          const string elastic_addr, const string index, int
-          elastic_batch_size, int elastic_issue_time, int lru_cap);
-  virtual ~Reindexer();
-
-  void run();
-private:
-  ProjectsElasticSearch* mElasticSearch;
-  const int mLRUCap;
+struct SERDESRow{
+  Int64 mSERDEID;
 };
 
-#endif /* REINDEXER_H */
+class SERDESTable : public DBTable<SERDESRow>{
 
+public:
+  SERDESTable() : DBTable("SERDES"){
+    addColumn("SERDE_ID");
+  }
+
+  SERDESRow getRow(NdbRecAttr* value[]){
+    SERDESRow row;
+    row.mSERDEID = value[0]->int64_value();
+    return row;
+  }
+
+  void remove(Ndb* conn, Int64 pSERDEID) {
+    start(conn);
+    doDelete(pSERDEID);
+    LOG_DEBUG("Remove SERDES entry with PK: " << pSERDEID);
+    end();
+  }
+
+};
+#endif //EPIPE_SERDESTABLE_H

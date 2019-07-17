@@ -25,16 +25,20 @@
 #include "Notifier.h"
 #include "ProvenanceBatcher.h"
 
-Notifier::Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
+Notifier::Notifier(const char* connection_string, const char* database_name,
+    const char* meta_database_name, const char* hive_meta_database_name,
         const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, TableUnitConf provenance_tu,
         const int poll_maxTimeToWait, const string elastic_ip, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
         const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery,
-        const bool stats, Barrier barrier)
-: ClusterConnectionBase(connection_string, database_name, meta_database_name), mMutationsTU(mutations_tu), mSchemabasedTU(schemabased_tu),
-mSchemalessTU(schemaless_tu), mProvenanceTU(provenance_tu), mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
+        const bool stats, Barrier barrier, const bool hiveCleaner)
+: ClusterConnectionBase(connection_string, database_name, meta_database_name,
+    hive_meta_database_name), mMutationsTU(mutations_tu), mSchemabasedTU
+    (schemabased_tu), mSchemalessTU(schemaless_tu), mProvenanceTU
+    (provenance_tu), mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
 mElasticIndex(elastic_index), mElasticProvenanceIndex(elastic_provenance_index),
 mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap),
-mRecovery(recovery), mStats(stats), mBarrier(barrier) {
+mRecovery(recovery), mStats(stats), mBarrier(barrier), mHiveCleaner
+(hiveCleaner) {
   setup();
 }
 
@@ -76,6 +80,15 @@ void Notifier::start() {
     mProvenanceTableTailer->start(mRecovery);
   }
 
+  if(mHiveCleaner) {
+    mTblsTailer->start(false);
+    mSDSTailer->start(false);
+    mPARTTailer->start(false);
+    mIDXSTailer->start(false);
+    mSkewedLocTailer->start(false);
+    mSkewedValuesTailer->start(false);
+  }
+
   ptime t2 = getCurrentTime();
   LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");
 
@@ -107,6 +120,15 @@ void Notifier::start() {
     mProvenanceBatcher->waitToFinish();
     mProvenanceTableTailer->waitToFinish();
     mProvenancElasticSearch->waitToFinish();
+  }
+
+  if(mHiveCleaner) {
+    mTblsTailer->waitToFinish();
+    mSDSTailer->waitToFinish();
+    mPARTTailer->waitToFinish();
+    mIDXSTailer->waitToFinish();
+    mSkewedLocTailer->waitToFinish();
+    mSkewedValuesTailer->waitToFinish();
   }
 }
 
@@ -196,6 +218,33 @@ void Notifier::setup() {
             mHopsworksEnabled, mProvenancElasticSearch);
     mProvenanceBatcher = new ProvenanceBatcher(mProvenanceTableTailer, mProvenanceDataReaders,
             mProvenanceTU.mWaitTime, mProvenanceTU.mBatchSize);
+  }
+
+
+  if(mHiveCleaner) {
+    Ndb *tbls_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mTblsTailer = new TBLSTailer(tbls_tailer_connection, mPollMaxTimeToWait,
+        mBarrier);
+
+    Ndb *sds_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mSDSTailer = new SDSTailer(sds_tailer_connection, mPollMaxTimeToWait,
+        mBarrier);
+
+    Ndb *part_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mPARTTailer = new PARTTailer(part_tailer_connection, mPollMaxTimeToWait,
+                               mBarrier);
+
+    Ndb *idxs_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mIDXSTailer = new IDXSTailer(idxs_tailer_connection, mPollMaxTimeToWait,
+                                 mBarrier);
+
+    Ndb *skl_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mSkewedLocTailer = new SkewedLocTailer(skl_tailer_connection,
+        mPollMaxTimeToWait, mBarrier);
+
+    Ndb *skv_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mSkewedValuesTailer = new SkewedValuesTailer(skv_tailer_connection,
+        mPollMaxTimeToWait, mBarrier);
   }
 }
 

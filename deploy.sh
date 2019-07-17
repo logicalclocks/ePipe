@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -lt 1 ]; then
-   echo "./deploy.sh [debian|rhel|test] [build] [cmake opts]"
+   echo "./deploy.sh [debian|rhel] [build|build_test] [cmake opts]"
    exit 1
 fi
 
@@ -16,7 +16,12 @@ if [ "$2" != "" ]; then
    cd ..
 fi
 
-if [ ! -f ./build/ePipe ]; then 
+EPIPE_BUILD_PATH="epipe"
+if [ "$2" == "build_test" ]; then
+    EPIPE_BUILD_PATH="epipe/test"
+fi
+
+if [ ! -f ./build/ePipe ]; then
   echo "./build/ePipe not found, try to build first or run ./deploy.sh with build"
   exit 1
 fi
@@ -32,4 +37,4 @@ cp build/ePipe $P/bin/epipe
 
 tar -zcvf $PK $P
 
-rsync $PK   glassfish@snurran.sics.se:/var/www/hops/epipe/$PLATFORM
+rsync $PK   glassfish@snurran.sics.se:/var/www/hops/$EPIPE_BUILD_PATH/$PLATFORM

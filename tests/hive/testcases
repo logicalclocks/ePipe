@@ -1,0 +1,43 @@
+-- DELETE a PARTITION:
+-- Should delete the SDS entry related to that partition, the SERDES entry, but not the COLUMNS info (other partitions are still valid)
+
+DELETE FROM PARTITIONS WHERE PART_ID=16;
+-- Should be empty
+SELECT * FROM SDS WHERE SD_ID=21;
+-- Should be empty
+SELECT * FROM SERDES WHERE SERDE_ID=18;
+
+-- Should not be emtpy
+SELECT * FROM CDS;
+SELECT * FROM COLUMNS_V2 WHERE CD_ID=2;
+
+-- Table should be there
+SELECT * FROM TBLS where TBL_ID=2;
+
+
+-- DELETE all the partitions
+DELETE FROM PARTITIONS;
+-- Should keep all the COLUMNS specification for the table
+-- Should not be emtpy
+SELECT * FROM CDS;
+SELECT * FROM COLUMNS_V2 WHERE CD_ID=2;
+
+
+-- DELETE the TABLE
+DELETE FROM TBLS WHERE TBL_ID=2;
+-- Should be emtpy
+SELECT * FROM CDS;
+SELECT * FROM COLUMNS_V2 WHERE CD_ID=2;
+
+-- DELETE one SKEWED VALUE
+DELETE FROM SKEWED_VALUES WHERE SD_ID_OID=86 AND STRING_LIST_ID_EID=88;
+-- Should remove the String list
+select * from SKEWED_STRING_LIST where STRING_LIST_ID=88;
+select * from SKEWED_STRING_LIST_VALUES  where STRING_LIST_ID=88;
+
+-- DELETE the entire table
+DELETE FROM TBLS WHERE TBL_ID=11;
+
+-- These should be emtpy
+SELECT * FROM skewed_string_list WHERE string_list_id>=87;
+SELECT * FROM skewed_string_list_values  WHERE string_list_id>=87;

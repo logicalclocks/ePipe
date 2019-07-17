@@ -71,7 +71,8 @@ private:
 
 template<typename TableRow>
 TableTailer<TableRow>::TableTailer(Ndb* ndb, DBWatchTable<TableRow>* table, const int poll_maxTimeToWait, const Barrier barrier) : mNdbConnection(ndb), mStarted(false),
-mEventName(Utils::concat("tail-", table->getName())), mTable(table), mPollMaxTimeToWait(poll_maxTimeToWait), mBarrier(barrier),
+mEventName(Utils::concat("tail-", table->getName())), mTable(table),
+mPollMaxTimeToWait(poll_maxTimeToWait), mBarrier(barrier),
 mLastReportedBarrier(0) {
 }
 
@@ -135,17 +136,22 @@ void TableTailer<TableRow>::createListenerEvent() {
   //myEvent.mergeEvents(merge_events);
 
   // Add event to database
-  if (myDict->createEvent(myEvent) == 0)
+  if (myDict->createEvent(myEvent) == 0) {
     myEvent.print();
-  else if (myDict->getNdbError().classification ==
-          NdbError::SchemaObjectExists) {
+  } else if (myDict->getNdbError().classification ==
+             NdbError::SchemaObjectExists) {
     LOG_DEBUG("Event creation failed, event exists, dropping Event...");
-    if (myDict->dropEvent(mEventName.c_str())) LOG_NDB_API_ERROR(myDict->getNdbError());
+    if (myDict->dropEvent(mEventName.c_str(), 1)) {
+      LOG_NDB_API_ERROR(myDict->getNdbError());
+    }
     // try again
     // Add event to database
-    if (myDict->createEvent(myEvent)) LOG_NDB_API_ERROR(myDict->getNdbError());
-  } else
+    if (myDict->createEvent(myEvent)) {
+      LOG_NDB_API_ERROR(myDict->getNdbError());
+    }
+  } else {
     LOG_NDB_API_ERROR(myDict->getNdbError());
+  }
 }
 
 template<typename TableRow>
