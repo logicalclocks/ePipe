@@ -35,6 +35,17 @@ struct XAttrRow {
   string mValue;
 
 
+  string to_upsert_json(FsOpType operation){
+    stringstream out;
+    if(operation == XAttrUpdate){
+      out << getDocUpdatePrefix(mInodeId) << endl;
+      out << removeXAttrScript(mName) << endl;
+    }
+    out << getDocUpdatePrefix(mInodeId) << endl;
+    out << upsert() << endl;
+    return out.str();
+  }
+
   string to_upsert_json(){
     stringstream out;
     out << getDocUpdatePrefix(mInodeId) << endl;
@@ -79,9 +90,21 @@ private:
   }
 
   void mergeDoc(rapidjson::Document& target, rapidjson::Document& source) {
-    for (rapidjson::Document::MemberIterator itr = source.MemberBegin(); itr != source.MemberEnd(); ++itr) {
-      target["doc"][XATTR_FIELD_NAME][mName.c_str()].AddMember(itr->name,
-          itr->value, target.GetAllocator());
+    if(source.IsArray()){
+      target["doc"][XATTR_FIELD_NAME][mName.c_str()].SetArray();
+      for (rapidjson::Value::ConstValueIterator itr = source.Begin(); itr !=
+      source.End(); ++itr) {
+        rapidjson::Value dstVal ;
+        dstVal.CopyFrom(*itr, target.GetAllocator());
+        target["doc"][XATTR_FIELD_NAME][mName.c_str()].PushBack(dstVal,
+            target.GetAllocator());
+      }
+    }else {
+      for (rapidjson::Document::MemberIterator itr = source.MemberBegin();
+           itr != source.MemberEnd(); ++itr) {
+        target["doc"][XATTR_FIELD_NAME][mName.c_str()].AddMember(itr->name,
+            itr->value, target.GetAllocator());
+      }
     }
   }
 
