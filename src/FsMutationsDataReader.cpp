@@ -110,7 +110,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       for(XAttrVec::iterator it = xattr.begin(); it != xattr.end() ; ++it){
         XAttrRow xAttrRow = *it;
         if(xAttrRow.mInodeId ==  row.mInodeId){
-          out << xAttrRow.to_upsert_json();
+          out << xAttrRow.to_upsert_json(row.mOperation);
           out << endl;
         }else{
           LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
