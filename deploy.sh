@@ -33,7 +33,9 @@ rm -r $P $PK
 
 mkdir $P
 mkdir $P/bin
+mkdir $P/conf
 cp build/ePipe $P/bin/epipe
+cp config.ini.template $P/conf/
 
 tar -zcvf $PK $P
 
