@@ -24,8 +24,9 @@
 #include "ClusterConnectionBase.h"
 
 ClusterConnectionBase::ClusterConnectionBase(const char* connection_string,
-        const char* database_name, const char* meta_database_name)
-: mDatabaseName(database_name), mMetaDatabaseName(meta_database_name) {
+        const char* database_name, const char* meta_database_name, const char* hive_meta_database_name)
+: mDatabaseName(database_name), mMetaDatabaseName(meta_database_name),
+mHiveMetaDatabaseName(hive_meta_database_name) {
   mClusterConnection = connect_to_cluster(connection_string);
 }
 

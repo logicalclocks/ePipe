@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2019 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,32 +15,35 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-/* 
- * File:   ClusterConnectionBase.h
- * Author: Mahmoud Ismail <maism@kth.se>
+
+/*
+ * File:   TBLSTailer.h
+ * Author: Fabio Buso <buso@kth.se>
  *
  */
 
-#ifndef CLUSTERCONNECTIONBASE_H
-#define CLUSTERCONNECTIONBASE_H
-#include "Utils.h"
+#ifndef TBLSTAILER_H
+#define TBLSTAILER_H
 
-class ClusterConnectionBase {
+#include "TableTailer.h"
+#include "tables/hive/TBLSTable.h"
+#include "tables/hive/SDSTable.h"
+
+class TBLSTailer : public TableTailer<TBLSRow> {
 public:
-  ClusterConnectionBase(const char* connection_string, const char* database_name,
-          const char* meta_database_name, const char* hive_meta_database_name);
-  virtual ~ClusterConnectionBase();
+  TBLSTailer(Ndb *ndb, const int poll_maxTimeToWait, const Barrier barrier)
+      : TableTailer(ndb, new TBLSTable(), poll_maxTimeToWait, barrier) {}
 
-protected:
-  const char* mDatabaseName;
-  const char* mMetaDatabaseName;
-  const char* mHiveMetaDatabaseName;
-  Ndb* create_ndb_connection(const char* database);
+  virtual ~TBLSTailer() {}
 
 private:
-  Ndb_cluster_connection *mClusterConnection;
-  Ndb_cluster_connection* connect_to_cluster(const char *connection_string);
+  SDSTable mSDSTable;
+
+  virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, TBLSRow
+  pre, TBLSRow row) {
+    LOG_INFO("Delete TBLS event received. Primary Key value: " << pre.mTBLID);
+    mSDSTable.remove(mNdbConnection, pre.mSDID);
+  }
 };
 
-#endif /* CLUSTERCONNECTIONBASE_H */
-
+#endif /* TBLSTAILER_H */

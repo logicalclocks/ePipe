@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2019 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,30 +15,37 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-/* 
- * File:   Reindexer.h
- * Author: Mahmoud Ismail <maism@kth.se>
+
+/*
+ * File:   PartitionsTable.h
+ * Author: Mahmoud Ismail<mahmoud@logicalclocks.com>
  *
  */
 
-#ifndef REINDEXER_H
-#define REINDEXER_H
-#include "ClusterConnectionBase.h"
-#include "ProjectsElasticSearch.h"
+#ifndef EPIPE_PARTITIONSTABLE_H
+#define EPIPE_PARTITIONSTABLE_H
 
-class Reindexer : public ClusterConnectionBase {
-public:
-  Reindexer(const char* connection_string, const char* database_name,
-          const char* meta_database_name, const char* hive_meta_database_name,
-          const string elastic_addr, const string index, int
-          elastic_batch_size, int elastic_issue_time, int lru_cap);
-  virtual ~Reindexer();
+#include "tables/DBWatchTable.h"
 
-  void run();
-private:
-  ProjectsElasticSearch* mElasticSearch;
-  const int mLRUCap;
+struct PartitionsRow{
+  Int64 mPARTID;
+  Int64 mSDID;
 };
 
-#endif /* REINDEXER_H */
+class PartitionsTable : public DBWatchTable<PartitionsRow> {
+public:
+  PartitionsTable() : DBWatchTable("PARTITIONS"){
+    addColumn("PART_ID");
+    addColumn("SD_ID");
+    addWatchEvent(NdbDictionary::Event::TE_DELETE);
+  }
 
+  PartitionsRow getRow(NdbRecAttr *value[]){
+    PartitionsRow row;
+    row.mPARTID = value[0]->int64_value();
+    row.mSDID = value[1]->int64_value();
+    return row;
+  }
+
+};
+#endif //EPIPE_PARTITIONSTABLE_H

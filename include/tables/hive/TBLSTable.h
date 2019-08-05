@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2019 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,30 +15,40 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-/* 
- * File:   Reindexer.h
- * Author: Mahmoud Ismail <maism@kth.se>
+
+/*
+ * File:   TBLSTable.h
+ * Author: Mahmoud Ismail<mahmoud@logicalclocks.com>
  *
  */
 
-#ifndef REINDEXER_H
-#define REINDEXER_H
-#include "ClusterConnectionBase.h"
-#include "ProjectsElasticSearch.h"
+#ifndef EPIPE_TBLSTABLE_H
+#define EPIPE_TBLSTABLE_H
 
-class Reindexer : public ClusterConnectionBase {
-public:
-  Reindexer(const char* connection_string, const char* database_name,
-          const char* meta_database_name, const char* hive_meta_database_name,
-          const string elastic_addr, const string index, int
-          elastic_batch_size, int elastic_issue_time, int lru_cap);
-  virtual ~Reindexer();
+#include "tables/DBWatchTable.h"
 
-  void run();
-private:
-  ProjectsElasticSearch* mElasticSearch;
-  const int mLRUCap;
+struct TBLSRow {
+  Int64 mTBLID;
+  Int64 mSDID;
 };
 
-#endif /* REINDEXER_H */
+class TBLSTable : public DBWatchTable<TBLSRow> {
 
+public:
+  TBLSTable() : DBWatchTable("TBLS") {
+    addColumn("TBL_ID");
+    addColumn("SD_ID");
+    addColumn("VIEW_EXPANDED_TEXT");
+    addColumn("VIEW_ORIGINAL_TEXT");
+    addWatchEvent(NdbDictionary::Event::TE_DELETE);
+  }
+
+  TBLSRow getRow(NdbRecAttr *value[]) {
+    TBLSRow row;
+    row.mTBLID = value[0]->int64_value();
+    row.mSDID = value[1]->int64_value();
+    return row;
+  }
+};
+
+#endif //EPIPE_TBLSTABLE_H

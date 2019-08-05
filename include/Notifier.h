@@ -34,14 +34,21 @@
 #include "MetadataLogTailer.h"
 #include "ProvenanceBatcher.h"
 #include "ClusterConnectionBase.h"
+#include "hive/TBLSTailer.h"
+#include "hive/SDSTailer.h"
+#include "hive/PARTTailer.h"
+#include "hive/IDXSTailer.h"
+#include "hive/SkewedLocTailer.h"
+#include "hive/SkewedValuesTailer.h"
 
 class Notifier : public ClusterConnectionBase {
 public:
-  Notifier(const char* connection_string, const char* database_name, const char* meta_database_name,
+  Notifier(const char* connection_string, const char* database_name,
+          const char* meta_database_name, const char* hive_meta_database_name,
           const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, const TableUnitConf provenance_tu,
           const int poll_maxTimeToWait, const string elastic_addr, const bool hopsworks, const string elastic_index, const string elastic_provenance_index,
           const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
-          Barrier barrier);
+          Barrier barrier, const bool hiveCleaner);
   void start();
   virtual ~Notifier();
 
@@ -63,6 +70,7 @@ private:
   const bool mRecovery;
   const bool mStats;
   const Barrier mBarrier;
+  const bool mHiveCleaner;
 
   ProjectsElasticSearch* mProjectsElasticSearch;
 
@@ -85,6 +93,13 @@ private:
   ProvenanceBatcher* mProvenanceBatcher;
 
   ProvenanceElasticSearch* mProvenancElasticSearch;
+
+  TBLSTailer* mTblsTailer;
+  SDSTailer* mSDSTailer;
+  PARTTailer* mPARTTailer;
+  IDXSTailer* mIDXSTailer;
+  SkewedLocTailer* mSkewedLocTailer;
+  SkewedValuesTailer* mSkewedValuesTailer;
 
   void setup();
 };

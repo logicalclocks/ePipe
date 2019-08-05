@@ -74,6 +74,7 @@ protected:
   boost::unordered_map<Int64, TableRow> doRead(Ndb* connection, ULSet& ids);
     
   vector<TableRow> doRead(Ndb* connection, string index, AnyMap& anys);
+  bool rowsExists(Ndb* connection, string index, AnyMap& anys);
 
   void doDelete(Any any);
   void doDelete(AnyMap& any);
@@ -234,6 +235,23 @@ vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, string index, AnyMap
   }
   close();
   return results;
+}
+
+template<typename TableRow>
+bool DBTable<TableRow>::rowsExists(Ndb* connection, string index,
+    AnyMap& any){
+  start(connection);
+  LOG_DEBUG(getName() << " -- hasResults with index : " << index);
+  mIndex = getIndex(mDatabase, index);
+  NdbIndexScanOperation* operation = getNdbIndexScanOperation(mCurrentTransaction, mIndex);
+  operation->readTuples(NdbOperation::LM_CommittedRead);
+  mCurrentOperation = operation;
+  applyConditionOnOperation(operation, any);
+  mCurrentRow = getColumnValues(mCurrentOperation);
+  executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
+  bool hasMoreRows = operation->nextResult(true) == 0;
+  close();
+  return hasMoreRows;
 }
 
 template<typename TableRow>

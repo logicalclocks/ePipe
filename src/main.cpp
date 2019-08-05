@@ -33,6 +33,8 @@ int main(int argc, char** argv) {
   string connection_string;
   string database_name = "hops";
   string meta_database_name = "hopsworks";
+  string hive_meta_database_name = "metastore";
+
   int poll_maxTimeToWait = 2000;
   string elastic_addr = "localhost:9200";
   int log_level = 2;
@@ -56,20 +58,24 @@ int main(int argc, char** argv) {
   Barrier barrier = EPOCH;
   
   bool reindex = false;
-  
+
+  bool hiveCleaner = true;
+
   po::options_description desc("Allowed options");
   desc.add_options()
           ("help", "produce help message")
           ("connection", po::value<string>(&connection_string), "connection string/ ndb host")
           ("database", po::value<string>(&database_name)->default_value(database_name), "database name.")
           ("meta_database", po::value<string>(&meta_database_name)->default_value(meta_database_name), "database name for metadata")
+          ("hive_meta_database", po::value<string>(&hive_meta_database_name)->default_value(hive_meta_database_name), "database name for hive metadata")
           ("poll_maxTimeToWait", po::value<int>(&poll_maxTimeToWait)->default_value(poll_maxTimeToWait), "max time to wait in miliseconds while waiting for events in pollEvents")
           ("fs_mutations_tu", po::value< vector<int> >()->default_value(mutations_tu.getVector(), mutations_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
           ("schamebased_tu", po::value< vector<int> >()->default_value(schamebased_tu.getVector(), schamebased_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
           ("provenance_tu", po::value< vector<int> >()->default_value(provenance_tu.getVector(), provenance_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS")
           ("schemaless_tu", po::value< vector<int> >()->default_value(schemaless_tu.getVector(), schemaless_tu.getString())->multitoken(), "WAIT_TIME BATCH_SIZE NUM_READERS \nWAIT_TIME is the time to wait in miliseconds before issuing the ndb request if the batch size wasn't reached.\nBATCH_SIZE is the batch size for reading from ndb\nNUM_READERS is the num of threads used for reading from ndb and processing the data. The watch unit is disabled if set to 0 0 0.")
           ("elastic_addr", po::value<string>(&elastic_addr)->default_value(elastic_addr), "ip and port of the elasticsearch server")
-          ("hopsworks", po::value<bool>(&hopsworks)->default_value(hopsworks), "enable or disable hopsworks, which will use grandparents to index inodes and metadata")
+          ("hopsworks", po::value<bool>(&hopsworks)->default_value(hopsworks), "enable or disable hopsworks")
+          ("hivecleaner", po::value<bool>(&hiveCleaner)->default_value(hiveCleaner),"enable or disable hiveCleaner")
           ("index", po::value<string>(&elastic_index)->default_value(elastic_index), "Elastic index to add the data to.")
           ("provenance_index", po::value<string>(&elastic_provenance_index)->default_value(elastic_provenance_index), "Elastic index to add the provenance data to.")
           ("elastic_batch", po::value<int>(&elastic_batch_size)->default_value(elastic_batch_size), "Elastic batch size in bytes for bulk requests")
@@ -128,16 +134,18 @@ int main(int argc, char** argv) {
 
   if (reindex) {
     Reindexer* reindexer = new Reindexer(connection_string.c_str(),
-            database_name.c_str(), meta_database_name.c_str(), elastic_addr,
+            database_name.c_str(), meta_database_name.c_str(),
+            hive_meta_database_name.c_str(), elastic_addr,
             elastic_index, elastic_batch_size, elastic_issue_time, lru_cap);
 
     reindexer->run();
   } else {
     Notifier *notifer = new Notifier(connection_string.c_str(), database_name.c_str(),
-            meta_database_name.c_str(), mutations_tu, schamebased_tu, schemaless_tu, provenance_tu,
+            meta_database_name.c_str(), hive_meta_database_name.c_str(),
+            mutations_tu, schamebased_tu, schemaless_tu, provenance_tu,
             poll_maxTimeToWait, elastic_addr, hopsworks, elastic_index, elastic_provenance_index,
             elastic_batch_size, elastic_issue_time,
-            lru_cap, recovery, stats, barrier);
+            lru_cap, recovery, stats, barrier, hiveCleaner);
     notifer->start();
   }
   return EXIT_SUCCESS;
