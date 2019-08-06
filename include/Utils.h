@@ -46,9 +46,13 @@ namespace Utils {
     return boost::posix_time::microsec_clock::local_time();
   }
 
-  inline static float getTimeDiffInMilliseconds(ptime start, ptime end) {
+  inline static double getTimeDiffInMilliseconds(ptime start, ptime end) {
     boost::posix_time::time_duration diff = end - start;
     return diff.total_microseconds() / 1000.0;
+  }
+
+  inline static double getTimeDiffInSeconds(ptime start, ptime end) {
+   return getTimeDiffInMilliseconds(start, end) / 1000.0;
   }
 
   inline static std::string concat(const char* a, const std::string b) {
