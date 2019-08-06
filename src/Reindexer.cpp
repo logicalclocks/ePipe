@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -46,23 +46,23 @@ struct DatasetInodes {
 
 struct DatasetInfo{
   int mProjectId;
-  string mName;
+  std::string mName;
   DatasetInfo(){
     
   }
-  DatasetInfo(int projectId, string name){
+  DatasetInfo(int projectId, std::string name){
     mProjectId = projectId;
     mName = name;
   }
 };
 
-typedef vector<DatasetInodes> DatasetInodesVec;
+typedef std::vector<DatasetInodes> DatasetInodesVec;
 
 typedef boost::unordered_map<Int64, DatasetInfo> DatasetInfoMap;
 
 Reindexer::Reindexer(const char* connection_string, const char* database_name,
         const char* meta_database_name, const char* hive_meta_database_name,
-        const string elastic_addr, const string index, int
+        const std::string elastic_addr, const std::string index, int
         elastic_batch_size, int elastic_issue_time, int lru_cap)
 : ClusterConnectionBase(connection_string, database_name, meta_database_name,
     hive_meta_database_name), mLRUCap(lru_cap) {
@@ -140,7 +140,7 @@ void Reindexer::run() {
       LOG_DEBUG("Copy Dir " << dirInodeId << " : remaining " << dirs.size() << " dirs");
       INodeVec inodes = inodesTable.getByParentId(conn, dirInodeId);
       FSBulk bulk;
-      stringstream out;
+      std::stringstream out;
       for (INodeVec::iterator it = inodes.begin(); it != inodes.end(); ++it) {
         INodeRow inode = *it;
         if (inode.mIsDir) {
@@ -151,7 +151,7 @@ void Reindexer::run() {
           inodesWithXAttrs.insert(inode.mId);
         }
 
-        out << inode.to_create_json(datasetId, projectId) << endl;
+        out << inode.to_create_json(datasetId, projectId) << std::endl;
         totalInodes++;
         datasetInodes++;
       }

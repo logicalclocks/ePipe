@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -31,19 +31,19 @@ typedef Bulk<PKeys> PBulk;
 
 class ProvenanceElasticSearch : public ElasticSearchBase<PKeys> {
 public:
-  ProvenanceElasticSearch(string elastic_addr, string index,
+  ProvenanceElasticSearch(std::string elastic_addr, std::string index,
           int time_to_wait_before_inserting, int bulk_size, const bool stats,
           SConn conn);
   virtual ~ProvenanceElasticSearch();
 private:
-  const string mIndex;
+  const std::string mIndex;
   const bool mStats;
 
-  string mElasticBulkAddr;
+  std::string mElasticBulkAddr;
 
   SConn mConn;
 
-  virtual void process(vector<PBulk>* bulks);
+  virtual void process(std::vector<PBulk>* bulks);
 
 };
 

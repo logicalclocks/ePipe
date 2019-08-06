@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,13 +33,13 @@ struct DatasetRow {
   int mId;
   Int64 mInodeId;
   Int64 mInodeParentId;
-  string mInodeName;
+  std::string mInodeName;
   int mProjectId;
-  string mDescription;
+  std::string mDescription;
   bool mPublicDS;
   bool mShared;
 
-  string to_create_json() {
+  std::string to_create_json() {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -72,10 +72,10 @@ struct DatasetRow {
     docWriter.String("doc_as_upsert");
     docWriter.Bool(true);
     docWriter.EndObject();
-    return string(sbDoc.GetString());
+    return std::string(sbDoc.GetString());
   }
 
-  static string to_delete_json(int datasetId) {
+  static std::string to_delete_json(int datasetId) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -92,7 +92,7 @@ struct DatasetRow {
     docWriter.EndObject();
 
     docWriter.EndObject();
-    return string(sbDoc.GetString());
+    return std::string(sbDoc.GetString());
   }
 };
 
@@ -104,7 +104,7 @@ public:
 };
 
 typedef CacheSingleton<DPCache> DatasetProjectCache;
-typedef vector<DatasetRow> DatasetVec;
+typedef std::vector<DatasetRow> DatasetVec;
 
 class DatasetTable : public DBTable<DatasetRow> {
 public:

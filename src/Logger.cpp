@@ -66,9 +66,9 @@ bool Logger::isTrace() {
 }
 
 void Logger::log(const char* level, const char* msg) {
-  cout << getTimestamp() << " <" << level << "> " << msg << endl;
+  std::cout << getTimestamp() << " <" << level << "> " << msg << std::endl;
 }
 
-string Logger::getTimestamp() {
+std::string Logger::getTimestamp() {
   return boost::posix_time::to_iso_extended_string(boost::posix_time::second_clock::local_time());
 }

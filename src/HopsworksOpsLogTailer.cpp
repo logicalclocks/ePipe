@@ -80,7 +80,7 @@ bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType opType
 }
 
 bool HopsworksOpsLogTailer::handleDeleteDataset(Int64 datasetINodeId) {
-  string query = DatasetRow::to_delete_json(datasetINodeId);
+  std::string query = DatasetRow::to_delete_json(datasetINodeId);
   //TODO: handle failures in elastic search
   bool success = mElasticSearch->deleteDocsByQuery(query);
   if (success) {
@@ -101,7 +101,7 @@ bool HopsworksOpsLogTailer::handleProject(int projectId, Int64 inodeId, Hopswork
 
 bool HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
 
-  string query = ProjectRow::to_delete_json(projectId);
+  std::string query = ProjectRow::to_delete_json(projectId);
   //TODO: handle failures in elastic search
   bool success = mElasticSearch->deleteDocsByQuery(query);
   if (success) {

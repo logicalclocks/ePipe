@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,7 +30,7 @@ class Reindexer : public ClusterConnectionBase {
 public:
   Reindexer(const char* connection_string, const char* database_name,
           const char* meta_database_name, const char* hive_meta_database_name,
-          const string elastic_addr, const string index, int
+          const std::string elastic_addr, const std::string index, int
           elastic_batch_size, int elastic_issue_time, int lru_cap);
   virtual ~Reindexer();
 

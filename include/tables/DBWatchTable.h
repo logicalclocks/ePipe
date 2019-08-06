@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,29 +27,30 @@
 
 #define PRIMARY_INDEX "PRIMARY"
 
-typedef vector<NdbDictionary::Event::TableEvent> TEventVec;
+typedef std::vector<NdbDictionary::Event::TableEvent> TEventVec;
+typedef typename TEventVec::size_type evtvec_size_type;
 
 template<typename TableRow>
 class DBWatchTable : public DBTable<TableRow> {
 public:
-  DBWatchTable(const string table);
-  const string getRecoveryIndex() const;
-  int getNoEvents() const;
-  NdbDictionary::Event::TableEvent getEvent(int index) const;
+  DBWatchTable(const std::string table);
+  const std::string getRecoveryIndex() const;
+  evtvec_size_type getNoEvents() const;
+  NdbDictionary::Event::TableEvent getEvent(evtvec_size_type index) const;
   void getAllSortedByRecoveryIndex(Ndb* connection);
-  boost::tuple<vector<Uint64>*, boost::unordered_map<Uint64, vector<TableRow>* >* > getAllByGCI(Ndb* connection);
+  boost::tuple<std::vector<Uint64>*, boost::unordered_map<Uint64, std::vector<TableRow>* >* > getAllByGCI(Ndb* connection);
   virtual ~DBWatchTable();
 private:
   TEventVec mWatchEvents;
-  string mRecoveryIndex;
+  std::string mRecoveryIndex;
 protected:
   void addWatchEvent(NdbDictionary::Event::TableEvent event);
-  void addRecoveryIndex(const string recovery);
+  void addRecoveryIndex(const std::string recovery);
 
 };
 
 template<typename TableRow>
-DBWatchTable<TableRow>::DBWatchTable(const string table) : DBTable<TableRow>(table) {
+DBWatchTable<TableRow>::DBWatchTable(const std::string table) : DBTable<TableRow>(table) {
 }
 
 template<typename TableRow>
@@ -58,26 +59,25 @@ void DBWatchTable<TableRow>::addWatchEvent(NdbDictionary::Event::TableEvent even
 }
 
 template<typename TableRow>
-int DBWatchTable<TableRow>::getNoEvents() const {
+evtvec_size_type DBWatchTable<TableRow>::getNoEvents() const {
   return mWatchEvents.size();
 }
 
 template<typename TableRow>
-NdbDictionary::Event::TableEvent DBWatchTable<TableRow>::getEvent(int index) const {
+NdbDictionary::Event::TableEvent DBWatchTable<TableRow>::getEvent(evtvec_size_type index) const {
   if (index < mWatchEvents.size()) {
     return mWatchEvents[index];
   }
-  LOG_ERROR("----");
   return NdbDictionary::Event::TE_INSERT;
 }
 
 template<typename TableRow>
-void DBWatchTable<TableRow>::addRecoveryIndex(const string recovery) {
+void DBWatchTable<TableRow>::addRecoveryIndex(const std::string recovery) {
   mRecoveryIndex = recovery;
 }
 
 template<typename TableRow>
-const string DBWatchTable<TableRow>::getRecoveryIndex() const {
+const std::string DBWatchTable<TableRow>::getRecoveryIndex() const {
   return mRecoveryIndex;
 }
 
@@ -91,9 +91,9 @@ void DBWatchTable<TableRow>::getAllSortedByRecoveryIndex(Ndb* connection) {
 }
 
 template<typename TableRow>
-boost::tuple<vector<Uint64>*, boost::unordered_map<Uint64, vector<TableRow>* >* >
+boost::tuple<std::vector<Uint64>*, boost::unordered_map<Uint64, std::vector<TableRow>* >* >
 DBWatchTable<TableRow>::getAllByGCI(Ndb* connection) {
-  typedef boost::unordered_map<Uint64, vector<TableRow>* > GCIRows;
+  typedef boost::unordered_map<Uint64, std::vector<TableRow>* > GCIRows;
   typedef typename GCIRows::iterator GCIRowIterator;
 
   ptime start = Utils::getCurrentTime();
@@ -101,7 +101,7 @@ DBWatchTable<TableRow>::getAllByGCI(Ndb* connection) {
   this->setReadGCI(true);
 
   GCIRows* rowsByGCI = new GCIRows();
-  vector<Uint64>* gcis = new vector<Uint64>();
+  std::vector<Uint64>* gcis = new std::vector<Uint64>();
 
   this->getAll(connection);
   while (this->next()) {
@@ -109,9 +109,9 @@ DBWatchTable<TableRow>::getAllByGCI(Ndb* connection) {
     Uint64 gci = this->currGCI();
 
     GCIRowIterator curr = rowsByGCI->find(gci);
-    vector<TableRow>* currRows;
+    std::vector<TableRow>* currRows;
     if (curr == rowsByGCI->end()) {
-      currRows = new vector<TableRow>();
+      currRows = new std::vector<TableRow>();
       rowsByGCI->emplace(gci, currRows);
       gcis->push_back(gci);
     } else {

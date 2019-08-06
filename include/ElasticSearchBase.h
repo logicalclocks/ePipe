@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,62 +30,62 @@
 template<typename Keys>
 class ElasticSearchBase : public TimedRestBatcher<Keys> {
 public:
-  ElasticSearchBase(string elastic_addr, int time_to_wait_before_inserting, int bulk_size);
+  ElasticSearchBase(std::string elastic_addr, int time_to_wait_before_inserting, int bulk_size);
   
   virtual ~ElasticSearchBase();
 
 protected:
 
-  string getElasticSearchUrlonIndex(string index);
-  string getElasticSearchUrlOnDoc(string index, Int64 doc);
-  string getElasticSearchUpdateDocUrl(string index, Int64 doc);
-  string getElasticSearchBulkUrl(string index);
-  string getElasticSearchDeleteByQuery(string index);
-  virtual bool parseResponse(string response);
+  std::string getElasticSearchUrlonIndex(std::string index);
+  std::string getElasticSearchUrlOnDoc(std::string index, Int64 doc);
+  std::string getElasticSearchUpdateDocUrl(std::string index, Int64 doc);
+  std::string getElasticSearchBulkUrl(std::string index);
+  std::string getElasticSearchDeleteByQuery(std::string index);
+  virtual bool parseResponse(std::string response);
 
 private:
-  const string DEFAULT_TYPE;
+  const std::string DEFAULT_TYPE;
   
 };
 
 template<typename Keys>
-ElasticSearchBase<Keys>::ElasticSearchBase(string elastic_addr, int time_to_wait_before_inserting, int bulk_size)
+ElasticSearchBase<Keys>::ElasticSearchBase(std::string elastic_addr, int time_to_wait_before_inserting, int bulk_size)
 : TimedRestBatcher<Keys>(elastic_addr, time_to_wait_before_inserting, bulk_size), DEFAULT_TYPE("_doc") {
 }
 
 template<typename Keys>
-string ElasticSearchBase<Keys>::getElasticSearchUrlonIndex(string index) {
-  string str = this->mEndpointAddr + "/" + index;
+std::string ElasticSearchBase<Keys>::getElasticSearchUrlonIndex(std::string index) {
+  std::string str = this->mEndpointAddr + "/" + index;
   return str;
 }
 
 template<typename Keys>
-string ElasticSearchBase<Keys>::getElasticSearchUrlOnDoc(string index, Int64 doc) {
-  stringstream out;
+std::string ElasticSearchBase<Keys>::getElasticSearchUrlOnDoc(std::string index, Int64 doc) {
+  std::stringstream out;
   out << getElasticSearchUrlonIndex(index) << "/" << DEFAULT_TYPE << "/" << doc;
   return out.str();
 }
 
 template<typename Keys>
-string ElasticSearchBase<Keys>::getElasticSearchUpdateDocUrl(string index, Int64 doc) {
-  string str = getElasticSearchUrlOnDoc(index, doc) + "/_update";
+std::string ElasticSearchBase<Keys>::getElasticSearchUpdateDocUrl(std::string index, Int64 doc) {
+  std::string str = getElasticSearchUrlOnDoc(index, doc) + "/_update";
   return str;
 }
 
 template<typename Keys>
-string ElasticSearchBase<Keys>::getElasticSearchBulkUrl(string index) {
-  string str = this->mEndpointAddr + "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
+std::string ElasticSearchBase<Keys>::getElasticSearchBulkUrl(std::string index) {
+  std::string str = this->mEndpointAddr + "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
   return str;
 }
 
 template<typename Keys>
-string ElasticSearchBase<Keys>::getElasticSearchDeleteByQuery(string index) {
-  string str = this->mEndpointAddr + "/" + index + "/" + DEFAULT_TYPE + "/_delete_by_query";
+std::string ElasticSearchBase<Keys>::getElasticSearchDeleteByQuery(std::string index) {
+  std::string str = this->mEndpointAddr + "/" + index + "/" + DEFAULT_TYPE + "/_delete_by_query";
   return str;
 }
 
 template<typename Keys>
-bool ElasticSearchBase<Keys>::parseResponse(string response) {
+bool ElasticSearchBase<Keys>::parseResponse(std::string response) {
   try {
     rapidjson::Document d;
     if (!d.Parse<0>(response.c_str()).HasParseError()) {
@@ -93,7 +93,7 @@ bool ElasticSearchBase<Keys>::parseResponse(string response) {
         const rapidjson::Value &bulkErrors = d["errors"];
         if (bulkErrors.IsBool() && bulkErrors.GetBool()) {
           const rapidjson::Value &items = d["items"];
-          stringstream errors;
+          std::stringstream errors;
           for (rapidjson::SizeType i = 0; i < items.Size(); ++i) {
             const rapidjson::Value &obj = items[i];
             for (rapidjson::Value::ConstMemberIterator itr = obj.MemberBegin(); itr != obj.MemberEnd(); ++itr) {
@@ -111,7 +111,7 @@ bool ElasticSearchBase<Keys>::parseResponse(string response) {
               }
             }
           }
-          string errorsStr = errors.str();
+          std::string errorsStr = errors.str();
           LOG_ERROR(" ES got errors: " << errorsStr);
           return false;
         }

@@ -61,7 +61,7 @@ private:
   bool mStarted;
   boost::thread mThread;
 
-  const string mEventName;
+  const std::string mEventName;
   DBWatchTable<TableRow>* mTable;
   const int mPollMaxTimeToWait;
   const Barrier mBarrier;
@@ -128,7 +128,7 @@ void TableTailer<TableRow>::createListenerEvent() {
 
   NdbDictionary::Event myEvent(mEventName.c_str(), *table);
 
-  for (int i = 0; i < mTable->getNoEvents(); i++) {
+  for (evtvec_size_type i = 0; i < mTable->getNoEvents(); i++) {
     myEvent.addTableEvent(mTable->getEvent(i));
   }
 
@@ -173,7 +173,7 @@ void TableTailer<TableRow>::waitForEvents() {
   NdbRecAttr * recAttrPre[mTable->getNoColumns()];
 
   // primary keys should always be a part of the result
-  for (int i = 0; i < mTable->getNoColumns(); i++) {
+  for (strvec_size_type i = 0; i < mTable->getNoColumns(); i++) {
     recAttr[i] = op->getValue(mTable->getColumn(i).c_str());
     recAttrPre[i] = op->getPreValue(mTable->getColumn(i).c_str());
   }

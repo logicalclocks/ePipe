@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -81,9 +81,9 @@ void ProvenanceTableTailer::pushToQueue(Pv* curr) {
 
 void ProvenanceTableTailer::recover() {
   ProvenanceRowsGCITuple tuple = ProvenanceLogTable().getAllByGCI(mNdbConnection);
-  vector<Uint64>* gcis = tuple.get<0>();
+  std::vector<Uint64>* gcis = tuple.get<0>();
   ProvenanceRowsByGCI* rowsByGCI = tuple.get<1>();
-  for (vector<Uint64>::iterator it = gcis->begin(); it != gcis->end(); it++) {
+  for (std::vector<Uint64>::iterator it = gcis->begin(); it != gcis->end(); it++) {
     Uint64 gci = *it;
     pushToQueue(rowsByGCI->at(gci));
   }

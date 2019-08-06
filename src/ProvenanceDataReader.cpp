@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,8 +28,8 @@ ProvenanceDataReader::ProvenanceDataReader(SConn connection, const bool hopswork
 }
 
 void ProvenanceDataReader::processAddedandDeleted(Pq* data_batch, PBulk& bulk) {
-  vector<ptime> arrivalTimes(data_batch->size());
-  stringstream out;
+  std::vector<ptime> arrivalTimes(data_batch->size());
+  std::stringstream out;
   int i = 0;
   for (Pq::iterator it = data_batch->begin(); it != data_batch->end(); ++it, i++) {
     ProvenanceRow row = *it;
@@ -37,7 +37,7 @@ void ProvenanceDataReader::processAddedandDeleted(Pq* data_batch, PBulk& bulk) {
     ProvenancePK rowPK = row.getPK();
     bulk.mPKs.push_back(rowPK);
 
-    out << row.to_create_json() << endl;
+    out << row.to_create_json() << std::endl;
   }
 
   bulk.mArrivalTimes = arrivalTimes;

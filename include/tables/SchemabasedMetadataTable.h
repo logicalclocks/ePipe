@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -35,7 +35,7 @@ struct SchemabasedMetadataEntry {
   int mId;
   FieldRow mField;
   TupleRow mTuple;
-  string mMetadata;
+  std::string mMetadata;
   HopsworksOpType mOperation;
 
   ptime mEventCreationTime;
@@ -61,25 +61,25 @@ struct SchemabasedMetadataEntry {
             && mTuple.mId == ml.mTuple.mId;
   }
 
-  string to_string() {
-    stringstream stream;
-    stream << "-------------------------" << endl;
-    stream << "Id = " << mId << endl;
-    stream << "FieldId = " << mField.mId << endl;
-    stream << "TupleId = " << mTuple.mId << endl;
-    stream << "Data = " << mMetadata << endl;
-    stream << "Operation = " << HopsworksOpTypeToStr(mOperation) << endl;
-    stream << "-------------------------" << endl;
+  std::string to_string() {
+    std::stringstream stream;
+    stream << "-------------------------" << std::endl;
+    stream << "Id = " << mId << std::endl;
+    stream << "FieldId = " << mField.mId << std::endl;
+    stream << "TupleId = " << mTuple.mId << std::endl;
+    stream << "Data = " << mMetadata << std::endl;
+    stream << "Operation = " << HopsworksOpTypeToStr(mOperation) << std::endl;
+    stream << "-------------------------" << std::endl;
     return stream.str();
   }
 
-  string to_create_json() {
+  std::string to_create_json() {
     if(mField.is_empty()){
       LOG_ERROR("Empty Schema : " << to_string());
       return "";
     }
     
-    stringstream out;
+    std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -94,7 +94,7 @@ struct SchemabasedMetadataEntry {
     opWriter.EndObject();
     opWriter.EndObject();
 
-    out << sbOp.GetString() << endl;
+    out << sbOp.GetString() << std::endl;
 
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -151,7 +151,7 @@ struct SchemabasedMetadataEntry {
       }
       case TEXT:
       {
-        string stringVal = mMetadata;
+        std::string stringVal = mMetadata;
         if (mOperation == HopsworksDelete) {
           stringVal = DONT_EXIST_STR();
         }
@@ -172,12 +172,12 @@ struct SchemabasedMetadataEntry {
 
     docWriter.EndObject();
 
-    out << sbDoc.GetString() << endl;
+    out << sbDoc.GetString() << std::endl;
     return out.str();
   }
 };
 
-typedef vector<SchemabasedMetadataEntry> SchemabasedMq;
+typedef std::vector<SchemabasedMetadataEntry> SchemabasedMq;
 
 class SchemabasedMetadataTable : public DBTable<SchemabasedMetadataEntry> {
 public:

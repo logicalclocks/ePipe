@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,12 +33,12 @@ struct UserRow {
 
   }
 
-  UserRow(int id, string name) {
+  UserRow(int id, std::string name) {
     mId = id;
     mName = name;
   }
   int mId;
-  string mName;
+  std::string mName;
 };
 
 typedef CacheSingleton<Cache<int, UserRow> > UsersCache;
@@ -101,7 +101,7 @@ public:
     return row;
   }
 
-  string getFromCache(int id) {
+  std::string getFromCache(int id) {
     boost::optional<UserRow> user_ptr = UsersCache::getInstance().get(id);
     if (user_ptr) {
       return user_ptr.get().mName;

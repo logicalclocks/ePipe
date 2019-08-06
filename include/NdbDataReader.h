@@ -40,12 +40,12 @@ class DataReaderOutHandler{
 
 template<typename Data>
 struct IndexedDataBatch{
-  vector<Data>* mDataBatch;
+  std::vector<Data>* mDataBatch;
   Uint64 mIndex;
   IndexedDataBatch(){
     
   }
-  IndexedDataBatch(Uint64 index, vector<Data>* data){
+  IndexedDataBatch(Uint64 index, std::vector<Data>* data){
    mIndex = index;
    mDataBatch = data;
   }
@@ -56,14 +56,14 @@ class NdbDataReader {
 public:
   NdbDataReader(Conn connection, const bool hopsworks);
   void start(int readerId, DataReaderOutHandler<Keys>* outHandler);
-  void processBatch(Uint64 index, vector<Data>* data_batch);
+  void processBatch(Uint64 index, std::vector<Data>* data_batch);
   virtual ~NdbDataReader();
   
 protected:
   boost::thread mThread;
   Conn mNdbConnection;
   const bool mHopsworksEnalbed;
-  virtual void processAddedandDeleted(vector<Data>* data_batch, Bulk<Keys>& bulk) = 0;
+  virtual void processAddedandDeleted(std::vector<Data>* data_batch, Bulk<Keys>& bulk) = 0;
   
  private:
   int mReaderId;
@@ -115,7 +115,7 @@ void NdbDataReader<Data, Conn, Keys>::run() {
 }
 
 template<typename Data, typename Conn, typename Keys>
-void NdbDataReader<Data, Conn, Keys>::processBatch(Uint64 index, vector<Data>* data_batch) {
+void NdbDataReader<Data, Conn, Keys>::processBatch(Uint64 index, std::vector<Data>* data_batch) {
   mBatchedQueue->push(IndexedDataBatch<Data>(index, data_batch));
   LOG_DEBUG("Reader-" << mReaderId << ": Process batch " << index);
 }

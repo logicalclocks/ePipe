@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -34,7 +34,7 @@ struct SchemalessMetadataEntry {
   int mId;
   Int64 mINodeId;
   Int64 mParentId;
-  string mJSONData;
+  std::string mJSONData;
   HopsworksOpType mOperation;
   ptime mEventCreationTime;
 
@@ -60,8 +60,8 @@ struct SchemalessMetadataEntry {
             && mParentId == ml.mParentId;
   }
 
-  string to_create_json() {
-    stringstream out;
+  std::string to_create_json() {
+    std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -76,25 +76,25 @@ struct SchemalessMetadataEntry {
     opWriter.EndObject();
     opWriter.EndObject();
 
-    out << sbOp.GetString() << endl;
+    out << sbOp.GetString() << std::endl;
 
     switch (mOperation) {
       case HopsworksAdd:
-        out << REMOVE_DOC_SCRIPT << endl;
-        out << sbOp.GetString() << endl;
-        out << upsertMetadata(mJSONData) << endl;
+        out << REMOVE_DOC_SCRIPT << std::endl;
+        out << sbOp.GetString() << std::endl;
+        out << upsertMetadata(mJSONData) << std::endl;
         break;
       case HopsworksUpdate:
-        out << upsertMetadata(mJSONData) << endl;
+        out << upsertMetadata(mJSONData) << std::endl;
         break;
       case HopsworksDelete:
-        out << REMOVE_DOC_SCRIPT << endl;
+        out << REMOVE_DOC_SCRIPT << std::endl;
         break;
     }
     return out.str();
   }
 
-  string upsertMetadata(string jsonData) {
+  std::string upsertMetadata(std::string jsonData) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     rapidjson::Document doc;
@@ -106,7 +106,7 @@ struct SchemalessMetadataEntry {
       LOG_ERROR("JSON Parsing error: " << jsonData);
     }
     doc.Accept(docWriter);
-    return string(sbDoc.GetString());
+    return std::string(sbDoc.GetString());
   }
 
   void mergeDoc(rapidjson::Document& target, rapidjson::Document& source) {
@@ -115,20 +115,20 @@ struct SchemalessMetadataEntry {
     }
   }
 
-  string to_string() {
-    stringstream stream;
-    stream << "-------------------------" << endl;
-    stream << "Id = " << mId << endl;
-    stream << "INodeId = " << mParentId << endl;
-    stream << "ParentId = " << mParentId << endl;
-    stream << "Operation = " << HopsworksOpTypeToStr(mOperation) << endl;
-    stream << "Data = " << mJSONData << endl;
-    stream << "-------------------------" << endl;
+  std::string to_string() {
+    std::stringstream stream;
+    stream << "-------------------------" << std::endl;
+    stream << "Id = " << mId << std::endl;
+    stream << "INodeId = " << mParentId << std::endl;
+    stream << "ParentId = " << mParentId << std::endl;
+    stream << "Operation = " << HopsworksOpTypeToStr(mOperation) << std::endl;
+    stream << "Data = " << mJSONData << std::endl;
+    stream << "-------------------------" << std::endl;
     return stream.str();
   }
 };
 
-typedef vector<SchemalessMetadataEntry> SchemalessMq;
+typedef std::vector<SchemalessMetadataEntry> SchemalessMq;
 
 class SchemalessMetadataTable : public DBTable<SchemalessMetadataEntry> {
 public:

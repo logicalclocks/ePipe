@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -41,9 +41,11 @@ struct BulkIndexComparator {
 template<typename Data, typename Conn, typename Keys> 
 class NdbDataReaders : public DataReaderOutHandler<Keys>{
 public:
+  typedef std::vector<NdbDataReader<Data, Conn, Keys>* > DataReadersVec;
+  typedef typename DataReadersVec::size_type drvec_size_type;
   NdbDataReaders(TimedRestBatcher<Keys>* elastic);
   void start();
-  void processBatch(vector<Data>* data_batch);
+  void processBatch(std::vector<Data>* data_batch);
   void writeOutput(Bulk<Keys> out);
   virtual ~NdbDataReaders();
   
@@ -52,24 +54,24 @@ private:
   bool mStarted;
   boost::thread mThread;
   
-  ConcurrentQueue<vector<Data>*>* mBatchedQueue;
+  ConcurrentQueue<std::vector<Data>*>* mBatchedQueue;
   ConcurrentPriorityQueue<Bulk<Keys>, BulkIndexComparator<Keys> >* mWaitingOutQueue;
   
   AtomicLong mLastSent;
   AtomicLong mCurrIndex;
-  int mRoundRobinDrIndex;
+  drvec_size_type mRoundRobinDrIndex;
   
   void run();
   void processWaiting();
   
 protected:
-  vector<NdbDataReader<Data, Conn, Keys>* > mDataReaders;
+  std::vector<NdbDataReader<Data, Conn, Keys>* > mDataReaders;
 };
 
 template<typename Data, typename Conn, typename Keys>
 NdbDataReaders<Data, Conn, Keys>::NdbDataReaders(TimedRestBatcher<Keys>* batcher) : timedRestBatcher(batcher) {
   mStarted = false;
-  mBatchedQueue = new ConcurrentQueue<vector<Data>*>();
+  mBatchedQueue = new ConcurrentQueue<std::vector<Data>*>();
   mWaitingOutQueue = new ConcurrentPriorityQueue<Bulk<Keys>, BulkIndexComparator<Keys> >();
   mLastSent = 0; 
   mCurrIndex = 0;
@@ -90,7 +92,7 @@ void NdbDataReaders<Data, Conn, Keys>::start() {
 template<typename Data, typename Conn, typename Keys>
 void NdbDataReaders<Data, Conn, Keys>::run() {
   while (true) {
-    vector<Data>* curr;
+    std::vector<Data>* curr;
     mBatchedQueue->wait_and_pop(curr);
     
     if(mRoundRobinDrIndex < mDataReaders.size()){
@@ -106,7 +108,7 @@ void NdbDataReaders<Data, Conn, Keys>::run() {
 }
 
 template<typename Data, typename Conn, typename Keys>
-void NdbDataReaders<Data, Conn, Keys>::processBatch(vector<Data>* data_batch) {
+void NdbDataReaders<Data, Conn, Keys>::processBatch(std::vector<Data>* data_batch) {
   mBatchedQueue->push(data_batch);
 }
 

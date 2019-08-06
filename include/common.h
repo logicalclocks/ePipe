@@ -42,19 +42,17 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/document.h"
-#include "Logger.h"
 #include "queue"
 
-using namespace std;
 
-typedef queue<int> IQueue;
-typedef vector<int> IVec;
+typedef std::queue<int> IQueue;
+typedef std::vector<int> IVec;
+typedef std::vector<std::string> StrVec;
 typedef boost::unordered_set<int> UISet;
-typedef boost::unordered_map<int, int> UIMap;
 
 //long
 typedef boost::unordered_set<Int64> ULSet;
-typedef vector<Int64> LVec;
+typedef std::vector<Int64> LVec;
 
 //Constansts
 
@@ -81,15 +79,15 @@ struct TableUnitConf {
     mNumReaders = num_readers;
   }
 
-  vector<int> getVector() {
-    vector<int> d;
+  IVec getVector() {
+    IVec d;
     d.push_back(mWaitTime);
     d.push_back(mBatchSize);
     d.push_back(mNumReaders);
     return d;
   }
 
-  void update(vector<int> v) {
+  void update(std::vector<int> v) {
     if (v.size() == 3) {
       mWaitTime = v[0];
       mBatchSize = v[1];
@@ -97,8 +95,8 @@ struct TableUnitConf {
     }
   }
 
-  string getString() {
-    stringstream str;
+  std::string getString() {
+    std::stringstream str;
     str << mWaitTime << " " << mBatchSize << " " << mNumReaders;
     return str.str();
   }

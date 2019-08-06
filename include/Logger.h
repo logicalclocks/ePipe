@@ -25,17 +25,9 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <iostream>
-#include <istream>
-#include <ostream>
-#include <string>
+#include "common.h"
 #include <boost/date_time.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-
-using namespace std;
 
 #define LOG_LEVEL_TRACE 0
 #define LOG_LEVEL_DEBUG 1
@@ -46,7 +38,7 @@ using namespace std;
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-#define FORMAT(ITEMS) ((dynamic_cast<ostringstream &>(ostringstream().seekp(0,ios_base::cur) \
+#define FORMAT(ITEMS) ((dynamic_cast<std::ostringstream &>(std::ostringstream().seekp(0,std::ios_base::cur) \
                << "(" << __FILENAME__ << ":" << __LINE__ << ":" << __FUNCTION__ << ") " << ITEMS )).str().c_str())
 
 #define LOG_TRACE(msg) Logger::trace(FORMAT(msg))
@@ -74,7 +66,7 @@ private:
   static Logger* mInstance;
   static int mLoggerLevel;
   static void log(const char* level, const char* msg);
-  static string getTimestamp();
+  static std::string getTimestamp();
 };
 
 #endif /* LOGGER_H */

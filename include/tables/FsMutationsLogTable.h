@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -85,7 +85,7 @@ struct FsMutationRow {
 
   Int64 mPk1;
   Int64 mPk2;
-  string mPk3;
+  std::string mPk3;
   FsOpType mOperation;
 
   ptime mEventCreationTime;
@@ -94,23 +94,23 @@ struct FsMutationRow {
     return FsMutationPK(mDatasetINodeId, mInodeId, mLogicalTime);
   }
 
-  string getPKStr(){
-    stringstream stream;
+  std::string getPKStr(){
+    std::stringstream stream;
     stream << mDatasetINodeId << "-" << mInodeId << "-" << mLogicalTime;
     return stream.str();
   }
 
-  string to_string() {
-    stringstream stream;
-    stream << "-------------------------" << endl;
-    stream << "DatasetId = " << mDatasetINodeId << endl;
-    stream << "InodeId = " << mInodeId << endl;
-    stream << "Pk1 = " << mPk1 << endl;
-    stream << "Pk2 = " << mPk2 << endl;
-    stream << "Pk3 = " << mPk3 << endl;
-    stream << "LogicalTime = " << mLogicalTime << endl;
-    stream << "Operation = " << FsOpTypeToStr(mOperation) << endl;
-    stream << "-------------------------" << endl;
+  std::string to_string() {
+    std::stringstream stream;
+    stream << "-------------------------" << std::endl;
+    stream << "DatasetId = " << mDatasetINodeId << std::endl;
+    stream << "InodeId = " << mInodeId << std::endl;
+    stream << "Pk1 = " << mPk1 << std::endl;
+    stream << "Pk2 = " << mPk2 << std::endl;
+    stream << "Pk3 = " << mPk3 << std::endl;
+    stream << "LogicalTime = " << mLogicalTime << std::endl;
+    stream << "Operation = " << FsOpTypeToStr(mOperation) << std::endl;
+    stream << "-------------------------" << std::endl;
     return stream.str();
   }
 
@@ -131,7 +131,7 @@ struct FsMutationRow {
     return mPk2;
   }
 
-  string getINodeName(){
+  std::string getINodeName(){
     return mPk3;
   }
 
@@ -149,7 +149,7 @@ struct FsMutationRow {
     return static_cast<Int8>(mPk2);
   }
 
-  string getXAttrName(){
+  std::string getXAttrName(){
     return mPk3;
   }
 };
@@ -189,14 +189,14 @@ struct FsMutationRowComparator {
 };
 
 //typedef ConcurrentPriorityQueue<FsMutationRow, FsMutationRowComparator> CFSpq;
-typedef vector<FsMutationRow> Fmq;
+typedef std::vector<FsMutationRow> Fmq;
 typedef ConcurrentQueue<FsMutationRow> CFSq;
 typedef boost::heap::priority_queue<FsMutationRow, boost::heap::compare<FsMutationRowComparator> > FSpq;
-typedef vector<FsMutationPK> FPK;
+typedef std::vector<FsMutationPK> FPK;
 
-typedef vector<FsMutationRow> FSv;
+typedef std::vector<FsMutationRow> FSv;
 typedef boost::unordered_map<Uint64, FSv* > FsMutationRowsByGCI;
-typedef boost::tuple<vector<Uint64>*, FsMutationRowsByGCI* > FsMutationRowsGCITuple;
+typedef boost::tuple<std::vector<Uint64>*, FsMutationRowsByGCI* > FsMutationRowsGCITuple;
 
 class FsMutationsLogTable : public DBWatchTable<FsMutationRow> {
 public:

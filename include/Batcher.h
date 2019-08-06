@@ -25,7 +25,7 @@
 #ifndef BATCHER_H
 #define BATCHER_H
 
-#include "common.h"
+#include "Utils.h"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>

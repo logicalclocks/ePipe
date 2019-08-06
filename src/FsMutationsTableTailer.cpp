@@ -79,9 +79,9 @@ FsMutationRow FsMutationsTableTailer::consume() {
 
 void FsMutationsTableTailer::recover() {
   FsMutationRowsGCITuple tuple = FsMutationsLogTable().getAllByGCI(mNdbConnection);
-  vector<Uint64>* gcis = tuple.get<0>();
+  std::vector<Uint64>* gcis = tuple.get<0>();
   FsMutationRowsByGCI* rowsByGCI = tuple.get<1>();
-  for (vector<Uint64>::iterator it = gcis->begin(); it != gcis->end(); it++) {
+  for (std::vector<Uint64>::iterator it = gcis->begin(); it != gcis->end(); it++) {
     Uint64 gci = *it;
     pushToQueue(rowsByGCI->at(gci));
   }

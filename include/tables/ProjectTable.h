@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -32,11 +32,11 @@ struct ProjectRow {
   int mId;
   Int64 mInodeParentId;
   Int64 mInodePartitionId;
-  string mInodeName;
-  string mUserName;
-  string mDescription;
+  std::string mInodeName;
+  std::string mUserName;
+  std::string mDescription;
 
-  string to_create_json() {
+  std::string to_create_json() {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -70,10 +70,10 @@ struct ProjectRow {
     docWriter.Bool(true);
     docWriter.EndObject();
 
-    return string(sbDoc.GetString());
+    return std::string(sbDoc.GetString());
   }
 
-  static string to_delete_json(int projectId) {
+  static std::string to_delete_json(int projectId) {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -90,7 +90,7 @@ struct ProjectRow {
     docWriter.EndObject();
 
     docWriter.EndObject();
-    return string(sbDoc.GetString());
+    return std::string(sbDoc.GetString());
   }
 };
 

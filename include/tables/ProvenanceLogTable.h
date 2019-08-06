@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -31,18 +31,18 @@
 struct ProvenancePK {
   Int64 mInodeId;
   int mUserId;
-  string mAppId;
+  std::string mAppId;
   int mLogicalTime;
 
-  ProvenancePK(Int64 inodeId, int userId, string appId, int logicalTime) {
+  ProvenancePK(Int64 inodeId, int userId, std::string appId, int logicalTime) {
     mInodeId = inodeId;
     mUserId = userId;
     mAppId = appId;
     mLogicalTime = logicalTime;
   }
 
-  string to_string() {
-    stringstream out;
+  std::string to_string() {
+    std::stringstream out;
     out << mInodeId << "-" << mUserId << "-" << mLogicalTime << "-" << mAppId;
     return out.str();
   }
@@ -51,14 +51,14 @@ struct ProvenancePK {
 struct ProvenanceRow {
   Int64 mInodeId;
   int mUserId;
-  string mAppId;
+  std::string mAppId;
   int mLogicalTime;
   Int64 mPartitionId;
   Int64 mParentId;
-  string mProjectName;
-  string mDatasetName;
-  string mInodeName;
-  string mUserName;
+  std::string mProjectName;
+  std::string mDatasetName;
+  std::string mInodeName;
+  std::string mUserName;
   int mLogicalTimeBatch;
   Int64 mTimestamp;
   Int64 mTimestampBatch;
@@ -70,29 +70,29 @@ struct ProvenanceRow {
     return ProvenancePK(mInodeId, mUserId, mAppId, mLogicalTime);
   }
 
-  string to_string() {
-    stringstream stream;
-    stream << "-------------------------" << endl;
-    stream << "InodeId = " << mInodeId << endl;
-    stream << "UserId = " << mUserId << endl;
-    stream << "AppId = " << mAppId << endl;
-    stream << "LogicalTime = " << mLogicalTime << endl;
-    stream << "PartitionId = " << mPartitionId << endl;
-    stream << "ParentId = " << mParentId << endl;
-    stream << "ProjectName = " << mProjectName << endl;
-    stream << "DatasetName = " << mDatasetName << endl;
-    stream << "InodeName = " << mInodeName << endl;
-    stream << "UserName = " << mUserName << endl;
-    stream << "LogicalTimeBatch = " << mLogicalTimeBatch << endl;
-    stream << "Timestamp = " << mTimestamp << endl;
-    stream << "TimestampBatch = " << mTimestampBatch << endl;
-    stream << "Operation = " << mOperation << endl;
-    stream << "-------------------------" << endl;
+  std::string to_string() {
+    std::stringstream stream;
+    stream << "-------------------------" << std::endl;
+    stream << "InodeId = " << mInodeId << std::endl;
+    stream << "UserId = " << mUserId << std::endl;
+    stream << "AppId = " << mAppId << std::endl;
+    stream << "LogicalTime = " << mLogicalTime << std::endl;
+    stream << "PartitionId = " << mPartitionId << std::endl;
+    stream << "ParentId = " << mParentId << std::endl;
+    stream << "ProjectName = " << mProjectName << std::endl;
+    stream << "DatasetName = " << mDatasetName << std::endl;
+    stream << "InodeName = " << mInodeName << std::endl;
+    stream << "UserName = " << mUserName << std::endl;
+    stream << "LogicalTimeBatch = " << mLogicalTimeBatch << std::endl;
+    stream << "Timestamp = " << mTimestamp << std::endl;
+    stream << "TimestampBatch = " << mTimestampBatch << std::endl;
+    stream << "Operation = " << mOperation << std::endl;
+    stream << "-------------------------" << std::endl;
     return stream.str();
   }
 
-  string to_create_json() {
-    stringstream out;
+  std::string to_create_json() {
+    std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -108,7 +108,7 @@ struct ProvenanceRow {
 
     opWriter.EndObject();
 
-    out << sbOp.GetString() << endl;
+    out << sbOp.GetString() << std::endl;
 
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -166,7 +166,7 @@ struct ProvenanceRow {
 
     docWriter.EndObject();
 
-    out << sbDoc.GetString() << endl;
+    out << sbDoc.GetString() << std::endl;
     return out.str();
   }
 };
@@ -204,12 +204,12 @@ struct ProvenanceRowComparator {
 
 typedef ConcurrentQueue<ProvenanceRow> CPRq;
 typedef boost::heap::priority_queue<ProvenanceRow, boost::heap::compare<ProvenanceRowComparator> > PRpq;
-typedef vector<ProvenancePK> PKeys;
-typedef vector<ProvenanceRow> Pq;
+typedef std::vector<ProvenancePK> PKeys;
+typedef std::vector<ProvenanceRow> Pq;
 
-typedef vector<ProvenanceRow> Pv;
+typedef std::vector<ProvenanceRow> Pv;
 typedef boost::unordered_map<Uint64, Pv* > ProvenanceRowsByGCI;
-typedef boost::tuple<vector<Uint64>*, ProvenanceRowsByGCI* > ProvenanceRowsGCITuple;
+typedef boost::tuple<std::vector<Uint64>*, ProvenanceRowsByGCI* > ProvenanceRowsGCITuple;
 
 class ProvenanceLogTable : public DBWatchTable<ProvenanceRow> {
 public:
