@@ -45,7 +45,7 @@ private:
 
   int mCurrentCount;
   boost::mutex mLock;
-  vector<DataRow>* mOperations;
+  std::vector<DataRow>* mOperations;
   virtual void run();
   virtual void processBatch();
 };
@@ -55,7 +55,7 @@ RCBatcher<DataRow, Conn, Keys>::RCBatcher(RCTableTailer<DataRow>* table_tailer, 
         const int time_before_issuing_ndb_reqs, const int batch_size)
 : Batcher(time_before_issuing_ndb_reqs, batch_size), mTableTailer(table_tailer), mNdbDataReaders(ndb_data_readers), mQueueId(SINGLE_QUEUE) {
   mCurrentCount = 0;
-  mOperations = new vector<DataRow>();
+  mOperations = new std::vector<DataRow>();
 }
 
 template<typename DataRow, typename Conn, typename Keys>
@@ -63,7 +63,7 @@ RCBatcher<DataRow, Conn, Keys>::RCBatcher(RCTableTailer<DataRow>* table_tailer, 
         const int time_before_issuing_ndb_reqs, const int batch_size, const int queue_id)
 : Batcher(time_before_issuing_ndb_reqs, batch_size), mTableTailer(table_tailer), mNdbDataReaders(ndb_data_readers), mQueueId(queue_id) {
   mCurrentCount = 0;
-  mOperations = new vector<DataRow>();
+  mOperations = new std::vector<DataRow>();
 }
 
 template<typename DataRow, typename Conn, typename Keys>
@@ -89,8 +89,8 @@ void RCBatcher<DataRow, Conn, Keys>::processBatch() {
     LOG_DEBUG("process batch");
 
     mLock.lock();
-    vector<DataRow>* added_deleted_batch = mOperations;
-    mOperations = new vector<DataRow>();
+    std::vector<DataRow>* added_deleted_batch = mOperations;
+    mOperations = new std::vector<DataRow>();
     mCurrentCount = 0;
     mLock.unlock();
 

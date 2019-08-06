@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,18 +23,18 @@
 
 #include "ProvenanceElasticSearch.h"
 
-ProvenanceElasticSearch::ProvenanceElasticSearch(string elastic_addr,
-        string index, int time_to_wait_before_inserting,
+ProvenanceElasticSearch::ProvenanceElasticSearch(std::string elastic_addr,
+        std::string index, int time_to_wait_before_inserting,
         int bulk_size, const bool stats, SConn conn) :
 ElasticSearchBase(elastic_addr, time_to_wait_before_inserting, bulk_size),
 mIndex(index), mStats(stats), mConn(conn) {
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
-void ProvenanceElasticSearch::process(vector<PBulk>* bulks) {
+void ProvenanceElasticSearch::process(std::vector<PBulk>* bulks) {
   PKeys keys;
-  string batch;
-  for (vector<PBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
+  std::string batch;
+  for (std::vector<PBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
     PBulk bulk = *it;
     batch.append(bulk.mJSON);
     keys.insert(keys.end(), bulk.mPKs.begin(), bulk.mPKs.end());

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,24 +29,23 @@ inline static int DONT_EXIST_INT() {
   return -1;
 }
 
-inline const static string DONT_EXIST_STR() {
+inline const static std::string DONT_EXIST_STR() {
   return "-1";
 }
 
-typedef vector<string> StrVec;
+typedef typename std::vector<std::string>::size_type strvec_size_type;
 
 class DBTableBase {
 public:
-
-  DBTableBase(const string table) : mTableName(table) {
+  DBTableBase(const std::string table) : mTableName(table) {
 
   }
 
-  const string getName() const {
+  const std::string getName() const {
     return mTableName;
   }
 
-  const string getColumn(unsigned int index) const {
+  const std::string getColumn(unsigned int index) const {
     if (index < mColumns.size()) {
       return mColumns[index];
     }
@@ -54,14 +53,14 @@ public:
     return NULL;
   }
 
-  int getNoColumns() const {
+  strvec_size_type getNoColumns() const {
     return mColumns.size();
   }
 
  const char** getColumns() {
     const char** columns = new const char*[getNoColumns()];
-    for (int i = 0; i < getNoColumns(); i++) {
-      string colStr = getColumn(i);
+    for (strvec_size_type i = 0; i < getNoColumns(); i++) {
+      std::string colStr = getColumn(i);
       char* col = new char[colStr.size()];
       strcpy(col, colStr.c_str());
       columns[i] = col;
@@ -70,7 +69,7 @@ public:
   }
   
 private:
-  const string mTableName;
+  const std::string mTableName;
   StrVec mColumns;
 
 protected:
@@ -78,7 +77,7 @@ protected:
   /*
    * Make sure to add the primary key columns first
    */
-  void addColumn(string column) {
+  void addColumn(std::string column) {
     mColumns.push_back(column);
   }
 
@@ -94,7 +93,7 @@ protected:
     return table;
   }
 
-  const NdbDictionary::Index* getIndex(const NdbDictionary::Dictionary* database, const string& index_name) {
+  const NdbDictionary::Index* getIndex(const NdbDictionary::Dictionary* database, const std::string& index_name) {
     const NdbDictionary::Index* index = database->getIndex(index_name.c_str(), getName().c_str());
     if (!index) LOG_NDB_API_ERROR(database->getNdbError());
     return index;
@@ -112,7 +111,7 @@ protected:
     return op;
   }
 
-  NdbRecAttr* getNdbOperationValue(NdbOperation* op, const string& column_name) {
+  NdbRecAttr* getNdbOperationValue(NdbOperation* op, const std::string& column_name) {
     NdbRecAttr* col = op->getValue(column_name.c_str());
     if (!col) LOG_NDB_API_ERROR(op->getNdbError());
     return col;
@@ -142,8 +141,8 @@ protected:
     }
   }
 
-  string get_ndb_varchar(string str, NdbDictionary::Column::ArrayType array_type) {
-    stringstream data;
+  std::string get_ndb_varchar(std::string str, NdbDictionary::Column::ArrayType array_type) {
+    std::stringstream data;
     int len = str.length();
 
     switch (array_type) {
@@ -220,9 +219,9 @@ protected:
     }
   }
 
-  string latin1_to_utf8(string &str) {
-    string strOut;
-    for (string::iterator it = str.begin(); it != str.end(); ++it) {
+  std::string latin1_to_utf8(std::string &str) {
+    std::string strOut;
+    for (std::string::iterator it = str.begin(); it != str.end(); ++it) {
       uint8_t ch = *it;
       if (ch < 0x80) {
         strOut.push_back(ch);
@@ -238,18 +237,18 @@ protected:
    Extracts the string from given NdbRecAttr
    Uses get_byte_array internally
    */
-  string get_string(const NdbRecAttr* attr) {
+  std::string get_string(const NdbRecAttr* attr) {
     size_t attr_bytes;
     const char* data_start_ptr = NULL;
 
     /* get stored length and data using get_byte_array */
     if (get_byte_array(attr, data_start_ptr, attr_bytes) == 0) {
       /* we have length of the string and start location */
-      string str = string(data_start_ptr, attr_bytes);
+      std::string str = std::string(data_start_ptr, attr_bytes);
       if (attr->getType() == NdbDictionary::Column::Char) {
         /* Fixed Char : remove blank spaces at the end */
         size_t endpos = str.find_last_not_of(" ");
-        if (string::npos != endpos) {
+        if (std::string::npos != endpos) {
           str = str.substr(0, endpos + 1);
         }
       }

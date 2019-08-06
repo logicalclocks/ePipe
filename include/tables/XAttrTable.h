@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -31,48 +31,48 @@
 struct XAttrRow {
   Int64 mInodeId;
   Int8 mNamespace;
-  string mName;
-  string mValue;
+  std::string mName;
+  std::string mValue;
 
 
-  string to_upsert_json(FsOpType operation){
-    stringstream out;
+  std::string to_upsert_json(FsOpType operation){
+    std::stringstream out;
     if(operation == XAttrUpdate){
-      out << getDocUpdatePrefix(mInodeId) << endl;
-      out << removeXAttrScript(mName) << endl;
+      out << getDocUpdatePrefix(mInodeId) << std::endl;
+      out << removeXAttrScript(mName) << std::endl;
     }
-    out << getDocUpdatePrefix(mInodeId) << endl;
-    out << upsert() << endl;
+    out << getDocUpdatePrefix(mInodeId) << std::endl;
+    out << upsert() << std::endl;
     return out.str();
   }
 
-  string to_upsert_json(){
-    stringstream out;
-    out << getDocUpdatePrefix(mInodeId) << endl;
-    out << upsert() << endl;
+  std::string to_upsert_json(){
+    std::stringstream out;
+    out << getDocUpdatePrefix(mInodeId) << std::endl;
+    out << upsert() << std::endl;
     return out.str();
   }
 
-  static string to_delete_json(FsMutationRow row){
-    stringstream out;
-    out << getDocUpdatePrefix(row.mInodeId) << endl;
-    out << removeXAttrScript(row.getXAttrName()) << endl;
+  static std::string to_delete_json(FsMutationRow row){
+    std::stringstream out;
+    out << getDocUpdatePrefix(row.mInodeId) << std::endl;
+    out << removeXAttrScript(row.getXAttrName()) << std::endl;
     return out.str();
   }
 
-  string to_string(){
-    stringstream stream;
-    stream << "-------------------------" << endl;
-    stream << "InodeId = " << mInodeId << endl;
-    stream << "Namespace = " << (int)mNamespace << endl;
-    stream << "Name = " << mName << endl;
-    stream << "Value = " << mValue << endl;
-    stream << "-------------------------" << endl;
+  std::string to_string(){
+    std::stringstream stream;
+    stream << "-------------------------" << std::endl;
+    stream << "InodeId = " << mInodeId << std::endl;
+    stream << "Namespace = " << (int)mNamespace << std::endl;
+    stream << "Name = " << mName << std::endl;
+    stream << "Value = " << mValue << std::endl;
+    stream << "-------------------------" << std::endl;
     return stream.str();
   }
 private:
 
-  string upsert() {
+  std::string upsert() {
     rapidjson::Document doc;
     doc.Parse(getXAttrDoc(true).c_str());
     rapidjson::Document xattr(&doc.GetAllocator());
@@ -81,7 +81,7 @@ private:
       rapidjson::StringBuffer sbDoc;
       rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
       doc.Accept(docWriter);
-      return string(sbDoc.GetString());
+      return std::string(sbDoc.GetString());
     } else {
       LOG_DEBUG("XAttr is non json " << mName << "=" << mValue);
       return getXAttrDoc(false);
@@ -108,7 +108,7 @@ private:
     }
   }
 
-  static string getDocUpdatePrefix(Int64 inodeId){
+  static std::string getDocUpdatePrefix(Int64 inodeId){
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -123,10 +123,10 @@ private:
     opWriter.EndObject();
     opWriter.EndObject();
 
-    return string(sbOp.GetString());
+    return std::string(sbOp.GetString());
   }
 
-  static string removeXAttrScript(string xattrname){
+  static std::string removeXAttrScript(std::string xattrname){
 
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -135,17 +135,17 @@ private:
 
     opWriter.String("script");
 
-    stringstream rmout;
+    std::stringstream rmout;
     rmout << "ctx._source." << XATTR_FIELD_NAME << ".remove(\"" << xattrname <<  "\")";
     opWriter.String(rmout.str().c_str());
 
     opWriter.EndObject();
 
-    return string(sbOp.GetString());
+    return std::string(sbOp.GetString());
 
   }
 
-  string getXAttrDoc(bool isJSONVal){
+  std::string getXAttrDoc(bool isJSONVal){
 
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -174,13 +174,13 @@ private:
 
     opWriter.EndObject();
 
-    return string(sbOp.GetString());
+    return std::string(sbOp.GetString());
   }
 
 };
 
-typedef vector<XAttrRow> XAttrVec;
-typedef boost::unordered_map<string, XAttrVec> XAttrMap;
+typedef std::vector<XAttrRow> XAttrVec;
+typedef boost::unordered_map<std::string, XAttrVec> XAttrMap;
 
 class XAttrTable : public DBTable<XAttrRow> {
 
@@ -202,7 +202,7 @@ public:
     return row;
   }
 
-  XAttrRow get(Ndb* connection, Int64 inodeId, Int8 ns, string name) {
+  XAttrRow get(Ndb* connection, Int64 inodeId, Int8 ns, std::string name) {
     AnyMap a;
     a[0] = inodeId;
     a[1] = ns;

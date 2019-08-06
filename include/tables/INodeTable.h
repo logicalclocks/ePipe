@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -34,14 +34,14 @@
 
 struct INodeRow {
   Int64 mParentId;
-  string mName;
+  std::string mName;
   Int64 mPartitionId;
   Int64 mId;
   Int64 mSize;
   int mUserId;
   int mGroupId;
-  string mUserName;
-  string mGroupName;
+  std::string mUserName;
+  std::string mGroupName;
   
   int mLogicalTime;
   FsOpType mOperation;
@@ -53,7 +53,7 @@ struct INodeRow {
             && proj.mInodePartitionId == mPartitionId;
   }
   
-  static string to_delete_json(Int64 inodeId) {
+  static std::string to_delete_json(Int64 inodeId) {
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -73,8 +73,8 @@ struct INodeRow {
     return sbOp.GetString();
   }
 
-  string to_create_json(Int64 datasetId, int projectId) {
-    stringstream out;
+  std::string to_create_json(Int64 datasetId, int projectId) {
+    std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -90,7 +90,7 @@ struct INodeRow {
 
     opWriter.EndObject();
 
-    out << sbOp.GetString() << endl;
+    out << sbOp.GetString() << std::endl;
 
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -140,12 +140,12 @@ struct INodeRow {
 
     docWriter.EndObject();
 
-    out << sbDoc.GetString() << endl;
+    out << sbDoc.GetString() << std::endl;
     return out.str();
   }
   
-  static string to_rename_json(FsMutationRow row){
-    stringstream out;
+  static std::string to_rename_json(FsMutationRow row){
+    std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -161,7 +161,7 @@ struct INodeRow {
 
     opWriter.EndObject();
 
-    out << sbOp.GetString() << endl;
+    out << sbOp.GetString() << std::endl;
 
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -192,12 +192,12 @@ struct INodeRow {
 
     docWriter.EndObject();
 
-    out << sbDoc.GetString() << endl;
+    out << sbDoc.GetString() << std::endl;
     return out.str();
   }
   
-  static string to_change_dataset_json(FsMutationRow row){
-    stringstream out;
+  static std::string to_change_dataset_json(FsMutationRow row){
+    std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -213,7 +213,7 @@ struct INodeRow {
 
     opWriter.EndObject();
 
-    out << sbOp.GetString() << endl;
+    out << sbOp.GetString() << std::endl;
 
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
@@ -235,11 +235,11 @@ struct INodeRow {
 
     docWriter.EndObject();
 
-    out << sbDoc.GetString() << endl;
+    out << sbDoc.GetString() << std::endl;
     return out.str();
   }
   
-  static string to_json(FsMutationRow row){
+  static std::string to_json(FsMutationRow row){
     if(row.mOperation == FsDelete){
       return to_delete_json(row.mInodeId);
     }else if(row.mOperation == FsRename){
@@ -252,7 +252,7 @@ struct INodeRow {
 };
 
 typedef boost::unordered_map<Int64, INodeRow> INodeMap;
-typedef vector<INodeRow> INodeVec;
+typedef std::vector<INodeRow> INodeVec;
 
 class INodeTable : public DBTable<INodeRow> {
 public:
@@ -320,7 +320,7 @@ public:
     return row;
   }
   
-  INodeRow get(Ndb* connection, Int64 parentId, string name, Int64 partitionId) {
+  INodeRow get(Ndb* connection, Int64 parentId, std::string name, Int64 partitionId) {
     AnyMap a;
     a[0] = parentId;
     a[1] = name;

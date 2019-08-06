@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -38,7 +38,7 @@ enum FieldType {
 
 struct FieldRow {
   int mId;
-  string mName;
+  std::string mName;
   bool mSearchable;
   TableRow mTable;
   FieldType mType;

@@ -1,17 +1,19 @@
 project (ePipe)
 
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.5.0)
 
 set(EPIPE_VERSION_MAJOR 0)
 set(EPIPE_VERSION_MINOR 9)
 set(EPIPE_VERSION_BUILD 0)
 configure_file(Version.h.in ${CMAKE_SOURCE_DIR}/include/Version.h)
 
+set (CMAKE_CXX_STANDARD 14)
+
 set(Boost_USE_STATIC_LIBS ON)
 
-find_package(Boost 1.53 REQUIRED COMPONENTS system date_time program_options thread)
+find_package(Boost 1.70 REQUIRED COMPONENTS system date_time program_options thread)
 find_package(CURL 7.29.0)
-find_package(RapidJSON 1.0.2)
+find_package(RapidJSON 1.1.0)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${RAPIDJSON_INCLUDE_DIRS})

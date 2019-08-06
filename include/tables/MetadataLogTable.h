@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -63,8 +63,8 @@ struct MetadataKey {
     return (mPK1 == other.mPK1) && (mPK2 == other.mPK2) && (mPK3 == other.mPK3);
   }
 
-  string to_string() {
-    stringstream stream;
+  std::string to_string() {
+    std::stringstream stream;
     stream << "[" << mPK1 << "," << mPK2 << "," << mPK3 << "]";
     return stream.str();
   }
@@ -89,14 +89,14 @@ struct MetadataLogEntry {
 
   ptime mEventCreationTime;
 
-  string to_string() {
-    stringstream stream;
-    stream << "-------------------------" << endl;
-    stream << "Id = " << mId << endl;
-    stream << "MetaType = " << MetadataTypeToStr(mMetaType) << endl;
-    stream << "MetaPK = " << mMetaPK.to_string() << endl;
-    stream << "MetaOpType = " << HopsworksOpTypeToStr(mMetaOpType) << endl;
-    stream << "-------------------------" << endl;
+  std::string to_string() {
+    std::stringstream stream;
+    stream << "-------------------------" << std::endl;
+    stream << "Id = " << mId << std::endl;
+    stream << "MetaType = " << MetadataTypeToStr(mMetaType) << std::endl;
+    stream << "MetaPK = " << mMetaPK.to_string() << std::endl;
+    stream << "MetaOpType = " << HopsworksOpTypeToStr(mMetaOpType) << std::endl;
+    stream << "-------------------------" << std::endl;
     return stream.str();
   }
 };
@@ -109,7 +109,7 @@ struct MetadataLogEntryComparator {
 };
 
 typedef ConcurrentPriorityQueue<MetadataLogEntry, MetadataLogEntryComparator> CMetaQ;
-typedef vector<MetadataLogEntry> MetaQ;
+typedef std::vector<MetadataLogEntry> MetaQ;
 
 class MetadataLogTable : public DBWatchTable<MetadataLogEntry> {
 public:

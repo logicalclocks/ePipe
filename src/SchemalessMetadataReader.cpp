@@ -39,8 +39,8 @@ void SchemalessMetadataReader::processAddedandDeleted(MetaQ* data_batch, FSBulk&
 
 void SchemalessMetadataReader::createJSON(SchemalessMq* data_batch, FSBulk& bulk) {
 
-  vector<ptime> arrivalTimes(data_batch->size());
-  stringstream out;
+  std::vector<ptime> arrivalTimes(data_batch->size());
+  std::stringstream out;
   int i = 0;
   for (SchemalessMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it, i++) {
     SchemalessMetadataEntry entry = *it;

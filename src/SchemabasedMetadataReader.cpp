@@ -41,15 +41,15 @@ void SchemabasedMetadataReader::processAddedandDeleted(MetaQ* data_batch, FSBulk
 
 void SchemabasedMetadataReader::createJSON(SchemabasedMq* data_batch, FSBulk& bulk) {
 
-  vector<ptime> arrivalTimes(data_batch->size());
-  stringstream out;
+  std::vector<ptime> arrivalTimes(data_batch->size());
+  std::stringstream out;
   int i = 0;
   for (SchemabasedMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it, i++) {
     SchemabasedMetadataEntry entry = *it;
     LOG_TRACE("create JSON for " << entry.to_string());
     arrivalTimes[i] = entry.mEventCreationTime;
 
-    out << entry.to_create_json() << endl;
+    out << entry.to_create_json() << std::endl;
   }
 
   bulk.mArrivalTimes = arrivalTimes;

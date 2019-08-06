@@ -27,13 +27,13 @@
 
 using namespace Utils;
 
-static string getAccString(Accumulator acc) {
-  stringstream out;
+static std::string getAccString(Accumulator acc) {
+  std::stringstream out;
   out << "[" << bc::min(acc) << "," << bc::mean(acc) << "," << bc::max(acc) << "]";
   return out.str();
 }
 
-ProjectsElasticSearch::ProjectsElasticSearch(string elastic_addr, string index,
+ProjectsElasticSearch::ProjectsElasticSearch(std::string elastic_addr, std::string index,
         int time_to_wait_before_inserting,
         int bulk_size, const bool stats, MConn conn) : ElasticSearchBase(elastic_addr, time_to_wait_before_inserting, bulk_size),
 mIndex(index),
@@ -42,10 +42,10 @@ mTotalNumOfBulksProcessed(0), mIsFirstEventArrived(false) {
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
-void ProjectsElasticSearch::process(vector<FSBulk>* bulks) {
+void ProjectsElasticSearch::process(std::vector<FSBulk>* bulks) {
   FSKeys keys;
-  string batch;
-  for (vector<FSBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
+  std::string batch;
+  for (std::vector<FSBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
     FSBulk bulk = *it;
     batch.append(bulk.mJSON);
     keys.mMetaPKs.insert(bulk.mPKs.mMetaPKs.begin(), bulk.mPKs.mMetaPKs.end());
@@ -68,12 +68,12 @@ void ProjectsElasticSearch::process(vector<FSBulk>* bulks) {
   }
 }
 
-void ProjectsElasticSearch::stats(vector<FSBulk>* bulks) {
+void ProjectsElasticSearch::stats(std::vector<FSBulk>* bulks) {
   ptime t_end = getCurrentTime();
 
   ptime firstEventInCurrentBulksArrivalTime = bulks->at(0).mArrivalTimes.at(0);
   int numOfEvents = 0;
-  for (vector<FSBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
+  for (std::vector<FSBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
     FSBulk bulk = *it;
     stats(bulk, t_end);
     numOfEvents += bulk.mArrivalTimes.size();
@@ -87,9 +87,9 @@ void ProjectsElasticSearch::stats(vector<FSBulk>* bulks) {
   float totalTime = getTimeDiffInMilliseconds(mFirstEventArrived, t_end);
   float totalEventsPerSecond = (mTotalNumOfEventsProcessed * 1000.0) / totalTime;
 
-  LOG_INFO("Bulks[" << mTotalNumOfEventsProcessed << "/" << mTotalNumOfBulksProcessed << "] took " << totalTime << " msec at Rate=" << totalEventsPerSecond << " events/second" << endl
-          << "Total/Bulk=" << getAccString(mTotalTimePerBulkAcc) << ", Total/Event=" << getAccString(mTotalTimePerEventAcc) << endl
-          << "Batch=" << getAccString(mBatchingAcc) << ", WaitTime=" << getAccString(mWaitTimeBeforeProcessingAcc) << endl
+  LOG_INFO("Bulks[" << mTotalNumOfEventsProcessed << "/" << mTotalNumOfBulksProcessed << "] took " << totalTime << " msec at Rate=" << totalEventsPerSecond << " events/second" << std::endl
+          << "Total/Bulk=" << getAccString(mTotalTimePerBulkAcc) << ", Total/Event=" << getAccString(mTotalTimePerEventAcc) << std::endl
+          << "Batch=" << getAccString(mBatchingAcc) << ", WaitTime=" << getAccString(mWaitTimeBeforeProcessingAcc) << std::endl
           << "Processing=" << getAccString(mProcessingAcc) << ", eWaitTime=" << getAccString(mWaitTimeUntillElasticCalledAcc));
 }
 
@@ -131,22 +131,22 @@ void ProjectsElasticSearch::stats(FSBulk bulk, ptime t_elastic_done) {
   mTotalNumOfBulksProcessed++;
 }
 
-bool ProjectsElasticSearch::addDoc(Int64 inodeId, string json) {
-  string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
+bool ProjectsElasticSearch::addDoc(Int64 inodeId, std::string json) {
+  std::string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
   return httpRequest(HTTP_POST, url, json);
 }
 
-bool ProjectsElasticSearch::addBulk(string json) {
+bool ProjectsElasticSearch::addBulk(std::string json) {
   return httpRequest(HTTP_POST, mElasticBulkAddr, json);
 }
 
-bool ProjectsElasticSearch::deleteDocsByQuery(string json) {
-  string deleteProjUrl = getElasticSearchDeleteByQuery(mIndex);
+bool ProjectsElasticSearch::deleteDocsByQuery(std::string json) {
+  std::string deleteProjUrl = getElasticSearchDeleteByQuery(mIndex);
   return httpRequest(HTTP_POST, deleteProjUrl, json);
 }
 
-bool ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, string json) {
-  string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
+bool ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, std::string json) {
+  std::string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
   return httpRequest(HTTP_POST, url, json);
 }
 

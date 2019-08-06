@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,22 +29,22 @@
 
 struct TemplateRow {
   int mId;
-  string mName;
+  std::string mName;
 
-  string to_delete_json() {
+  std::string to_delete_json() {
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
 
     docWriter.String("script");
 
-    stringstream scriptStream;
+    std::stringstream scriptStream;
     scriptStream << "ctx._source[\"" << XATTR_FIELD_NAME << "\"].remove(\"" << mName << "\")";
     docWriter.String(scriptStream.str().c_str());
 
     docWriter.EndObject();
 
-    return string(sbDoc.GetString());
+    return std::string(sbDoc.GetString());
   }
 };
 

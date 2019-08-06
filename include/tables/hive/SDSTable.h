@@ -33,7 +33,7 @@ struct SDSRow {
   Int64 mSERDEID;
 };
 
-typedef vector<SDSRow> SDSVec;
+typedef std::vector<SDSRow> SDSVec;
 class SDSTable : public DBWatchTable<SDSRow>{
 
 public:

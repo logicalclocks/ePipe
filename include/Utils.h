@@ -26,6 +26,7 @@
 #define UTILS_H
 
 #include "common.h"
+#include "Logger.h"
 #include<cstdlib>
 #include<cstring>
 
@@ -50,14 +51,14 @@ namespace Utils {
     return diff.total_microseconds() / 1000.0;
   }
 
-  inline static string concat(const char* a, const string b) {
-    string buf(a);
+  inline static std::string concat(const char* a, const std::string b) {
+    std::string buf(a);
     buf.append(b);
     return buf;
   }
   
-  inline static string to_string(UISet& set) {
-    stringstream out;
+  inline static std::string to_string(UISet& set) {
+    std::stringstream out;
     out << "[";
     unsigned int i = 0;
     for (UISet::iterator it = set.begin(); it != set.end(); ++it, i++) {

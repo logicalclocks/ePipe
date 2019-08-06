@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,17 +28,17 @@
 #include "DBTableBase.h"
 
 typedef NdbRecAttr** Row;
-typedef vector<Row> Rows;
+typedef std::vector<Row> Rows;
 typedef boost::unordered_map<int, Row> UIRowMap;
 typedef boost::any Any;
 typedef boost::unordered_map<int, Any> AnyMap;
-typedef vector<AnyMap> AnyVec;
+typedef std::vector<AnyMap> AnyVec;
 
 template<typename TableRow>
 class DBTable : public DBTableBase {
 public:
-  DBTable(const string table);
-  DBTable(const string table, bool readGCI);
+  DBTable(const std::string table);
+  DBTable(const std::string table, bool readGCI);
 
   void getAll(Ndb* connection);
   bool next();
@@ -69,17 +69,17 @@ protected:
 
   TableRow doRead(Ndb* connection, Any any);
   TableRow doRead(Ndb* connection, AnyMap& any);
-  vector<TableRow> doRead(Ndb* connection, AnyVec& pks);
+  std::vector<TableRow> doRead(Ndb* connection, AnyVec& pks);
   boost::unordered_map<int, TableRow> doRead(Ndb* connection, UISet& ids);
   boost::unordered_map<Int64, TableRow> doRead(Ndb* connection, ULSet& ids);
     
-  vector<TableRow> doRead(Ndb* connection, string index, AnyMap& anys);
-  bool rowsExists(Ndb* connection, string index, AnyMap& anys);
+  std::vector<TableRow> doRead(Ndb* connection, std::string index, AnyMap& anys);
+  bool rowsExists(Ndb* connection, std::string index, AnyMap& anys);
 
   void doDelete(Any any);
   void doDelete(AnyMap& any);
 
-  void getAll(Ndb* connection, string index);
+  void getAll(Ndb* connection, std::string index);
   void setReadGCI(bool readGCI);
   
   int getColumnIdInDB(int colIndex);
@@ -91,7 +91,7 @@ protected:
 };
 
 template<typename TableRow>
-DBTable<TableRow>::DBTable(const string table)
+DBTable<TableRow>::DBTable(const std::string table)
 : DBTableBase(table), mReadGCI(false) {
 
 }
@@ -106,7 +106,7 @@ template<typename TableRow>
 NdbRecAttr** DBTable<TableRow>::getColumnValues(NdbOperation* op) {
   int numCols = mReadGCI ? getNoColumns() + 1 : getNoColumns();
   NdbRecAttr** values = new NdbRecAttr*[numCols];
-  for (unsigned int i = 0; i < getNoColumns(); i++) {
+  for (strvec_size_type i = 0; i < getNoColumns(); i++) {
     values[i] = getNdbOperationValue(op, getColumn(i).c_str());
   }
   if (mReadGCI) {
@@ -129,7 +129,7 @@ void DBTable<TableRow>::getAll(Ndb* connection) {
 }
 
 template<typename TableRow>
-void DBTable<TableRow>::getAll(Ndb* connection, string index) {
+void DBTable<TableRow>::getAll(Ndb* connection, std::string index) {
   start(connection);
   LOG_DEBUG(getName() << " -- GetAll with index : " << index);
   mIndex = getIndex(mDatabase, index);
@@ -218,7 +218,7 @@ TableRow DBTable<TableRow>::doRead(Ndb* connection, AnyMap& any) {
 }
 
 template<typename TableRow>
-vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, string index, AnyMap& any){
+std::vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, std::string index, AnyMap& any){
   start(connection);
   LOG_DEBUG(getName() << " -- doRead with index : " << index);
   mIndex = getIndex(mDatabase, index);
@@ -228,7 +228,7 @@ vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, string index, AnyMap
   applyConditionOnOperation(operation, any);
   mCurrentRow = getColumnValues(mCurrentOperation);
   executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
-  vector<TableRow> results;
+  std::vector<TableRow> results;
   while (operation->nextResult(true) == 0){
     TableRow row = getRow(mCurrentRow);
     results.push_back(row);
@@ -238,7 +238,7 @@ vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, string index, AnyMap
 }
 
 template<typename TableRow>
-bool DBTable<TableRow>::rowsExists(Ndb* connection, string index,
+bool DBTable<TableRow>::rowsExists(Ndb* connection, std::string index,
     AnyMap& any){
   start(connection);
   LOG_DEBUG(getName() << " -- hasResults with index : " << index);
@@ -274,10 +274,10 @@ boost::unordered_map<int, TableRow> DBTable<TableRow>::doRead(Ndb* connection, U
   AnyVec anyVec;
   IVec idsVec;
   convert(ids, anyVec, idsVec);
-  vector<TableRow> rows = doRead(connection, anyVec);
+  std::vector<TableRow> rows = doRead(connection, anyVec);
   boost::unordered_map<int, TableRow> results;
   int i=0;
-  for(typename vector<TableRow>::iterator it = rows.begin(); it!=rows.end(); ++it, i++){
+  for(typename std::vector<TableRow>::iterator it = rows.begin(); it!=rows.end(); ++it, i++){
     results[idsVec[i]]=*it;
   }
   return results;
@@ -288,17 +288,17 @@ boost::unordered_map<Int64, TableRow> DBTable<TableRow>::doRead(Ndb* connection,
   AnyVec anyVec;
   LVec idsVec;
   convert(ids, anyVec, idsVec);
-  vector<TableRow> rows = doRead(connection, anyVec);
+  std::vector<TableRow> rows = doRead(connection, anyVec);
   boost::unordered_map<Int64, TableRow> results;
   int i=0;
-  for(typename vector<TableRow>::iterator it = rows.begin(); it!=rows.end(); ++it, i++){
+  for(typename std::vector<TableRow>::iterator it = rows.begin(); it!=rows.end(); ++it, i++){
     results[idsVec[i]]=*it;
   }
   return results;
 }
 
 template<typename TableRow>
-vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, AnyVec& pks){
+std::vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, AnyVec& pks){
   start(connection);
   LOG_DEBUG(getName() << " -- doRead : " << pks.size() << " rows");
   Rows rows;
@@ -311,7 +311,7 @@ vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, AnyVec& pks){
   }
   executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
   
-  vector<TableRow> results;
+  std::vector<TableRow> results;
   for(Rows::iterator it=rows.begin(); it != rows.end(); ++it){
     results.push_back(getRow(*it));
   }
@@ -341,33 +341,33 @@ void DBTable<TableRow>::applyConditionOnGetAll(NdbScanFilter& filter) {
 
 template<typename TableRow>
 void DBTable<TableRow>::applyConditionOnOperation(NdbOperation* operation, AnyMap& any) {
-  stringstream log;
+  std::stringstream log;
   for (AnyMap::iterator it = any.begin(); it != any.end(); ++it) {
     int i = it->first;
     Any a = it->second;
-    string colName = getColumn(i);
+    std::string colName = getColumn(i);
     if (a.type() == typeid (int)) {
       int pk = boost::any_cast<int>(a);
-      log << colName << " = " << pk << endl;
+      log << colName << " = " << pk << std::endl;
       operation->equal(colName.c_str(), pk);
     } else if(a.type() == typeid(Int64)){
       Int64 pk = boost::any_cast<Int64>(a);
-      log << colName << " = " << pk << endl;
+      log << colName << " = " << pk << std::endl;
       operation->equal(colName.c_str(), pk);
     } else if(a.type() == typeid(Int8)){
       Int8 pk = boost::any_cast<Int8>(a);
-      log << colName << " = " << (int) pk << endl;
+      log << colName << " = " << (int) pk << std::endl;
       operation->equal(colName.c_str(), pk);
-    } else if (a.type() == typeid (string)) {
-      string pk = boost::any_cast<string>(a);
-      log << colName << " = " << pk << endl;
+    } else if (a.type() == typeid (std::string)) {
+      std::string pk = boost::any_cast<std::string>(a);
+      log << colName << " = " << pk << std::endl;
       operation->equal(colName.c_str(), get_ndb_varchar(pk,
               mTable->getColumn(colName.c_str())->getArrayType()).c_str());
     }else{
       LOG_ERROR(getName() << " -- apply where unkown type" << a.type().name());
     }
   }
-  LOG_DEBUG(getName() << " apply conditions on operation " << endl << log.str());
+  LOG_DEBUG(getName() << " apply conditions on operation " << std::endl << log.str());
 }
 
 template<typename TableRow>

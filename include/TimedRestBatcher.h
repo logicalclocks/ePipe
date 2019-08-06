@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -39,7 +39,7 @@ enum HttpOp {
 };
 
 struct Response {
-  string mResponse;
+  std::string mResponse;
   CURLcode mCode;
 };
 
@@ -61,8 +61,8 @@ static const char* getStr(HttpOp op) {
 template<typename Keys>
 struct Bulk {
   Uint64 mProcessingIndex;
-  string mJSON;
-  vector<ptime> mArrivalTimes;
+  std::string mJSON;
+  std::vector<ptime> mArrivalTimes;
   ptime mStartProcessing;
   ptime mEndProcessing;
   Keys mPKs;
@@ -71,7 +71,7 @@ struct Bulk {
 template<typename Keys>
 class TimedRestBatcher : public Batcher {
 public:
-  TimedRestBatcher(string endpoint_addr, int time_to_wait_before_inserting, int bulk_size);
+  TimedRestBatcher(std::string endpoint_addr, int time_to_wait_before_inserting, int bulk_size);
 
   void addData(Bulk<Keys> data);
   
@@ -80,39 +80,39 @@ public:
   virtual ~TimedRestBatcher();
 
 protected:
-  string mEndpointAddr;
+  std::string mEndpointAddr;
 
-  bool httpRequest(HttpOp op, string requestUrl, string json);
+  bool httpRequest(HttpOp op, std::string requestUrl, std::string json);
 
-  virtual void process(vector<Bulk<Keys> >* data) = 0;
-  virtual bool parseResponse(string response) = 0;
+  virtual void process(std::vector<Bulk<Keys> >* data) = 0;
+  virtual bool parseResponse(std::string response) = 0;
 
 private:
   ConcurrentQueue<Bulk<Keys> > mQueue;
-  vector<Bulk<Keys> >* mToProcess;
+  std::vector<Bulk<Keys> >* mToProcess;
   int mToProcessLength;
   boost::mutex mLock;
   bool mShutdown;
   
-  bool httpRequestInternal(HttpOp op, string requestUrl, string json);
-  Response perform(HttpOp op, string requestUrl, string json);
+  bool httpRequestInternal(HttpOp op, std::string requestUrl, std::string json);
+  Response perform(HttpOp op, std::string requestUrl, std::string json);
 
   virtual void run();
   virtual void processBatch();
 };
 
 template<typename Keys>
-TimedRestBatcher<Keys>::TimedRestBatcher(string endpoint_addr, int time_to_wait_before_inserting, int bulk_size)
+TimedRestBatcher<Keys>::TimedRestBatcher(std::string endpoint_addr, int time_to_wait_before_inserting, int bulk_size)
 : Batcher(time_to_wait_before_inserting, bulk_size), mToProcessLength(0) {
   mEndpointAddr = "http://" + endpoint_addr;
   curl_global_init(CURL_GLOBAL_ALL);
-  mToProcess = new vector<Bulk<Keys> >();
+  mToProcess = new std::vector<Bulk<Keys> >();
   mShutdown = false;
 }
 
 template<typename Keys>
 void TimedRestBatcher<Keys>::addData(Bulk<Keys> data) {
-  LOG_DEBUG("Add Bulk JSON:" << endl << data.mJSON << endl);
+  LOG_DEBUG("Add Bulk JSON:" << std::endl << data.mJSON << std::endl);
   mQueue.push(data);
 }
 
@@ -150,8 +150,8 @@ void TimedRestBatcher<Keys>::processBatch() {
     LOG_DEBUG("Process Bulk JSONs [" << mToProcessLength << "]");
 
     mLock.lock();
-    vector<Bulk<Keys> >* data = mToProcess;
-    mToProcess = new vector<Bulk<Keys> >;
+    std::vector<Bulk<Keys> >* data = mToProcess;
+    mToProcess = new std::vector<Bulk<Keys> >;
     mToProcessLength = 0;
     mLock.unlock();
 
@@ -170,7 +170,7 @@ void TimedRestBatcher<Keys>::processBatch() {
 }
 
 template<typename Keys>
-bool TimedRestBatcher<Keys>::httpRequest(HttpOp op, string requestUrl, string json) {
+bool TimedRestBatcher<Keys>::httpRequest(HttpOp op, std::string requestUrl, std::string json) {
   ptime t1 = Utils::getCurrentTime();
   bool res = httpRequestInternal(op, requestUrl, json);
   ptime t2 = Utils::getCurrentTime();
@@ -179,7 +179,7 @@ bool TimedRestBatcher<Keys>::httpRequest(HttpOp op, string requestUrl, string js
 }
 
 template<typename Keys>
-bool TimedRestBatcher<Keys>::httpRequestInternal(HttpOp op, string requestUrl, string json) {
+bool TimedRestBatcher<Keys>::httpRequestInternal(HttpOp op, std::string requestUrl, std::string json) {
   //TODO: handle different failure scenarios
   Response res = perform(op, requestUrl, json);
 
@@ -188,14 +188,14 @@ bool TimedRestBatcher<Keys>::httpRequestInternal(HttpOp op, string requestUrl, s
     return false;
   }
 
-  LOG_DEBUG(getStr(op) << " " << requestUrl << endl
-          << json << endl << "Response::" << endl << res.mResponse);
+  LOG_DEBUG(getStr(op) << " " << requestUrl << std::endl
+          << json << std::endl << "Response::" << std::endl << res.mResponse);
 
   return parseResponse(res.mResponse);
 }
 
 template<typename Keys>
-Response TimedRestBatcher<Keys>::perform(HttpOp op, string requestUrl, string json) {
+Response TimedRestBatcher<Keys>::perform(HttpOp op, std::string requestUrl, std::string json) {
   Response response;
 
   CURL* curl = curl_easy_init();

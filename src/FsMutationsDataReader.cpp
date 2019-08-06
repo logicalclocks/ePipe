@@ -50,8 +50,8 @@ void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk
 void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
     XAttrMap& xattrs, FSBulk& bulk) {
 
-  vector<ptime> arrivalTimes(pending->size());
-  stringstream out;
+  std::vector<ptime> arrivalTimes(pending->size());
+  std::stringstream out;
   int i = 0;
   for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it, i++) {
     FsMutationRow row = *it;
@@ -62,7 +62,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       if (!row.requiresReadingINode()) {
         //Handle the delete, rename, and change dataset
         out << INodeRow::to_json(row);
-        out << endl;
+        out << std::endl;
         continue;
       }
 
@@ -71,7 +71,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
             " Data for inode: " << row.getParentId() << ", " << row
             .getINodeName() << ", " << row.mInodeId << " was not found");
         out << INodeRow::to_delete_json(row.mInodeId);
-        out << endl;
+        out << std::endl;
         continue;
       }
 
@@ -84,25 +84,25 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetINodeId);
       }
 
-      string inodeJSON = inode.to_create_json(datasetINodeId, projectId);
+      std::string inodeJSON = inode.to_create_json(datasetINodeId, projectId);
 
-      out << inodeJSON << endl;
+      out << inodeJSON << std::endl;
     } else if(row.isXAttrOperation()){
       if(!row.requiresReadingXAttr()){
         //handle delete xattr
         out << XAttrRow::to_delete_json(row);
-        out << endl;
+        out << std::endl;
         continue;
       }
 
-      string mutationpk = row.getPKStr();
+      std::string mutationpk = row.getPKStr();
 
       if(xattrs.find(mutationpk) == xattrs.end()){
         LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
         << row.getNamespace() <<  " for inode " << row.mInodeId
         << " was not ""found");
         out << XAttrRow::to_delete_json(row);
-        out << endl;
+        out << std::endl;
         continue;
       }
 
@@ -111,13 +111,13 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         XAttrRow xAttrRow = *it;
         if(xAttrRow.mInodeId ==  row.mInodeId){
           out << xAttrRow.to_upsert_json(row.mOperation);
-          out << endl;
+          out << std::endl;
         }else{
           LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
           << row.getNamespace() <<  " for inode " << row.mInodeId
           << " was not ""found");
           out << XAttrRow::to_delete_json(row);
-          out << endl;
+          out << std::endl;
         }
       }
     }else{

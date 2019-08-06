@@ -48,21 +48,21 @@ typedef Bulk<FSKeys> FSBulk;
 
 class ProjectsElasticSearch : public ElasticSearchBase<FSKeys> {
 public:
-  ProjectsElasticSearch(string elastic_addr, string index,
+  ProjectsElasticSearch(std::string elastic_addr, std::string index,
           int time_to_wait_before_inserting, int bulk_size,
           const bool stats, MConn conn);
 
-  bool addDoc(Int64 inodeId, string json);
-  bool addBulk(string json);
-  bool deleteDocsByQuery(string json);
-  bool deleteSchemaForINode(Int64 inodeId, string json);
+  bool addDoc(Int64 inodeId, std::string json);
+  bool addBulk(std::string json);
+  bool deleteDocsByQuery(std::string json);
+  bool deleteSchemaForINode(Int64 inodeId, std::string json);
 
   virtual ~ProjectsElasticSearch();
 private:
-  const string mIndex;
+  const std::string mIndex;
   const bool mStats;
 
-  string mElasticBulkAddr;
+  std::string mElasticBulkAddr;
 
   MConn mConn;
 
@@ -77,9 +77,9 @@ private:
   ptime mFirstEventArrived;
   bool mIsFirstEventArrived;
 
-  virtual void process(vector<FSBulk>* bulks);
+  virtual void process(std::vector<FSBulk>* bulks);
 
-  void stats(vector<FSBulk>* bulks);
+  void stats(std::vector<FSBulk>* bulks);
   void stats(FSBulk bulk, ptime t_elastic_done);
 };
 

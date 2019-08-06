@@ -24,7 +24,7 @@
 
 #ifndef CACHE_H
 #define CACHE_H
-#include "common.h"
+#include "Utils.h"
 #include "boost/bimap.hpp"
 #include "boost/bimap/list_of.hpp"
 #include "boost/bimap/unordered_set_of.hpp"
@@ -55,6 +55,7 @@ public:
 
   typedef boost::bimaps::bimap<boost::bimaps::unordered_set_of<Key>,
   boost::bimaps::list_of<Value> > CacheContainer;
+  typedef typename CacheContainer::size_type cache_size_type;
 
   Cache();
   Cache(const int max_capacity);
@@ -67,7 +68,7 @@ public:
   virtual ~Cache();
 
 private:
-  const int mCapacity;
+  const cache_size_type mCapacity;
   const char* mTracePrefix;
   CacheContainer mCache;
 

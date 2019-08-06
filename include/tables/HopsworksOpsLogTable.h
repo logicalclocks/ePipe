@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Hops.io
+ * Copyright (C) 2018 Logical Clocks AB
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -73,15 +73,15 @@ struct HopsworksOpRow {
   Int64 mDatasetINodeId;
   Int64 mInodeId;
 
-  string to_string() {
-    stringstream out;
-    out << "HopsworksOpRow::" << endl
-            << "ID = " << mId << endl
-            << "OpID = " << mOpId << endl
-            << "OpOn = " << OpsLogOnToStr(mOpOn) << endl
-            << "OpType = " << HopsworksOpTypeToStr(mOpType) << endl
-            << "ProjectID = " << mProjectId << endl
-            << "DatasetID = " << mDatasetINodeId << endl
+  std::string to_string() {
+    std::stringstream out;
+    out << "HopsworksOpRow::" << std::endl
+            << "ID = " << mId << std::endl
+            << "OpID = " << mOpId << std::endl
+            << "OpOn = " << OpsLogOnToStr(mOpOn) << std::endl
+            << "OpType = " << HopsworksOpTypeToStr(mOpType) << std::endl
+            << "ProjectID = " << mProjectId << std::endl
+            << "DatasetID = " << mDatasetINodeId << std::endl
             << "INodeID = " << mInodeId;
     return out.str();
   }
