@@ -26,13 +26,17 @@
 #define EPIPE_ELASTICSEARCHBASE_H
 
 #include "TimedRestBatcher.h"
+#include "http/server/MetricsProvider.h"
 
 template<typename Keys>
-class ElasticSearchBase : public TimedRestBatcher<Keys> {
+class ElasticSearchBase : public TimedRestBatcher<Keys>, public
+    MetricsProvider {
 public:
   ElasticSearchBase(std::string elastic_addr, int time_to_wait_before_inserting, int bulk_size);
   
   virtual ~ElasticSearchBase();
+
+  std::string getMetrics() const override;
 
 protected:
 
@@ -142,4 +146,10 @@ template<typename Keys>
 ElasticSearchBase<Keys>::~ElasticSearchBase() {
 
 }
+
+template<typename Keys>
+std::string ElasticSearchBase<Keys>::getMetrics() const {
+  return std::string();
+}
+
 #endif //EPIPE_ELASTICSEARCHBASE_H

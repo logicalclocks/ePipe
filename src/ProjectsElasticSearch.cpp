@@ -27,18 +27,11 @@
 
 using namespace Utils;
 
-static std::string getAccString(Accumulator acc) {
-  std::stringstream out;
-  out << "[" << bc::min(acc) << "," << bc::mean(acc) << "," << bc::max(acc) << "]";
-  return out.str();
-}
-
 ProjectsElasticSearch::ProjectsElasticSearch(std::string elastic_addr, std::string index,
         int time_to_wait_before_inserting,
         int bulk_size, const bool stats, MConn conn) : ElasticSearchBase(elastic_addr, time_to_wait_before_inserting, bulk_size),
 mIndex(index),
-mStats(stats), mConn(conn), mTotalNumOfEventsProcessed(0),
-mTotalNumOfBulksProcessed(0), mIsFirstEventArrived(false) {
+mStats(stats), mConn(conn), mStartTime(getCurrentTime()){
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
@@ -61,10 +54,14 @@ void ProjectsElasticSearch::process(std::vector<FSBulk>* bulks) {
     if (!keys.mFSPKs.empty()) {
       FsMutationsLogTable().removeLogs(mConn.inodeConnection, keys.mFSPKs);
     }
-  }
-
-  if (mStats) {
-    stats(bulks);
+    if (mStats) {
+      stats(bulks);
+    }
+  }else{
+    if(mStats){
+      mCounters.check();
+      mCounters.elasticSearchRequestFailed();
+    }
   }
 }
 
@@ -84,24 +81,14 @@ void ProjectsElasticSearch::stats(std::vector<FSBulk>* bulks) {
 
   LOG_INFO("Bulks[" << numOfEvents << "/" << bulks->size() << "] took " << bulksTotalTime << " msec at Rate=" << bulksEventPerSecond << " events/second");
 
-  float totalTime = getTimeDiffInMilliseconds(mFirstEventArrived, t_end);
-  float totalEventsPerSecond = (mTotalNumOfEventsProcessed * 1000.0) / totalTime;
-
-  LOG_INFO("Bulks[" << mTotalNumOfEventsProcessed << "/" << mTotalNumOfBulksProcessed << "] took " << totalTime << " msec at Rate=" << totalEventsPerSecond << " events/second" << std::endl
-          << "Total/Bulk=" << getAccString(mTotalTimePerBulkAcc) << ", Total/Event=" << getAccString(mTotalTimePerEventAcc) << std::endl
-          << "Batch=" << getAccString(mBatchingAcc) << ", WaitTime=" << getAccString(mWaitTimeBeforeProcessingAcc) << std::endl
-          << "Processing=" << getAccString(mProcessingAcc) << ", eWaitTime=" << getAccString(mWaitTimeUntillElasticCalledAcc));
 }
 
 void ProjectsElasticSearch::stats(FSBulk bulk, ptime t_elastic_done) {
+  mCounters.check();
 
   int size = bulk.mArrivalTimes.size();
   float batch_time, wait_time, processing_time, ewait_time, total_time;
   if (size > 0) {
-    if (!mIsFirstEventArrived) {
-      mFirstEventArrived = bulk.mArrivalTimes[0];
-      mIsFirstEventArrived = true;
-    }
     batch_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[0], bulk.mArrivalTimes[size - 1]);
     wait_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[size - 1], bulk.mStartProcessing);
     total_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[0], t_elastic_done);
@@ -110,25 +97,13 @@ void ProjectsElasticSearch::stats(FSBulk bulk, ptime t_elastic_done) {
   processing_time = getTimeDiffInMilliseconds(bulk.mStartProcessing, bulk.mEndProcessing);
   ewait_time = getTimeDiffInMilliseconds(bulk.mEndProcessing, t_elastic_done);
 
-  Accumulator total_time_acc;
   for (int i = 0; i < size; i++) {
     float total_time_per_event = getTimeDiffInMilliseconds(bulk.mArrivalTimes[i], t_elastic_done);
-    total_time_acc(total_time_per_event);
-    mTotalTimePerEventAcc(total_time_per_event);
+    mCounters.addTotalTimePerEvent(total_time_per_event);
   }
 
-
-  LOG_INFO("Bulk[" << size << "] took " << total_time << " msec, TotalTime/Event=" << getAccString(total_time_acc)
-          << ", Batch=" << batch_time << " msec, WaitTime=" << wait_time << " msec, Processing="
-          << processing_time << " msec, eWait=" << ewait_time << " msec");
-
-  mBatchingAcc(batch_time);
-  mWaitTimeBeforeProcessingAcc(wait_time);
-  mProcessingAcc(processing_time);
-  mWaitTimeUntillElasticCalledAcc(ewait_time);
-  mTotalTimePerBulkAcc(total_time);
-  mTotalNumOfEventsProcessed += size;
-  mTotalNumOfBulksProcessed++;
+  mCounters.processBulk(batch_time, wait_time, processing_time,
+      ewait_time, total_time, size);
 }
 
 bool ProjectsElasticSearch::addDoc(Int64 inodeId, std::string json) {
@@ -151,5 +126,66 @@ bool ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, std::string json
 }
 
 ProjectsElasticSearch::~ProjectsElasticSearch() {
+}
+
+std::string ProjectsElasticSearch::getMetrics() const {
+  std::stringstream out;
+  out << "up_seconds " << getTimeDiffInSeconds(mStartTime, getCurrentTime())
+  << std::endl;
+  out << mCounters.getMetrics(mStartTime);
+  return out.str();
+}
+
+bool ProjectsElasticSearch::addDataset(Int64 inodeId, std::string json) {
+  bool res = addDoc(inodeId, json);
+  if(mStats){
+    mCounters.check();
+  }
+  if(res){
+    mCounters.datasetAdded();
+  }else{
+    mCounters.elasticSearchRequestFailed();
+  }
+
+  return res;
+}
+
+bool ProjectsElasticSearch::addProject(Int64 inodeId, std::string json) {
+  bool res = addDoc(inodeId, json);
+  if(mStats){
+    mCounters.check();
+  }
+  if(res){
+    mCounters.projectAdded();
+  }else{
+    mCounters.elasticSearchRequestFailed();
+  }
+  return res;
+}
+
+bool ProjectsElasticSearch::removeDataset(std::string json) {
+  bool res = deleteDocsByQuery(json);
+  if(mStats){
+    mCounters.check();
+  }
+  if(res){
+    mCounters.datasetRemoved();
+  }else{
+    mCounters.elasticSearchRequestFailed();
+  }
+  return res;
+}
+
+bool ProjectsElasticSearch::removeProject(std::string json) {
+  bool res = deleteDocsByQuery(json);
+  if(mStats){
+    mCounters.check();
+  }
+  if(res){
+    mCounters.projectRemoved();
+  }else{
+    mCounters.elasticSearchRequestFailed();
+  }
+  return res;
 }
 

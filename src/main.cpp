@@ -54,13 +54,15 @@ int main(int argc, char** argv) {
 
     int lru_cap = DEFAULT_MAX_CAPACITY;
     bool recovery = true;
-    bool stats = false;
+    bool stats = true;
 
     Barrier barrier = EPOCH;
 
     bool reindex = false;
 
     bool hiveCleaner = true;
+
+    std::string metricsServer = "0.0.0.0:9191";
 
     po::options_description generalOptions("General");
     generalOptions.add_options()
@@ -129,7 +131,9 @@ int main(int argc, char** argv) {
         ("recovery", po::value<bool>(&recovery)->default_value(recovery),
          "enable or disable startup recovery")
         ("stats", po::value<bool>(&stats)->default_value(stats),
-         "enable or disable print of accumulators stats")
+         "enable or disable the metrics server")
+        ("metricsServer", po::value<std::string>(&metricsServer)->default_value
+            (metricsServer),"binding ip and port for the metrics server")
         ("barrier", po::value<int>()->default_value(barrier),
          "Table tailer barrier type. EPOCH=0, GCI=1")
         ("reindex", po::value<bool>(&reindex)->default_value(reindex),
@@ -215,7 +219,8 @@ int main(int argc, char** argv) {
                                        elastic_provenance_index,
                                        elastic_batch_size, elastic_issue_time,
                                        lru_cap, recovery, stats, barrier,
-                                       hiveCleaner);
+                                       hiveCleaner,
+                                       metricsServer);
       notifer->start();
     }
     return EXIT_SUCCESS;

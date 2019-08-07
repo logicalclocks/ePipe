@@ -30,7 +30,8 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
         const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, TableUnitConf provenance_tu,
         const int poll_maxTimeToWait, const std::string elastic_ip, const bool hopsworks, const std::string elastic_index, const std::string elastic_provenance_index,
         const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery,
-        const bool stats, Barrier barrier, const bool hiveCleaner)
+        const bool stats, Barrier barrier, const bool hiveCleaner, const
+        std::string metricsServer)
 : ClusterConnectionBase(connection_string, database_name, meta_database_name,
     hive_meta_database_name), mMutationsTU(mutations_tu), mSchemabasedTU
     (schemabased_tu), mSchemalessTU(schemaless_tu), mProvenanceTU
@@ -38,7 +39,7 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
 mElasticIndex(elastic_index), mElasticProvenanceIndex(elastic_provenance_index),
 mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap),
 mRecovery(recovery), mStats(stats), mBarrier(barrier), mHiveCleaner
-(hiveCleaner) {
+(hiveCleaner), mMetricsServer(metricsServer) {
   setup();
 }
 
@@ -91,6 +92,10 @@ void Notifier::start() {
 
   ptime t2 = getCurrentTime();
   LOG_INFO("ePipe started in " << getTimeDiffInMilliseconds(t1, t2) << " msec");
+
+  if(mStats) {
+    mHttpServer->run();
+  }
 
   if (mMutationsTU.isEnabled()) {
     mFsMutationsBatcher->waitToFinish();
@@ -245,6 +250,18 @@ void Notifier::setup() {
     Ndb *skv_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
     mSkewedValuesTailer = new SkewedValuesTailer(skv_tailer_connection,
         mPollMaxTimeToWait, mBarrier);
+  }
+
+  if(mStats) {
+    std::vector<MetricsProvider*> providers;
+    if(mMutationsTU.isEnabled()){
+      providers.push_back(mProjectsElasticSearch);
+    }
+    if(mProvenanceTU.isEnabled()){
+      providers.push_back(mProjectsElasticSearch);
+    }
+    mMetricsProviders = new MetricsProviders(providers);
+    mHttpServer = new HttpServer(mMetricsServer, *mMetricsProviders);
   }
 }
 

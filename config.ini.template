@@ -54,3 +54,7 @@ index = projects
 provenance_index = provenance
 elastic_batch = 5000
 ewait_time = 5000
+
+# Metrics Server
+stats = true
+metricsServer = 0.0.0.0:29191

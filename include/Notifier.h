@@ -40,6 +40,7 @@
 #include "hive/IDXSTailer.h"
 #include "hive/SkewedLocTailer.h"
 #include "hive/SkewedValuesTailer.h"
+#include "http/server/HttpServer.h"
 
 class Notifier : public ClusterConnectionBase {
 public:
@@ -48,7 +49,8 @@ public:
           const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, const TableUnitConf provenance_tu,
           const int poll_maxTimeToWait, const std::string elastic_addr, const bool hopsworks, const std::string elastic_index, const std::string elastic_provenance_index,
           const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
-          Barrier barrier, const bool hiveCleaner);
+          Barrier barrier, const bool hiveCleaner, const std::string
+          metricsServer);
   void start();
   virtual ~Notifier();
 
@@ -71,6 +73,7 @@ private:
   const bool mStats;
   const Barrier mBarrier;
   const bool mHiveCleaner;
+  const std::string mMetricsServer;
 
   ProjectsElasticSearch* mProjectsElasticSearch;
 
@@ -101,6 +104,8 @@ private:
   SkewedLocTailer* mSkewedLocTailer;
   SkewedValuesTailer* mSkewedValuesTailer;
 
+  HttpServer* mHttpServer;
+  MetricsProviders* mMetricsProviders;
   void setup();
 };
 
