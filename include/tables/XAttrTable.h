@@ -77,35 +77,15 @@ private:
     doc.Parse(getXAttrDoc(true).c_str());
     rapidjson::Document xattr(&doc.GetAllocator());
     if (!xattr.Parse(mValue.c_str()).HasParseError()) {
-      mergeDoc(doc, xattr);
+      doc["doc"][XATTR_FIELD_NAME][mName.c_str()] = xattr.Move();
       rapidjson::StringBuffer sbDoc;
       rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
       doc.Accept(docWriter);
       return std::string(sbDoc.GetString());
-    } else {
-      LOG_DEBUG("XAttr is non json " << mName << "=" << mValue);
-      return getXAttrDoc(false);
     }
 
-  }
-
-  void mergeDoc(rapidjson::Document& target, rapidjson::Document& source) {
-    if(source.IsArray()){
-      target["doc"][XATTR_FIELD_NAME][mName.c_str()].SetArray();
-      for (rapidjson::Value::ConstValueIterator itr = source.Begin(); itr !=
-      source.End(); ++itr) {
-        rapidjson::Value dstVal ;
-        dstVal.CopyFrom(*itr, target.GetAllocator());
-        target["doc"][XATTR_FIELD_NAME][mName.c_str()].PushBack(dstVal,
-            target.GetAllocator());
-      }
-    }else {
-      for (rapidjson::Document::MemberIterator itr = source.MemberBegin();
-           itr != source.MemberEnd(); ++itr) {
-        target["doc"][XATTR_FIELD_NAME][mName.c_str()].AddMember(itr->name,
-            itr->value, target.GetAllocator());
-      }
-    }
+    LOG_DEBUG("XAttr is non json " << mName << "=" << mValue);
+    return getXAttrDoc(false);
   }
 
   static std::string getDocUpdatePrefix(Int64 inodeId){

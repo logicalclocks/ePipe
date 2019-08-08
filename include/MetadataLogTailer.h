@@ -33,7 +33,6 @@
 class MetadataLogTailer : public RCTableTailer<MetadataLogEntry> {
 public:
   MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier);
-  MetadataLogEntry consumeMultiQueue(int queue_id);
   MetadataLogEntry consume();
 
   virtual ~MetadataLogTailer();
@@ -41,7 +40,6 @@ private:
 
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, MetadataLogEntry pre, MetadataLogEntry row);
   CMetaQ* mSchemaBasedQueue;
-  CMetaQ* mSchemalessQueue;
 };
 
 #endif /* METADATALOGTAILER_H */

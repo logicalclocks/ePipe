@@ -44,16 +44,16 @@ struct SchemabasedMetadataEntry {
   }
 
   SchemabasedMetadataEntry(MetadataLogEntry ml) {
-    mId = ml.mMetaPK.mPK1;
-    mField.mId = ml.mMetaPK.mPK2;
-    mTuple.mId = ml.mMetaPK.mPK3;
+    mId = ml.mMetaPK.mId;
+    mField.mId = ml.mMetaPK.mFieldId;
+    mTuple.mId = ml.mMetaPK.mTupleId;
     mOperation = ml.mMetaOpType;
     mEventCreationTime = ml.mEventCreationTime;
   }
 
   bool is_equal(MetadataKey metaKey) {
-    return mId == metaKey.mPK1 && mField.mId == metaKey.mPK2
-            && mTuple.mId == metaKey.mPK3;
+    return mId == metaKey.mId && mField.mId == metaKey.mFieldId
+            && mTuple.mId == metaKey.mTupleId;
   }
   
   bool is_equal(SchemabasedMetadataEntry ml) {

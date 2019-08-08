@@ -42,7 +42,6 @@ int main(int argc, char** argv) {
 
     TableUnitConf mutations_tu = TableUnitConf();
     TableUnitConf schamebased_tu = TableUnitConf();
-    TableUnitConf schemaless_tu = TableUnitConf();
     TableUnitConf provenance_tu = TableUnitConf();
 
     bool hopsworks = true;
@@ -99,11 +98,7 @@ int main(int argc, char** argv) {
          po::value<std::vector<int> >()->default_value(provenance_tu.getVector(),
                                                   provenance_tu.getString())->multitoken(),
          "WAIT_TIME BATCH_SIZE NUM_READERS")
-        ("schemaless_tu",
-         po::value<std::vector<int> >()->default_value(schemaless_tu.getVector(),
-                                                  schemaless_tu.getString())->multitoken(),
-         "WAIT_TIME BATCH_SIZE NUM_READERS \nWAIT_TIME is the time to wait in miliseconds before issuing the ndb request if the batch size wasn't reached.\nBATCH_SIZE is the batch size for reading from ndb\nNUM_READERS is the num of threads used for reading from ndb and processing the data. The watch unit is disabled if set to 0 0 0.")
-        ("elastic_addr",
+         ("elastic_addr",
          po::value<std::string>(&elastic_addr)->default_value(elastic_addr),
          "ip and port of the elasticsearch server")
         ("hopsworks", po::value<bool>(&hopsworks)->default_value(hopsworks),
@@ -176,10 +171,6 @@ int main(int argc, char** argv) {
       schamebased_tu.update(vm["schamebased_tu"].as<std::vector<int> >());
     }
 
-    if (vm.count("schemaless_tu")) {
-      schemaless_tu.update(vm["schemaless_tu"].as<std::vector<int> >());
-    }
-
     if (vm.count("provenance_tu")) {
       provenance_tu.update(vm["provenance_tu"].as<std::vector<int> >());
     }
@@ -213,7 +204,7 @@ int main(int argc, char** argv) {
                                        meta_database_name.c_str(),
                                        hive_meta_database_name.c_str(),
                                        mutations_tu, schamebased_tu,
-                                       schemaless_tu, provenance_tu,
+                                       provenance_tu,
                                        poll_maxTimeToWait, elastic_addr,
                                        hopsworks, elastic_index,
                                        elastic_provenance_index,

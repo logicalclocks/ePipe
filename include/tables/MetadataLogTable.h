@@ -29,43 +29,28 @@
 
 #define XATTR_FIELD_NAME "xattr"
 
-enum MetadataType {
-  Schemabased = 0,
-  Schemaless = 1
-};
-
-inline static const char* MetadataTypeToStr(MetadataType metaType) {
-  switch (metaType) {
-    case Schemabased:
-      return "SchemaBased";
-    case Schemaless:
-      return "SchemaLess";
-    default:
-      return "Unkown";
-  }
-}
-
 struct MetadataKey {
-  int mPK1;
-  Int64 mPK2;
-  Int64 mPK3;
+  Int32 mId;
+  Int32 mFieldId;
+  Int32 mTupleId;
 
   MetadataKey() {
   }
 
-  MetadataKey(int pk1, Int64 pk2, Int64 pk3) {
-    mPK1 = pk1;
-    mPK2 = pk2;
-    mPK3 = pk3;
+  MetadataKey(Int32 id, Int32 fieldId, Int32 tupleId) {
+    mId = id;
+    mFieldId = fieldId;
+    mTupleId = tupleId;
   }
 
   bool operator==(const MetadataKey &other) const {
-    return (mPK1 == other.mPK1) && (mPK2 == other.mPK2) && (mPK3 == other.mPK3);
+    return (mId == other.mId) && (mFieldId == other.mFieldId) && (mTupleId == other
+    .mTupleId);
   }
 
   std::string to_string() {
     std::stringstream stream;
-    stream << "[" << mPK1 << "," << mPK2 << "," << mPK3 << "]";
+    stream << "[" << mId << "," << mFieldId << "," << mTupleId << "]";
     return stream.str();
   }
 };
@@ -74,26 +59,23 @@ struct MetadataKeyHasher {
 
   std::size_t operator()(const MetadataKey &key) const {
     std::size_t seed = 0;
-    boost::hash_combine(seed, boost::hash_value(key.mPK1));
-    boost::hash_combine(seed, boost::hash_value(key.mPK2));
-    boost::hash_combine(seed, boost::hash_value(key.mPK3));
+    boost::hash_combine(seed, boost::hash_value(key.mId));
+    boost::hash_combine(seed, boost::hash_value(key.mFieldId));
+    boost::hash_combine(seed, boost::hash_value(key.mTupleId));
     return seed;
   }
 };
 
 struct MetadataLogEntry {
-  int mId;
+  Int32 mId;
   MetadataKey mMetaPK;
   HopsworksOpType mMetaOpType;
-  MetadataType mMetaType;
-
   ptime mEventCreationTime;
 
   std::string to_string() {
     std::stringstream stream;
     stream << "-------------------------" << std::endl;
     stream << "Id = " << mId << std::endl;
-    stream << "MetaType = " << MetadataTypeToStr(mMetaType) << std::endl;
     stream << "MetaPK = " << mMetaPK.to_string() << std::endl;
     stream << "MetaOpType = " << HopsworksOpTypeToStr(mMetaOpType) << std::endl;
     stream << "-------------------------" << std::endl;
@@ -116,10 +98,9 @@ public:
 
   MetadataLogTable() : DBWatchTable("meta_log") {
     addColumn("id");
-    addColumn("meta_pk1");
-    addColumn("meta_pk2");
-    addColumn("meta_pk3");
-    addColumn("meta_type");
+    addColumn("meta_id");
+    addColumn("meta_field_id");
+    addColumn("meta_tuple_id");
     addColumn("meta_op_type");
     addRecoveryIndex(PRIMARY_INDEX);
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
@@ -129,12 +110,11 @@ public:
     MetadataLogEntry row;
     row.mEventCreationTime = Utils::getCurrentTime();
     row.mId = value[0]->int32_value();
-    int PK1 = value[1]->int32_value();
-    Int64 PK2 = value[2]->int64_value();
-    Int64 PK3 = value[3]->int64_value();
-    row.mMetaPK = MetadataKey(PK1, PK2, PK3);
-    row.mMetaType = static_cast<MetadataType> (value[4]->int8_value());
-    row.mMetaOpType = static_cast<HopsworksOpType> (value[5]->int8_value());
+    Int32 metaId = value[1]->int32_value();
+    Int32 metaFieldId = value[2]->int32_value();
+    Int32 metaTupleId = value[3]->int32_value();
+    row.mMetaPK = MetadataKey(metaId, metaFieldId, metaTupleId);
+    row.mMetaOpType = static_cast<HopsworksOpType> (value[4]->int8_value());
     return row;
   }
 
