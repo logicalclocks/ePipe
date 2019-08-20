@@ -53,16 +53,24 @@ public:
   }
 
   void remove(Ndb* conn, Int64 SDID) {
-    start(conn);
-    doDelete(SDID);
-    LOG_DEBUG("Remove SDS entry with PK: " << SDID);
-    end();
+    if(hasSDS(conn, SDID)) {
+      start(conn);
+      doDelete(SDID);
+      LOG_DEBUG("Remove SDS entry with PK: " << SDID);
+      end();
+    }
   }
 
   bool hasCDID(Ndb* conn, Int64 pCDID){
     AnyMap key;
     key[1] = pCDID;
     return rowsExists(conn, "SDS_N50", key);
+  }
+
+  bool hasSDS(Ndb* conn, Int64 pSDSID){
+    AnyMap key;
+    key[1] = pSDSID;
+    return rowsExists(conn, "PRIMARY", key);
   }
 
 };
