@@ -43,10 +43,18 @@ public:
   }
 
   void remove(Ndb* conn, Int64 pStringListID) {
-    start(conn);
-    doDelete(pStringListID);
-    LOG_DEBUG("Remove SkewedStrings entry with PK: " << pStringListID);
-    end();
+    if(hasSkewedStringList(conn, pStringListID)) {
+      start(conn);
+      doDelete(pStringListID);
+      LOG_DEBUG("Remove SkewedStrings entry with PK: " << pStringListID);
+      end();
+    }
+  }
+
+  bool hasSkewedStringList(Ndb *conn, Int64 pStringListID){
+    AnyMap key;
+    key[0] = pStringListID;
+    return rowsExists(conn, "PRIMARY", key);
   }
 };
 
