@@ -27,7 +27,6 @@
 #include "tables/INodeTable.h"
 #include "tables/DatasetTable.h"
 #include "tables/SchemabasedMetadataTable.h"
-#include "tables/SchemalessMetadataTable.h"
 #include "tables/XAttrTable.h"
 
 struct DatasetInodes {
@@ -82,7 +81,6 @@ void Reindexer::run() {
   INodeTable inodesTable(mLRUCap);
   DatasetTable datasetsTable(mLRUCap);
   SchemabasedMetadataTable schemaBasedTable(mLRUCap);
-  SchemalessMetadataTable schemalessTable;
   XAttrTable xAttrTable;
 
   int projects = 0;
@@ -217,27 +215,6 @@ void Reindexer::run() {
   }
 
   LOG_INFO((extMetadata - nonExistentMetadata) << " SchemaBased extended metadata added, " 
-          << nonExistentMetadata << " belong to non existent inode");
-
-  extMetadata = 0;
-  nonExistentMetadata = 0;
-  schemalessTable.getAll(metaConn);
-  while (schemalessTable.next()) {
-    SchemalessMetadataEntry entry = schemalessTable.currRow();
-    INodeRow inode = inodesTable.getByInodeId(conn, entry.mINodeId);
-    if (inode.mId == entry.mINodeId) {
-      FSBulk bulk;
-      bulk.mJSON = entry.to_create_json();
-      mElasticSearch->addData(bulk);
-    }else{
-      LOG_WARN("Schemaless metadata for non existent inode [" 
-              << entry.mINodeId << "] - " << entry.to_string());
-      nonExistentMetadata++;
-    }
-    extMetadata++;
-  }
-
-  LOG_INFO((extMetadata-nonExistentMetadata) << " Schemaless extended metadata added, " 
           << nonExistentMetadata << " belong to non existent inode");
 
   mElasticSearch->shutdown();

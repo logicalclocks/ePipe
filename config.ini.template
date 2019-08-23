@@ -38,10 +38,6 @@ fs_mutations_tu = 5
 #schamebased_tu = 5
 #schamebased_tu = 5
 
-#schemaless_tu = 1000
-#schemaless_tu = 5
-#schemaless_tu = 5
-
 #provenance_tu = 1000
 #provenance_tu = 5
 #provenance_tu = 5

@@ -27,15 +27,17 @@
 
 Notifier::Notifier(const char* connection_string, const char* database_name,
     const char* meta_database_name, const char* hive_meta_database_name,
-        const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu, const TableUnitConf schemaless_tu, TableUnitConf provenance_tu,
-        const int poll_maxTimeToWait, const std::string elastic_ip, const bool hopsworks, const std::string elastic_index, const std::string elastic_provenance_index,
-        const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery,
+        const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu,
+        const TableUnitConf provenance_tu, const int poll_maxTimeToWait,
+        const std::string elastic_ip, const bool hopsworks, const std::string
+        elastic_index, const std::string elastic_provenance_index, const int
+        elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery,
         const bool stats, Barrier barrier, const bool hiveCleaner, const
         std::string metricsServer)
 : ClusterConnectionBase(connection_string, database_name, meta_database_name,
     hive_meta_database_name), mMutationsTU(mutations_tu), mSchemabasedTU
-    (schemabased_tu), mSchemalessTU(schemaless_tu), mProvenanceTU
-    (provenance_tu), mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
+    (schemabased_tu), mProvenanceTU (provenance_tu), mPollMaxTimeToWait
+    (poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
 mElasticIndex(elastic_index), mElasticProvenanceIndex(elastic_provenance_index),
 mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap),
 mRecovery(recovery), mStats(stats), mBarrier(barrier), mHiveCleaner
@@ -59,14 +61,8 @@ void Notifier::start() {
     mMetadataLogTailer->start(mRecovery);
   }
 
-  if (mSchemalessTU.isEnabled()) {
-    mSchemalessMetadataReaders->start();
-    mSchemalessMetadataBatcher->start();
-    mMetadataLogTailer->start(mRecovery);
-  }
-
   if (mMutationsTU.isEnabled() || mSchemabasedTU.isEnabled()
-          || mSchemalessTU.isEnabled() || mHopsworksEnabled) {
+           || mHopsworksEnabled) {
     mProjectsElasticSearch->start();
   }
 
@@ -107,13 +103,8 @@ void Notifier::start() {
     mMetadataLogTailer->waitToFinish();
   }
 
-  if (mSchemalessTU.isEnabled()) {
-    mSchemalessMetadataBatcher->waitToFinish();
-    mMetadataLogTailer->waitToFinish();
-  }
-
   if (mMutationsTU.isEnabled() || mSchemabasedTU.isEnabled()
-          || mSchemalessTU.isEnabled() || mHopsworksEnabled) {
+           || mHopsworksEnabled) {
     mProjectsElasticSearch->waitToFinish();
   }
 
@@ -138,8 +129,8 @@ void Notifier::start() {
 }
 
 void Notifier::setup() {
-  if (mMutationsTU.isEnabled() || mSchemabasedTU.isEnabled()
-          || mSchemalessTU.isEnabled() || mHopsworksEnabled) {
+  if (mMutationsTU.isEnabled() || mSchemabasedTU.isEnabled() ||
+  mHopsworksEnabled) {
     MConn ndb_connections_elastic;
     ndb_connections_elastic.metadataConnection = create_ndb_connection(mMetaDatabaseName);
     ndb_connections_elastic.inodeConnection = create_ndb_connection(mDatabaseName);
@@ -165,13 +156,10 @@ void Notifier::setup() {
             mMutationsTU.mWaitTime, mMutationsTU.mBatchSize);
   }
 
+  if (mSchemabasedTU.isEnabled()) {
 
-  if (mSchemabasedTU.isEnabled() || mSchemalessTU.isEnabled()) {
     Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
     mMetadataLogTailer = new MetadataLogTailer(metadata_tailer_connection, mPollMaxTimeToWait, mBarrier);
-  }
-
-  if (mSchemabasedTU.isEnabled()) {
 
     MConn* metadata_connections = new MConn[mSchemabasedTU.mNumReaders];
     for (int i = 0; i < mSchemabasedTU.mNumReaders; i++) {
@@ -183,20 +171,6 @@ void Notifier::setup() {
             mHopsworksEnabled, mProjectsElasticSearch, mLRUCap);
     mSchemabasedMetadataBatcher = new SchemabasedMetadataBatcher(mMetadataLogTailer, mSchemabasedMetadataReaders,
             mSchemabasedTU.mWaitTime, mSchemabasedTU.mBatchSize);
-  }
-
-  if (mSchemalessTU.isEnabled()) {
-
-    MConn* s_metadata_connections = new MConn[mSchemalessTU.mNumReaders];
-    for (int i = 0; i < mSchemalessTU.mNumReaders; i++) {
-      s_metadata_connections[i].inodeConnection = create_ndb_connection(mDatabaseName);
-      s_metadata_connections[i].metadataConnection = create_ndb_connection(mMetaDatabaseName);
-    }
-
-    mSchemalessMetadataReaders = new SchemalessMetadataReaders(s_metadata_connections, mSchemalessTU.mNumReaders,
-            mHopsworksEnabled, mProjectsElasticSearch);
-    mSchemalessMetadataBatcher = new SchemalessMetadataBatcher(mMetadataLogTailer,
-            mSchemalessMetadataReaders, mSchemalessTU.mWaitTime, mSchemalessTU.mBatchSize);
   }
 
   if (mHopsworksEnabled) {
@@ -272,7 +246,5 @@ Notifier::~Notifier() {
   delete mMetadataLogTailer;
   delete mSchemabasedMetadataReaders;
   delete mSchemabasedMetadataBatcher;
-  delete mSchemalessMetadataReaders;
-  delete mSchemalessMetadataBatcher;
   ndb_end(2);
 }

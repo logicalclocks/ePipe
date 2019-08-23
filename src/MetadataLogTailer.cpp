@@ -27,45 +27,21 @@
 MetadataLogTailer::MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier)
 : RCTableTailer<MetadataLogEntry> (ndb, new MetadataLogTable(), poll_maxTimeToWait, barrier) {
   mSchemaBasedQueue = new CMetaQ();
-  mSchemalessQueue = new CMetaQ();
 }
 
 void MetadataLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, MetadataLogEntry pre, MetadataLogEntry row) {
 
-  if (row.mMetaType == Schemabased) {
-    mSchemaBasedQueue->push(row);
-  } else if (row.mMetaType == Schemaless) {
-    mSchemalessQueue->push(row);
-  } else {
-    LOG_FATAL("Unkown MetadataType " << row.mMetaType);
-    return;
-  }
-
+  mSchemaBasedQueue->push(row);
   LOG_DEBUG(" push metalog " << row.mMetaPK.to_string() << " to queue, Op [" << HopsworksOpTypeToStr(row.mMetaOpType) << "]");
-}
-
-MetadataLogEntry MetadataLogTailer::consumeMultiQueue(int queue_id) {
-  MetadataLogEntry res;
-  if (queue_id == Schemabased) {
-    mSchemaBasedQueue->wait_and_pop(res);
-  } else if (queue_id == Schemaless) {
-    mSchemalessQueue->wait_and_pop(res);
-  } else {
-    LOG_FATAL("Unkown Queue Id, It should be either " << Schemabased << " or " << Schemaless << " but got " << queue_id << " instead");
-    return res;
-  }
-
-  LOG_TRACE(" pop metalog [" << res.mId << "] \n" << res.to_string());
-  return res;
 }
 
 MetadataLogEntry MetadataLogTailer::consume() {
   MetadataLogEntry res;
-  LOG_FATAL("consume shouldn't be called");
+  mSchemaBasedQueue->wait_and_pop(res);
+  LOG_TRACE(" pop metalog [" << res.mId << "] \n" << res.to_string());
   return res;
 }
 
 MetadataLogTailer::~MetadataLogTailer() {
   delete mSchemaBasedQueue;
-  delete mSchemalessQueue;
 }
