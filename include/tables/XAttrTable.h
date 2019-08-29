@@ -116,7 +116,9 @@ private:
     opWriter.String("script");
 
     std::stringstream rmout;
-    rmout << "ctx._source." << XATTR_FIELD_NAME << ".remove(\"" << xattrname <<  "\")";
+    rmout << "if(ctx._source." << XATTR_FIELD_NAME << ".containsKey(\"" << xattrname << "\")){ ";
+    rmout << "ctx._source." << XATTR_FIELD_NAME << ".remove(\"" << xattrname<<  "\");";
+    rmout << "} else{ ctx.op=\"noop\";}";
     opWriter.String(rmout.str().c_str());
 
     opWriter.EndObject();
