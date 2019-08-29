@@ -145,7 +145,7 @@ void Reindexer::run() {
           dirs.push(inode.mId);
         }
 
-        if(inode.mNumXAttrs > 0){
+        if(inode.has_xattrs()){
           inodesWithXAttrs.insert(inode.mId);
         }
 
