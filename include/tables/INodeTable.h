@@ -29,6 +29,7 @@
 #include "GroupTable.h"
 #include "FsMutationsLogTable.h"
 #include "ProjectTable.h"
+#include "DatasetTable.h"
 
 #define DOC_TYPE_INODE "inode"
 
@@ -104,8 +105,13 @@ struct INodeRow {
     docWriter.String("doc");
     docWriter.StartObject();
 
-    docWriter.String("doc_type");
-    docWriter.String(DOC_TYPE_INODE);
+    if(mId == datasetId){
+      docWriter.String("doc_type");
+      docWriter.String(DOC_TYPE_DATASET);
+    }else{
+      docWriter.String("doc_type");
+      docWriter.String(DOC_TYPE_INODE);
+    }
 
     docWriter.String("parent_id");
     docWriter.Int64(mParentId);

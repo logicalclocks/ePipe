@@ -111,13 +111,13 @@ bool ProjectsElasticSearch::addDoc(Int64 inodeId, std::string json) {
   return httpPostRequest(url, json);
 }
 
-bool ProjectsElasticSearch::addBulk(std::string json) {
-  return httpPostRequest(mElasticBulkAddr, json);
+bool ProjectsElasticSearch::deleteDoc(Int64 inodeId) {
+  std::string url = getElasticSearchUrlOnDoc(mIndex, inodeId);
+  return httpDeleteRequest(url);
 }
 
-bool ProjectsElasticSearch::deleteDocsByQuery(std::string json) {
-  std::string deleteProjUrl = getElasticSearchDeleteByQuery(mIndex);
-  return httpPostRequest(deleteProjUrl, json);
+bool ProjectsElasticSearch::addBulk(std::string json) {
+  return httpPostRequest(mElasticBulkAddr, json);
 }
 
 bool ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, std::string json) {
@@ -163,8 +163,8 @@ bool ProjectsElasticSearch::addProject(Int64 inodeId, std::string json) {
   return res;
 }
 
-bool ProjectsElasticSearch::removeDataset(std::string json) {
-  bool res = deleteDocsByQuery(json);
+bool ProjectsElasticSearch::removeDataset(Int64 inodeId) {
+  bool res = deleteDoc(inodeId);
   if(mStats){
     mCounters.check();
   }
@@ -176,8 +176,8 @@ bool ProjectsElasticSearch::removeDataset(std::string json) {
   return res;
 }
 
-bool ProjectsElasticSearch::removeProject(std::string json) {
-  bool res = deleteDocsByQuery(json);
+bool ProjectsElasticSearch::removeProject(Int64 inodeId) {
+  bool res = deleteDoc(inodeId);
   if(mStats){
     mCounters.check();
   }

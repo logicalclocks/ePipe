@@ -73,25 +73,6 @@ struct ProjectRow {
     return std::string(sbDoc.GetString());
   }
 
-  static std::string to_delete_json(int projectId) {
-    rapidjson::StringBuffer sbDoc;
-    rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
-    docWriter.StartObject();
-    docWriter.String("query");
-
-    docWriter.StartObject();
-
-    docWriter.String("term");
-    docWriter.StartObject();
-    docWriter.String("project_id");
-    docWriter.Int(projectId);
-    docWriter.EndObject();
-
-    docWriter.EndObject();
-
-    docWriter.EndObject();
-    return std::string(sbDoc.GetString());
-  }
 };
 
 class ProjectTable : public DBTable<ProjectRow> {

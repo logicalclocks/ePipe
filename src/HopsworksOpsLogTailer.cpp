@@ -80,11 +80,10 @@ bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType opType
 }
 
 bool HopsworksOpsLogTailer::handleDeleteDataset(Int64 datasetINodeId) {
-  std::string query = DatasetRow::to_delete_json(datasetINodeId);
   //TODO: handle failures in elastic search
-  bool success = mElasticSearch->removeDataset(query);
+  bool success = mElasticSearch->removeDataset(datasetINodeId);
   if (success) {
-    LOG_INFO("Delete Dataset[" << datasetINodeId << "] and all children inodes: Succeeded");
+    LOG_INFO("Delete Dataset[" << datasetINodeId << "] Succeeded");
   }
 
   mDatasetTable.removeDatasetFromCache(datasetINodeId);
@@ -93,19 +92,19 @@ bool HopsworksOpsLogTailer::handleDeleteDataset(Int64 datasetINodeId) {
 
 bool HopsworksOpsLogTailer::handleProject(int projectId, Int64 inodeId, HopsworksOpType opType) {
   if (opType == HopsworksDelete) {
-    return handleDeleteProject(projectId);
+    return handleDeleteProject(projectId, inodeId);
   } else {
     return handleUpsertProject(projectId, inodeId, opType);
   }
 }
 
-bool HopsworksOpsLogTailer::handleDeleteProject(int projectId) {
-
-  std::string query = ProjectRow::to_delete_json(projectId);
+bool HopsworksOpsLogTailer::handleDeleteProject(int projectId, Int64
+projectINodeId) {
   //TODO: handle failures in elastic search
-  bool success = mElasticSearch->removeProject(query);
+  bool success = mElasticSearch->removeProject(projectINodeId);
   if (success) {
-    LOG_INFO("Delete Project[" << projectId << "] and all children datasets and inodes: Succeeded");
+    LOG_INFO("Delete Project[" << projectId << ", " << projectINodeId
+                               << "] Succeeded");
   }
 
   mDatasetTable.removeProjectFromCache(projectId);

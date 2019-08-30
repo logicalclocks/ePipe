@@ -270,12 +270,12 @@ public:
 
   bool addDataset(Int64 inodeId, std::string json);
   bool addProject(Int64 inodeId, std::string json);
-  bool removeDataset(std::string json);
-  bool removeProject(std::string json);
+  bool removeDataset(Int64 inodeId);
+  bool removeProject(Int64 inodeId);
 
   bool addDoc(Int64 inodeId, std::string json);
+  bool deleteDoc(Int64 inodeId);
   bool addBulk(std::string json);
-  bool deleteDocsByQuery(std::string json);
   bool deleteSchemaForINode(Int64 inodeId, std::string json);
 
   std::string getMetrics() const override;
