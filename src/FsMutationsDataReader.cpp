@@ -60,8 +60,8 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
 
     if(row.isINodeOperation()) {
       if (!row.requiresReadingINode()) {
-        //Handle the delete, rename, and change dataset
-        out << INodeRow::to_json(row);
+        //Handle the delete and change dataset
+        out << INodeRow::to_delete_change_dataset_json(row);
         out << std::endl;
         continue;
       }
@@ -84,6 +84,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetINodeId);
       }
 
+      //FsAdd, FsUpdate, FsRename are handled the same way
       std::string inodeJSON = inode.to_create_json(datasetINodeId, projectId);
 
       out << inodeJSON << std::endl;
