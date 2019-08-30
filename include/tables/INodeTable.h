@@ -148,59 +148,7 @@ struct INodeRow {
     out << sbDoc.GetString() << std::endl;
     return out.str();
   }
-  
-  static std::string to_rename_json(FsMutationRow row){
-    std::stringstream out;
-    rapidjson::StringBuffer sbOp;
-    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
-    opWriter.StartObject();
-
-    opWriter.String("update");
-    opWriter.StartObject();
-
-    opWriter.String("_id");
-    opWriter.Int64(row.mInodeId);
-
-    opWriter.EndObject();
-
-    opWriter.EndObject();
-
-    out << sbOp.GetString() << std::endl;
-
-    rapidjson::StringBuffer sbDoc;
-    rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
-
-    docWriter.StartObject();
-    docWriter.String("doc");
-    docWriter.StartObject();
-
-    docWriter.String("parent_id");
-    docWriter.Int64(row.getParentId());
-
-    docWriter.String("partition_id");
-    docWriter.Int64(row.getPartitionId());
-
-    docWriter.String("name");
-    docWriter.String(row.getINodeName().c_str());
-
-    docWriter.String("operation");
-    docWriter.Int(row.mOperation);
-
-    docWriter.String("timestamp");
-    docWriter.Int(row.mLogicalTime);
-
-    docWriter.EndObject();
-
-    docWriter.String("doc_as_upsert");
-    docWriter.Bool(true);
-
-    docWriter.EndObject();
-
-    out << sbDoc.GetString() << std::endl;
-    return out.str();
-  }
-  
   static std::string to_change_dataset_json(FsMutationRow row){
     std::stringstream out;
     rapidjson::StringBuffer sbOp;
@@ -244,11 +192,9 @@ struct INodeRow {
     return out.str();
   }
   
-  static std::string to_json(FsMutationRow row){
+  static std::string to_delete_change_dataset_json(FsMutationRow row){
     if(row.mOperation == FsDelete){
       return to_delete_json(row.mInodeId);
-    }else if(row.mOperation == FsRename){
-      return to_rename_json(row);
     }else if(row.mOperation == FsChangeDataset){
       return to_change_dataset_json(row);
     }

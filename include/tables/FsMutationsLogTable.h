@@ -120,7 +120,7 @@ struct FsMutationRow {
   }
 
   bool requiresReadingINode(){
-    return mOperation == FsAdd || mOperation == FsUpdate;
+    return mOperation == FsAdd || mOperation == FsUpdate || mOperation == FsRename;;
   }
 
   Int64 getPartitionId(){
