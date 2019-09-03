@@ -114,47 +114,48 @@ struct MovingCountersImpl : public MovingCounters{
 
   std::string getMetrics(const ptime startTime) const override{
     std::stringstream out;
-    out << "relative_start_time_seconds{scope=\"" << mPrefix << "\"} " <<
+    out << "epipe_relative_start_time_seconds{scope=\"" << mPrefix << "\"} " <<
        ( mStepSeconds == -1 || mTotalNumOfEventsProcessed == 0 ? 0 :
        getTimeDiffInSeconds(startTime,mlastCleared))<< std::endl;
-    out << "num_processed_events{scope=\"" << mPrefix << "\"} " <<
+    out << "epipe_num_processed_events{scope=\"" << mPrefix << "\"} " <<
     mTotalNumOfEventsProcessed << std::endl;
-    out << "num_processed_batches{scope=\"" << mPrefix << "\"} " <<
+    out << "epipe_num_processed_batches{scope=\"" << mPrefix << "\"} " <<
     mTotalNumOfBulksProcessed << std::endl;
     if(mTotalNumOfEventsProcessed > 0 ) {
-      out << "avg_total_time_per_event_milliseconds{scope=\"" << mPrefix <<
-      "\"} " << bc::mean(mTotalTimePerEventAcc) << std::endl;
-      out << "avg_total_time_per_batch_milliseconds{scope=\"" << mPrefix <<
-      "\"} " << bc::mean(mTotalTimePerEventAcc) << std::endl;
-      out << "avg_batching_time_milliseconds{scope=\"" << mPrefix << "\"} " <<
-          bc::mean(mBatchingAcc) << std::endl;
-      out << "avg_ndb_processing_time_milliseconds{scope=\"" << mPrefix <<
+      out << "epipe_avg_total_time_per_event_milliseconds{scope=\"" <<
+      mPrefix << "\"} " << bc::mean(mTotalTimePerEventAcc) << std::endl;
+      out << "epipe_avg_total_time_per_batch_milliseconds{scope=\"" <<
+      mPrefix << "\"} " << bc::mean(mTotalTimePerEventAcc) << std::endl;
+      out << "epipe_avg_batching_time_milliseconds{scope=\"" << mPrefix <<
+      "\"} " << bc::mean(mBatchingAcc) << std::endl;
+      out << "epipe_avg_ndb_processing_time_milliseconds{scope=\"" << mPrefix <<
       "\"} " << bc::mean(mProcessingAcc) << std::endl;
-      out << "avg_elastic_batching_time_milliseconds{scope=\"" << mPrefix <<
-      "\"} " << bc::mean(mWaitTimeUntillElasticCalledAcc) << std::endl;
+      out << "epipe_avg_elastic_batching_time_milliseconds{scope=\"" <<
+      mPrefix << "\"} " << bc::mean(mWaitTimeUntillElasticCalledAcc) <<
+      std::endl;
     }else{
-      out << "avg_total_time_per_event_milliseconds{scope=\"" << mPrefix <<
+      out << "epipe_avg_total_time_per_event_milliseconds{scope=\"" <<
+      mPrefix << "\"} 0" << std::endl;
+      out << "epipe_avg_total_time_per_batch_milliseconds{scope=\"" <<
+      mPrefix << "\"} 0" << std::endl;
+      out << "epipe_avg_batching_time_milliseconds{scope=\"" << mPrefix <<
       "\"} 0" << std::endl;
-      out << "avg_total_time_per_batch_milliseconds{scope=\"" << mPrefix <<
+      out << "epipe_avg_ndb_processing_time_milliseconds{scope=\"" << mPrefix <<
       "\"} 0" << std::endl;
-      out << "avg_batching_time_milliseconds{scope=\"" << mPrefix << "\"} 0"
-      << std::endl;
-      out << "avg_ndb_processing_time_milliseconds{scope=\"" << mPrefix <<
-      "\"} 0" << std::endl;
-      out << "avg_elastic_batching_time_milliseconds{scope=\"" << mPrefix <<
-      "\"} 0" << std::endl;
+      out << "epipe_avg_elastic_batching_time_milliseconds{scope=\"" <<
+      mPrefix << "\"} 0" << std::endl;
     }
 
-    out << "num_added_datasets{scope=\"" << mPrefix << "\"} " <<
+    out << "epipe_num_added_datasets{scope=\"" << mPrefix << "\"} " <<
     mCreatedDatasets << std::endl;
-    out << "num_deleted_datasets{scope=\"" << mPrefix << "\"} " <<
+    out << "epipe_num_deleted_datasets{scope=\"" << mPrefix << "\"} " <<
     mDeletedDatasets << std::endl;
-    out << "num_added_projects{scope=\"" << mPrefix << "\"} " <<
+    out << "epipe_num_added_projects{scope=\"" << mPrefix << "\"} " <<
     mCreatedProjects << std::endl;
-    out << "num_deleted_projects{scope=\"" << mPrefix << "\"} " <<
+    out << "epipe_num_deleted_projects{scope=\"" << mPrefix << "\"} " <<
     mDeletedProjects << std::endl;
-    out << "num_failed_elasticsearch_batch_requests{scope=\"" << mPrefix <<
-    "\"} " << mElasticSearchFailedRequests << std::endl;
+    out << "epipe_num_failed_elasticsearch_batch_requests{scope=\"" <<
+    mPrefix << "\"} " << mElasticSearchFailedRequests << std::endl;
    return out.str();
   }
 
