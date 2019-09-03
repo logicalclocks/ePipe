@@ -31,18 +31,25 @@ typedef std::vector<NdbDictionary::Event::TableEvent> TEventVec;
 typedef typename TEventVec::size_type evtvec_size_type;
 
 template<typename TableRow>
+struct EpochsRowsMap{
+  std::vector<Uint64>* mEpochs;
+  boost::unordered_map<Uint64,std::queue<TableRow>* >* mRowsByEpoch;
+};
+
+template<typename TableRow>
 class DBWatchTable : public DBTable<TableRow> {
 public:
   DBWatchTable(const std::string table);
-  const std::string getRecoveryIndex() const;
   evtvec_size_type getNoEvents() const;
   NdbDictionary::Event::TableEvent getEvent(evtvec_size_type index) const;
-  void getAllSortedByRecoveryIndex(Ndb* connection);
-  boost::tuple<std::vector<Uint64>*, boost::unordered_map<Uint64, std::vector<TableRow>* >* > getAllByGCI(Ndb* connection);
+  EpochsRowsMap<TableRow> getAllForRecovery(Ndb* connection);
   virtual ~DBWatchTable();
+  virtual std::string getPKStr(TableRow row);
+
 private:
   TEventVec mWatchEvents;
   std::string mRecoveryIndex;
+
 protected:
   void addWatchEvent(NdbDictionary::Event::TableEvent event);
   void addRecoveryIndex(const std::string recovery);
@@ -77,57 +84,60 @@ void DBWatchTable<TableRow>::addRecoveryIndex(const std::string recovery) {
 }
 
 template<typename TableRow>
-const std::string DBWatchTable<TableRow>::getRecoveryIndex() const {
-  return mRecoveryIndex;
-}
-
-template<typename TableRow>
 DBWatchTable<TableRow>::~DBWatchTable() {
 }
 
 template<typename TableRow>
-void DBWatchTable<TableRow>::getAllSortedByRecoveryIndex(Ndb* connection) {
-  this->getAll(connection, mRecoveryIndex);
-}
-
-template<typename TableRow>
-boost::tuple<std::vector<Uint64>*, boost::unordered_map<Uint64, std::vector<TableRow>* >* >
-DBWatchTable<TableRow>::getAllByGCI(Ndb* connection) {
-  typedef boost::unordered_map<Uint64, std::vector<TableRow>* > GCIRows;
-  typedef typename GCIRows::iterator GCIRowIterator;
+EpochsRowsMap<TableRow> DBWatchTable<TableRow>::getAllForRecovery(Ndb* connection) {
+  typedef boost::unordered_map<Uint64, std::queue<TableRow>* > EpochRows;
+  typedef typename EpochRows::iterator EpochRowIterator;
 
   ptime start = Utils::getCurrentTime();
 
-  this->setReadGCI(true);
+  this->setReadEpoch(true);
 
-  GCIRows* rowsByGCI = new GCIRows();
-  std::vector<Uint64>* gcis = new std::vector<Uint64>();
+  EpochRows* rowsByEpoch = new EpochRows();
+  std::vector<Uint64>* epochs = new std::vector<Uint64>();
 
-  this->getAll(connection);
+  if(mRecoveryIndex != ""){
+    LOG_DEBUG("Read all for " << this->getName() << " recovery sorted by " <<
+    mRecoveryIndex);
+    this->getAll(connection, mRecoveryIndex);
+  }else{
+    LOG_DEBUG("Read all for " << this->getName() << " recovery");
+    this->getAll(connection);
+  }
+
   while (this->next()) {
     TableRow row = this->currRow();
-    Uint64 gci = this->currGCI();
+    Uint64 epoch = this->currEpoch();
 
-    GCIRowIterator curr = rowsByGCI->find(gci);
-    std::vector<TableRow>* currRows;
-    if (curr == rowsByGCI->end()) {
-      currRows = new std::vector<TableRow>();
-      rowsByGCI->emplace(gci, currRows);
-      gcis->push_back(gci);
+    EpochRowIterator curr = rowsByEpoch->find(epoch);
+    std::queue<TableRow>* currRows;
+    if (curr == rowsByEpoch->end()) {
+      currRows = new std::queue<TableRow>();
+      rowsByEpoch->emplace(epoch, currRows);
+      epochs->push_back(epoch);
     } else {
       currRows = curr->second;
     }
-    currRows->push_back(row);
+    currRows->push(row);
   }
 
-  this->setReadGCI(false);
+  this->setReadEpoch(false);
 
-  std::sort(gcis->begin(), gcis->end());
+  std::sort(epochs->begin(), epochs->end());
 
-  LOG_INFO("ePipe done reading/sorting for " << this->getName() << " recovery in " << Utils::getTimeDiffInMilliseconds(start, Utils::getCurrentTime()) << " msec");
+  LOG_DEBUG("ePipe done reading/sorting for " << this->getName()
+  << " recovery in " << Utils::getTimeDiffInMilliseconds(start, Utils::getCurrentTime()) << " msec");
 
-  return boost::make_tuple(gcis, rowsByGCI);
+  EpochsRowsMap<TableRow> map {epochs, rowsByEpoch};
+  return map;
 }
 
+template<typename TableRow>
+std::string DBWatchTable<TableRow>::getPKStr(TableRow row) {
+  return "";
+}
 #endif /* DBWATCHTABLE_H */
 

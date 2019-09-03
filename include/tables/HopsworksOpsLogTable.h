@@ -121,6 +121,11 @@ public:
     LOG_DEBUG("Remove log " << pk);
     end();
   }
+
+  std::string getPKStr(HopsworksOpRow row) override {
+    return std::to_string(row.mId);
+  }
+
 };
 
 #endif /* HOPSWORKSOPSLOGTABLE_H */

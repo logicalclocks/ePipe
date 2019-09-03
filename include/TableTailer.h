@@ -27,6 +27,8 @@
 
 #include "Utils.h"
 #include "tables/DBWatchTable.h"
+#include <mutex>
+#include <condition_variable>
 
 enum Barrier {
   EPOCH = 0,
@@ -36,16 +38,19 @@ enum Barrier {
 template<typename TableRow>
 class TableTailer {
 public:
-  TableTailer(Ndb* ndb, DBWatchTable<TableRow>* table, const int poll_maxTimeToWait, const Barrier mBarrier);
+  TableTailer(Ndb* ndb, Ndb* recoveryNdb, DBWatchTable<TableRow>* table, const
+  int poll_maxTimeToWait, const Barrier barrier);
 
-  void start(bool recovery);
+  TableTailer(Ndb* ndb, DBWatchTable<TableRow>* table, const
+  int poll_maxTimeToWait, const Barrier barrier);
+
+  void start();
   void waitToFinish();
   virtual ~TableTailer();
 
 protected:
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, TableRow pre, TableRow row) = 0;
   virtual void barrierChanged();
-  virtual void recover();
 
   Ndb* mNdbConnection;
 
@@ -54,12 +59,19 @@ private:
   void removeListenerEvent();
   void waitForEvents();
   void run();
+  void recover();
   const char* getEventName(NdbDictionary::Event::TableEvent event);
   Uint64 getGCI(Uint64 epoch);
   void checkIfBarrierReached(Uint64 epoch);
+  void deferEvent(Uint64 epoch, NdbDictionary::Event::TableEvent event,
+      TableRow pre, TableRow row);
+  void processEvent(Uint64 epoch, NdbDictionary::Event::TableEvent event,
+      TableRow pre, TableRow row);
+  int processDeferredEvents();
 
   bool mStarted;
   boost::thread mThread;
+  boost::thread mRecoveryThread;
 
   const std::string mEventName;
   DBWatchTable<TableRow>* mTable;
@@ -67,38 +79,120 @@ private:
   const Barrier mBarrier;
 
   Uint64 mLastReportedBarrier;
+
+  Ndb* mNdbRecoveryConnection;
+  bool mUnderRecovery;
+
+  Uint64 mFirstEpochToWatch;
+  std::mutex mFirstEpochMutex;
+  std::condition_variable mFirstEpochCond;
+
+  struct DeferredEvent{
+    NdbDictionary::Event::TableEvent mEventType;
+    TableRow mPre;
+    TableRow mRow;
+  };
+
+  bool mStartProcessingDeferredEvents;
+
+  boost::unordered_map<Uint64, std::queue<DeferredEvent>> mEventsDuringRecovery;
+  boost::unordered_set<std::string> mEventsPKDuringRecovery;
+  boost::unordered_set<Uint64> mEpochsDuringRecovery;
 };
 
 template<typename TableRow>
-TableTailer<TableRow>::TableTailer(Ndb* ndb, DBWatchTable<TableRow>* table, const int poll_maxTimeToWait, const Barrier barrier) : mNdbConnection(ndb), mStarted(false),
+TableTailer<TableRow>::TableTailer(Ndb* ndb, Ndb* recoveryNdb, DBWatchTable<TableRow>* table,
+    const int poll_maxTimeToWait, const Barrier barrier) : mNdbConnection(ndb), mStarted(false),
 mEventName(Utils::concat("tail-", table->getName())), mTable(table),
 mPollMaxTimeToWait(poll_maxTimeToWait), mBarrier(barrier),
-mLastReportedBarrier(0) {
+mLastReportedBarrier(0), mNdbRecoveryConnection(recoveryNdb), mUnderRecovery(false),
+    mFirstEpochToWatch(0), mStartProcessingDeferredEvents(false) {
 }
 
 template<typename TableRow>
-void TableTailer<TableRow>::start(bool recovery) {
+TableTailer<TableRow>::TableTailer(Ndb* ndb, DBWatchTable<TableRow>* table, const
+int poll_maxTimeToWait, const Barrier barrier) : TableTailer(ndb, nullptr, table, poll_maxTimeToWait, barrier){
+  
+}
+
+template<typename TableRow>
+void TableTailer<TableRow>::start() {
   if (mStarted) {
     return;
   }
 
-  if (recovery) {
-    LOG_INFO("start with recovery for " << mTable->getName());
-    recover();
-  }
-
+  mUnderRecovery = mNdbRecoveryConnection != nullptr;
   createListenerEvent();
   mThread = boost::thread(&TableTailer::run, this);
+
+  if(mUnderRecovery) {
+    mRecoveryThread = boost::thread(&TableTailer::recover, this);
+    LOG_INFO("start with recovery for " << mTable->getName());
+  }else{
+    LOG_INFO("start without recovery for " << mTable->getName());
+  }
+
   mStarted = true;
 }
 
 template<typename TableRow>
 void TableTailer<TableRow>::recover() {
-  mTable->getAllSortedByRecoveryIndex(mNdbConnection);
-  while (mTable->next()) {
-    TableRow row = mTable->currRow();
-    handleEvent(NdbDictionary::Event::TE_INSERT, row, row);
+  std::unique_lock<std::mutex> lk(mFirstEpochMutex);
+  LOG_DEBUG("Waiting for the firstEpoch to start recovery for " << mTable->getName());
+  mFirstEpochCond.wait(lk, [this]{return mFirstEpochToWatch != 0;});
+  LOG_DEBUG(mTable->getName() << " recovery started for events before epoch "
+  << mFirstEpochToWatch);
+
+  ptime t1 = Utils::getCurrentTime();
+
+  EpochsRowsMap<TableRow> re = mTable->getAllForRecovery
+      (mNdbRecoveryConnection);
+
+  int eventsApplied=0;
+  int eventsToAdd=0;
+  int alreadyExistsingEvents=0;
+
+  for (std::vector<Uint64>::iterator it = re.mEpochs->begin(); it !=
+      re.mEpochs->end(); it++) {
+    Uint64 epoch = *it;
+    std::queue<TableRow>* rows = re.mRowsByEpoch->at(epoch);
+    if(epoch >= mFirstEpochToWatch){
+      while(!rows->empty()){
+        TableRow row = rows->front();
+        //event is not in our deferred queue
+        if(mEventsPKDuringRecovery.find(mTable->getPKStr(row)) ==
+        mEventsPKDuringRecovery.end()){
+          deferEvent(epoch, NdbDictionary::Event::TE_INSERT, row, row);
+          eventsToAdd++;
+        }else{
+          alreadyExistsingEvents++;
+        }
+        rows->pop();
+      }
+    }else{
+      while(!rows->empty()){
+        TableRow row = rows->front();
+        deferEvent(epoch, NdbDictionary::Event::TE_INSERT, row, row);
+        rows->pop();
+        eventsApplied++;
+      }
+    }
+    delete rows;
   }
+
+  delete re.mEpochs;
+  delete re.mRowsByEpoch;
+
+  mStartProcessingDeferredEvents = true;
+
+  ptime t2 = Utils::getCurrentTime();
+  LOG_INFO(mTable->getName() << " recovery done in " <<
+  Utils::getTimeDiffInMilliseconds(t1, t2) << " msec : " << eventsApplied
+  << " old events recovered, " << alreadyExistsingEvents
+  << " already captured events, " << eventsToAdd
+  << " concurrent events during recovery, " <<
+  (eventsApplied + eventsToAdd)
+  << " total number of events added to deferred events.");
 }
 
 template<typename TableRow>
@@ -184,6 +278,26 @@ void TableTailer<TableRow>::waitForEvents() {
     LOG_NDB_API_ERROR(op->getNdbError());
   while (true) {
     int r = mNdbConnection->pollEvents2(mPollMaxTimeToWait);
+
+    if (mFirstEpochToWatch == 0) {
+      std::unique_lock<std::mutex> lk(mFirstEpochMutex);
+      mFirstEpochToWatch = mNdbConnection->getHighestQueuedEpoch();
+      lk.unlock();
+      LOG_DEBUG(mTable->getName() << " firstEpoch to watch "
+                                  << mFirstEpochToWatch);
+      mFirstEpochCond.notify_all();
+    }
+
+    if (mStartProcessingDeferredEvents) {
+      ptime t1 = Utils::getCurrentTime();
+      int deferredEventsProcessed = processDeferredEvents();
+      ptime t2 = Utils::getCurrentTime();
+      LOG_INFO(mTable->getName()
+                   << " processing deferred events and recovered events in "
+                   <<  Utils::getTimeDiffInMilliseconds(t1, t2)
+                   << " msec " << deferredEventsProcessed << " events processed");
+    }
+
     if (r > 0) {
       while ((op = mNdbConnection->nextEvent2())) {
         NdbDictionary::Event::TableEvent event = op->getEventType2();
@@ -194,11 +308,15 @@ void TableTailer<TableRow>::waitForEvents() {
         switch (event) {
           case NdbDictionary::Event::TE_INSERT:
           case NdbDictionary::Event::TE_DELETE:
-          case NdbDictionary::Event::TE_UPDATE:
-          {
-            checkIfBarrierReached(op->getEpoch());
+          case NdbDictionary::Event::TE_UPDATE: {
 
-            handleEvent(event, mTable->getRow(recAttrPre), mTable->getRow(recAttr));
+            if (mUnderRecovery) {
+              deferEvent(op->getEpoch(), event, mTable->getRow(recAttrPre),
+                  mTable->getRow(recAttr));
+            } else {
+              processEvent(op->getEpoch(), event, mTable->getRow(recAttrPre),
+                  mTable->getRow(recAttr));
+            }
             break;
           }
           default:
@@ -278,6 +396,50 @@ void TableTailer<TableRow>::checkIfBarrierReached(Uint64 epoch) {
     mLastReportedBarrier = currentBarrier;
     LOG_TRACE("************************** NEW BARRIER [" << currentBarrier << "] ************ ");
   }
+}
+
+template<typename TableRow>
+void TableTailer<TableRow>::deferEvent(Uint64 epoch,
+    NdbDictionary::Event::TableEvent event, TableRow pre, TableRow row) {
+  if(mEventsDuringRecovery.find(epoch) == mEventsDuringRecovery
+      .end()){
+    mEventsDuringRecovery[epoch] = std::queue<DeferredEvent>();
+  }
+
+  mEventsDuringRecovery[epoch].push({event, pre, row});
+  mEventsPKDuringRecovery.insert(mTable->getPKStr(row));
+  mEpochsDuringRecovery.insert(epoch);
+}
+
+template<typename TableRow>
+void TableTailer<TableRow>::processEvent(Uint64 epoch,
+    NdbDictionary::Event::TableEvent event, TableRow pre, TableRow row) {
+  checkIfBarrierReached(epoch);
+  handleEvent(event, pre, row);
+}
+
+template<typename TableRow>
+int TableTailer<TableRow>::processDeferredEvents() {
+  int deferredEvents = 0;
+  std::vector<Uint64> orderedEpochs;
+  orderedEpochs.insert(orderedEpochs.end(), mEpochsDuringRecovery.begin(), mEpochsDuringRecovery.end());
+  std::sort(orderedEpochs.begin(), orderedEpochs.end());
+
+  for(auto& epoch : orderedEpochs){
+    std::queue<DeferredEvent>& q = mEventsDuringRecovery[epoch];
+    while(!q.empty()){
+      DeferredEvent e = q.front();
+      processEvent(epoch, e.mEventType, e.mPre, e.mRow);
+      q.pop();
+      deferredEvents++;
+    }
+  }
+  mEventsPKDuringRecovery.clear();
+  mEventsDuringRecovery.clear();
+  mEpochsDuringRecovery.clear();
+  mUnderRecovery = false;
+  mStartProcessingDeferredEvents = false;
+  return deferredEvents;
 }
 
 template<typename TableRow>

@@ -27,8 +27,9 @@
 
 //const static ptime EPOCH_TIME(boost::gregorian::date(1970,1,1)); 
 
-FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait,
-        const Barrier barrier) : RCTableTailer(ndb, new FsMutationsLogTable(), poll_maxTimeToWait, barrier) {
+FsMutationsTableTailer::FsMutationsTableTailer(Ndb* ndb, Ndb* ndbRecovery,
+    const int poll_maxTimeToWait, const Barrier barrier) : RCTableTailer(ndb,
+        ndbRecovery, new FsMutationsLogTable(), poll_maxTimeToWait, barrier) {
   mQueue = new CFSq();
   mCurrentPriorityQueue = new FSpq();
   //    mTimeTakenForEventsToArrive = 0;
@@ -42,7 +43,8 @@ void FsMutationsTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventT
   int size = mCurrentPriorityQueue->size();
   mLock.unlock();
 
-  LOG_DEBUG(" push inode [" << row.mInodeId << "] to queue[" << size << "], Op [" << FsOpTypeToStr(row.mOperation) << "]");
+  LOG_DEBUG("push inode [" << row.getINodeName() << "] to queue[" << size <<
+  "], Op [" << FsOpTypeToStr(row.mOperation) << "]");
   
   //    ptime t = EPOCH_TIME + boost::posix_time::milliseconds(row.mTimestamp);
   //    mTimeTakenForEventsToArrive += Utils::getTimeDiffInMilliseconds(t, row.mEventCreationTime);
@@ -77,28 +79,11 @@ FsMutationRow FsMutationsTableTailer::consume() {
   return row;
 }
 
-void FsMutationsTableTailer::recover() {
-  FsMutationRowsGCITuple tuple = FsMutationsLogTable().getAllByGCI(mNdbConnection);
-  std::vector<Uint64>* gcis = tuple.get<0>();
-  FsMutationRowsByGCI* rowsByGCI = tuple.get<1>();
-  for (std::vector<Uint64>::iterator it = gcis->begin(); it != gcis->end(); it++) {
-    Uint64 gci = *it;
-    pushToQueue(rowsByGCI->at(gci));
-  }
-}
 
 void FsMutationsTableTailer::pushToQueue(FSpq* curr) {
   while (!curr->empty()) {
     mQueue->push(curr->top());
     curr->pop();
-  }
-  delete curr;
-}
-
-void FsMutationsTableTailer::pushToQueue(FSv* curr) {
-  std::sort(curr->begin(), curr->end(), FsMutationRowComparator());
-  for (FSv::reverse_iterator it = curr->rbegin(); it != curr->rend(); ++it) {
-    mQueue->push(*it);
   }
   delete curr;
 }

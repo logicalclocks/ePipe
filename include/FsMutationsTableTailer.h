@@ -30,16 +30,15 @@
 
 class FsMutationsTableTailer : public RCTableTailer<FsMutationRow> {
 public:
-  FsMutationsTableTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier);
+  FsMutationsTableTailer(Ndb* ndb, Ndb* ndbRecovery, const int
+  poll_maxTimeToWait, const Barrier barrier);
   FsMutationRow consume();
   virtual ~FsMutationsTableTailer();
 
 private:
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, FsMutationRow pre, FsMutationRow row);
   void barrierChanged();
-  void recover();
   void pushToQueue(FSpq* curr);
-  void pushToQueue(FSv* curr);
   CFSq* mQueue;
   FSpq* mCurrentPriorityQueue;
   boost::mutex mLock;
