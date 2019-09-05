@@ -26,11 +26,11 @@
 
 using namespace Utils;
 
-HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier,
-        ProjectsElasticSearch* elastic, const int lru_cap)
-: TableTailer(ndb, new HopsworksOpsLogTable(), poll_maxTimeToWait, barrier), mElasticSearch(elastic),
-mDatasetTable(lru_cap), mTemplateTable(lru_cap) {
-
+HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb* ndb, Ndb* ndbRecovery, const
+int poll_maxTimeToWait, const Barrier barrier, ProjectsElasticSearch*
+elastic, const int lru_cap)
+: TableTailer(ndb, ndbRecovery, new HopsworksOpsLogTable(), poll_maxTimeToWait,
+    barrier), mElasticSearch(elastic), mDatasetTable(lru_cap), mTemplateTable(lru_cap) {
 }
 
 void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, HopsworksOpRow pre, HopsworksOpRow row) {

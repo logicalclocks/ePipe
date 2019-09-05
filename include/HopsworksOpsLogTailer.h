@@ -34,7 +34,8 @@
 
 class HopsworksOpsLogTailer : public TableTailer<HopsworksOpRow> {
 public:
-  HopsworksOpsLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier,
+  HopsworksOpsLogTailer(Ndb* ndb, Ndb* ndbRecovery, const int
+  poll_maxTimeToWait, const Barrier barrier,
           ProjectsElasticSearch* elastic, const int lru_cap);
 
   virtual ~HopsworksOpsLogTailer();
@@ -52,8 +53,6 @@ private:
 
   bool handleSchema(int schemaId, HopsworksOpType opType, Int64 inodeId);
   bool handleSchemaDelete(int schemaId, Int64 inodeId);
-
-  void removeLog(int pk);
 
   ProjectsElasticSearch* mElasticSearch;
 

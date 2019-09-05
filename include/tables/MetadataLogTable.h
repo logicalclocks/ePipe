@@ -48,9 +48,9 @@ struct MetadataKey {
     .mTupleId);
   }
 
-  std::string to_string() {
+  std::string getPKStr(){
     std::stringstream stream;
-    stream << "[" << mId << "," << mFieldId << "," << mTupleId << "]";
+    stream << mId << "-" << mTupleId << "-" << mFieldId;
     return stream.str();
   }
 };
@@ -76,7 +76,7 @@ struct MetadataLogEntry {
     std::stringstream stream;
     stream << "-------------------------" << std::endl;
     stream << "Id = " << mId << std::endl;
-    stream << "MetaPK = " << mMetaPK.to_string() << std::endl;
+    stream << "MetaPK = " << mMetaPK.getPKStr() << std::endl;
     stream << "MetaOpType = " << HopsworksOpTypeToStr(mMetaOpType) << std::endl;
     stream << "-------------------------" << std::endl;
     return stream.str();
@@ -126,6 +126,10 @@ public:
       LOG_TRACE("Delete log row: " << id);
     }
     end();
+  }
+
+  std::string getPKStr(MetadataLogEntry row) override {
+    return row.mMetaPK.getPKStr();
   }
 };
 

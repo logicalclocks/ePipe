@@ -38,19 +38,19 @@ template<typename TableRow>
 class DBTable : public DBTableBase {
 public:
   DBTable(const std::string table);
-  DBTable(const std::string table, bool readGCI);
+  DBTable(const std::string table, bool readEpoch);
 
   void getAll(Ndb* connection);
   bool next();
   TableRow currRow();
-  Uint64 currGCI();
+  Uint64 currEpoch();
 
   virtual TableRow getRow(NdbRecAttr* values[]) = 0;
 
   virtual ~DBTable();
 
 private:
-  bool mReadGCI;
+  bool mReadEpoch;
   const NdbDictionary::Dictionary* mDatabase;
   const NdbDictionary::Table* mTable;
   const NdbDictionary::Index* mIndex;
@@ -80,7 +80,7 @@ protected:
   void doDelete(AnyMap& any);
 
   void getAll(Ndb* connection, std::string index);
-  void setReadGCI(bool readGCI);
+  void setReadEpoch(bool readEpoch);
   
   int getColumnIdInDB(int colIndex);
   int getColumnIdInDB(const char* colName);
@@ -92,25 +92,26 @@ protected:
 
 template<typename TableRow>
 DBTable<TableRow>::DBTable(const std::string table)
-: DBTableBase(table), mReadGCI(false) {
+: DBTableBase(table), mReadEpoch(false) {
 
 }
 
 template<typename TableRow>
-void DBTable<TableRow>::setReadGCI(bool readGCI) {
-  mReadGCI = readGCI;
-  LOG_DEBUG(getName() << " -- ReadGCI : " << mReadGCI);
+void DBTable<TableRow>::setReadEpoch(bool readEpoch) {
+  mReadEpoch = readEpoch;
+  LOG_DEBUG(getName() << " -- ReadEpoch : " << mReadEpoch);
 }
 
 template<typename TableRow>
 NdbRecAttr** DBTable<TableRow>::getColumnValues(NdbOperation* op) {
-  int numCols = mReadGCI ? getNoColumns() + 1 : getNoColumns();
+  int numCols = mReadEpoch ? getNoColumns() + 1 : getNoColumns();
   NdbRecAttr** values = new NdbRecAttr*[numCols];
   for (strvec_size_type i = 0; i < getNoColumns(); i++) {
     values[i] = getNdbOperationValue(op, getColumn(i).c_str());
   }
-  if (mReadGCI) {
-    values[getNoColumns()] = getNdbOperationValue(op, NdbDictionary::Column::ROW_GCI);
+  if (mReadEpoch) {
+    values[getNoColumns()] = getNdbOperationValue(op,
+        NdbDictionary::Column::ROW_GCI64);
   }
   return values;
 }
@@ -188,12 +189,12 @@ TableRow DBTable<TableRow>::currRow() {
 }
 
 template<typename TableRow>
-Uint64 DBTable<TableRow>::currGCI() {
-  Uint64 gci = 0;
-  if (mReadGCI) {
-    gci = mCurrentRow[getNoColumns()]->u_64_value();
+Uint64 DBTable<TableRow>::currEpoch() {
+  Uint64 epoch = 0;
+  if (mReadEpoch) {
+    epoch = mCurrentRow[getNoColumns()]->u_64_value();
   }
-  return gci;
+  return epoch;
 }
 
 template<typename TableRow>

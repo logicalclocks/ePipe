@@ -41,7 +41,7 @@ struct ProvenancePK {
     mLogicalTime = logicalTime;
   }
 
-  std::string to_string() {
+  std::string getPKStr() {
     std::stringstream out;
     out << mInodeId << "-" << mUserId << "-" << mLogicalTime << "-" << mAppId;
     return out.str();
@@ -102,7 +102,7 @@ struct ProvenanceRow {
     opWriter.StartObject();
 
     opWriter.String("_id");
-    opWriter.String(getPK().to_string().c_str());
+    opWriter.String(getPK().getPKStr().c_str());
 
     opWriter.EndObject();
 
@@ -229,7 +229,6 @@ public:
     addColumn("timestamp");
     addColumn("timestamp_batch");
     addColumn("operation");
-    addRecoveryIndex("logical_time");
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
   }
 
@@ -270,6 +269,9 @@ public:
     end();
   }
 
+  std::string getPKStr(ProvenanceRow row) override {
+    return row.getPK().getPKStr();
+  }
 };
 
 

@@ -24,8 +24,10 @@
 
 #include "ProvenanceTableTailer.h"
 
-ProvenanceTableTailer::ProvenanceTableTailer(Ndb *ndb, const int poll_maxTimeToWait, const Barrier barrier)
-: RCTableTailer(ndb, new ProvenanceLogTable(), poll_maxTimeToWait, barrier) {
+ProvenanceTableTailer::ProvenanceTableTailer(Ndb *ndb, Ndb* ndbRecovery, const
+int poll_maxTimeToWait, const Barrier barrier)
+: RCTableTailer(ndb, ndbRecovery, new ProvenanceLogTable(), poll_maxTimeToWait,
+    barrier) {
   mQueue = new CPRq();
   mCurrentPriorityQueue = new PRpq();
 }
@@ -69,24 +71,6 @@ void ProvenanceTableTailer::pushToQueue(PRpq *curr) {
     curr->pop();
   }
   delete curr;
-}
-
-void ProvenanceTableTailer::pushToQueue(Pv* curr) {
-  std::sort(curr->begin(), curr->end(), ProvenanceRowComparator());
-  for (Pv::reverse_iterator it = curr->rbegin(); it != curr->rend(); ++it) {
-    mQueue->push(*it);
-  }
-  delete curr;
-}
-
-void ProvenanceTableTailer::recover() {
-  ProvenanceRowsGCITuple tuple = ProvenanceLogTable().getAllByGCI(mNdbConnection);
-  std::vector<Uint64>* gcis = tuple.get<0>();
-  ProvenanceRowsByGCI* rowsByGCI = tuple.get<1>();
-  for (std::vector<Uint64>::iterator it = gcis->begin(); it != gcis->end(); it++) {
-    Uint64 gci = *it;
-    pushToQueue(rowsByGCI->at(gci));
-  }
 }
 
 ProvenanceTableTailer::~ProvenanceTableTailer() {

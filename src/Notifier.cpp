@@ -52,13 +52,13 @@ void Notifier::start() {
   if (mMutationsTU.isEnabled()) {
     mFsMutationsDataReaders->start();
     mFsMutationsBatcher->start();
-    mFsMutationsTableTailer->start(mRecovery);
+    mFsMutationsTableTailer->start();
   }
 
   if (mSchemabasedTU.isEnabled()) {
     mSchemabasedMetadataReaders->start();
     mSchemabasedMetadataBatcher->start();
-    mMetadataLogTailer->start(mRecovery);
+    mMetadataLogTailer->start();
   }
 
   if (mMutationsTU.isEnabled() || mSchemabasedTU.isEnabled()
@@ -67,23 +67,23 @@ void Notifier::start() {
   }
 
   if (mHopsworksEnabled) {
-    mhopsworksOpsLogTailer->start(mRecovery);
+    mhopsworksOpsLogTailer->start();
   }
 
   if (mProvenanceTU.isEnabled()) {
     mProvenancElasticSearch->start();
     mProvenanceDataReaders->start();
     mProvenanceBatcher->start();
-    mProvenanceTableTailer->start(mRecovery);
+    mProvenanceTableTailer->start();
   }
 
   if(mHiveCleaner) {
-    mTblsTailer->start(false);
-    mSDSTailer->start(false);
-    mPARTTailer->start(false);
-    mIDXSTailer->start(false);
-    mSkewedLocTailer->start(false);
-    mSkewedValuesTailer->start(false);
+    mTblsTailer->start();
+    mSDSTailer->start();
+    mPARTTailer->start();
+    mIDXSTailer->start();
+    mSkewedLocTailer->start();
+    mSkewedValuesTailer->start();
   }
 
   ptime t2 = getCurrentTime();
@@ -142,7 +142,11 @@ void Notifier::setup() {
 
   if (mMutationsTU.isEnabled()) {
     Ndb* mutations_tailer_connection = create_ndb_connection(mDatabaseName);
-    mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection, mPollMaxTimeToWait, mBarrier);
+    Ndb* mutations_tailer_recovery_connection = mRecovery ?
+        create_ndb_connection(mDatabaseName) : nullptr;
+
+    mFsMutationsTableTailer = new FsMutationsTableTailer(mutations_tailer_connection,
+        mutations_tailer_recovery_connection, mPollMaxTimeToWait, mBarrier);
 
     MConn* mutations_connections = new MConn[mMutationsTU.mNumReaders];
     for (int i = 0; i < mMutationsTU.mNumReaders; i++) {
@@ -159,7 +163,11 @@ void Notifier::setup() {
   if (mSchemabasedTU.isEnabled()) {
 
     Ndb* metadata_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-    mMetadataLogTailer = new MetadataLogTailer(metadata_tailer_connection, mPollMaxTimeToWait, mBarrier);
+    Ndb* metadata_tailer_recovery_connection = mRecovery ? create_ndb_connection
+        (mMetaDatabaseName) : nullptr;
+    mMetadataLogTailer = new MetadataLogTailer(metadata_tailer_connection,
+        metadata_tailer_recovery_connection,
+        mPollMaxTimeToWait, mBarrier);
 
     MConn* metadata_connections = new MConn[mSchemabasedTU.mNumReaders];
     for (int i = 0; i < mSchemabasedTU.mNumReaders; i++) {
@@ -175,7 +183,10 @@ void Notifier::setup() {
 
   if (mHopsworksEnabled) {
     Ndb* ops_log_tailer_connection = create_ndb_connection(mMetaDatabaseName);
-    mhopsworksOpsLogTailer = new HopsworksOpsLogTailer(ops_log_tailer_connection, mPollMaxTimeToWait, mBarrier,
+    Ndb* ops_log_tailer_recovery_connection = mRecovery ? create_ndb_connection
+        (mMetaDatabaseName) : nullptr;
+    mhopsworksOpsLogTailer = new HopsworksOpsLogTailer(ops_log_tailer_connection,
+        ops_log_tailer_recovery_connection, mPollMaxTimeToWait, mBarrier,
             mProjectsElasticSearch, mLRUCap);
   }
 
@@ -187,7 +198,11 @@ void Notifier::setup() {
 
 
     Ndb* provenance_tailer_connection = create_ndb_connection(mDatabaseName);
-    mProvenanceTableTailer = new ProvenanceTableTailer(provenance_tailer_connection, mPollMaxTimeToWait, mBarrier);
+    Ndb* provenance_tailer_recovery_connection = mRecovery
+        ? create_ndb_connection(mDatabaseName) : nullptr;
+
+    mProvenanceTableTailer = new ProvenanceTableTailer(provenance_tailer_connection,
+        provenance_tailer_recovery_connection, mPollMaxTimeToWait, mBarrier);
 
     SConn* provenance_connections = new SConn[mProvenanceTU.mNumReaders];
     for (int i = 0; i < mProvenanceTU.mNumReaders; i++) {

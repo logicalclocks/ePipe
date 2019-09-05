@@ -24,15 +24,18 @@
 
 #include "MetadataLogTailer.h"
 
-MetadataLogTailer::MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier)
-: RCTableTailer<MetadataLogEntry> (ndb, new MetadataLogTable(), poll_maxTimeToWait, barrier) {
+MetadataLogTailer::MetadataLogTailer(Ndb* ndb, Ndb* ndbRecovery, const int
+poll_maxTimeToWait, const Barrier barrier)
+: RCTableTailer<MetadataLogEntry> (ndb, ndbRecovery,new MetadataLogTable(),
+    poll_maxTimeToWait, barrier) {
   mSchemaBasedQueue = new CMetaQ();
 }
 
 void MetadataLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, MetadataLogEntry pre, MetadataLogEntry row) {
 
   mSchemaBasedQueue->push(row);
-  LOG_DEBUG(" push metalog " << row.mMetaPK.to_string() << " to queue, Op [" << HopsworksOpTypeToStr(row.mMetaOpType) << "]");
+  LOG_DEBUG(" push metalog " << row.mMetaPK.getPKStr() << " to queue, Op [" <<
+  HopsworksOpTypeToStr(row.mMetaOpType) << "]");
 }
 
 MetadataLogEntry MetadataLogTailer::consume() {
