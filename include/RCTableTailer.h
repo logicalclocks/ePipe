@@ -33,8 +33,10 @@ template<typename TableRow>
 class RCTableTailer : public TableTailer<TableRow> {
 public:
 
-  RCTableTailer(Ndb* ndb, DBWatchTable<TableRow>* table, const int poll_maxTimeToWait, const Barrier barrier)
-  : TableTailer<TableRow>(ndb, table, poll_maxTimeToWait, barrier) {
+  RCTableTailer(Ndb* ndb, Ndb* ndbRecovery, DBWatchTable<TableRow>* table,
+      const int poll_maxTimeToWait, const Barrier barrier)
+  : TableTailer<TableRow>(ndb, ndbRecovery, table, poll_maxTimeToWait,
+      barrier) {
   }
 
   virtual TableRow consumeMultiQueue(int queue_id) {

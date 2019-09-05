@@ -32,7 +32,8 @@
 
 class MetadataLogTailer : public RCTableTailer<MetadataLogEntry> {
 public:
-  MetadataLogTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier);
+  MetadataLogTailer(Ndb* ndb, Ndb* ndbRecovery, const int poll_maxTimeToWait,
+      const Barrier barrier);
   MetadataLogEntry consume();
 
   virtual ~MetadataLogTailer();

@@ -209,7 +209,6 @@ public:
     addColumn("pk2");
     addColumn("pk3");
     addColumn("operation");
-    addRecoveryIndex("logical_time");
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
   }
 
@@ -239,6 +238,10 @@ public:
               << pk.mInodeId << "], Timestamp[" << pk.mLogicalTime << "]");
     }
     end();
+  }
+
+  std::string getPKStr(FsMutationRow row) override {
+    return row.getPKStr();
   }
 };
 

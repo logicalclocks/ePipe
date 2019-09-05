@@ -30,7 +30,8 @@
 
 class ProvenanceTableTailer : public RCTableTailer<ProvenanceRow> {
 public:
-  ProvenanceTableTailer(Ndb* ndb, const int poll_maxTimeToWait, const Barrier barrier);
+  ProvenanceTableTailer(Ndb* ndb, Ndb* ndbRecovery, const int
+  poll_maxTimeToWait, const Barrier barrier);
   ProvenanceRow consume();
   virtual ~ProvenanceTableTailer();
 
@@ -38,10 +39,7 @@ private:
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, ProvenanceRow pre, ProvenanceRow row);
   void barrierChanged();
 
-  void recover();
-
   void pushToQueue(PRpq* curr);
-  void pushToQueue(Pv* curr);
 
   CPRq *mQueue;
   PRpq* mCurrentPriorityQueue;
