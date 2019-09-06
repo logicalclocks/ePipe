@@ -12,12 +12,10 @@ set (CMAKE_CXX_STANDARD 14)
 set(Boost_USE_STATIC_LIBS ON)
 
 find_package(Boost 1.70 REQUIRED COMPONENTS system date_time program_options thread)
-find_package(CURL 7.29.0)
 find_package(RapidJSON 1.1.0)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${RAPIDJSON_INCLUDE_DIRS})
-include_directories(${CURL_INCLUDE_DIRS})
 include_directories (${CMAKE_SOURCE_DIR}/include)
 
 if(NOT NDB_DIR)
@@ -34,4 +32,4 @@ file(GLOB SOURCE ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
 add_executable(ePipe ${SOURCE})
 
-target_link_libraries(ePipe ${Boost_LIBRARIES} ${CURL_LIBRARIES} ndbclient pthread)
+target_link_libraries(ePipe ${Boost_LIBRARIES} ndbclient pthread)
