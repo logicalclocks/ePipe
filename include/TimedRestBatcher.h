@@ -57,6 +57,7 @@ public:
 protected:
 
   bool httpPostRequest(std::string requestUrl, std::string json);
+  bool httpDeleteRequest(std::string requestUrl);
 
   virtual void process(std::vector<Bulk<Keys> >* data) = 0;
   virtual bool parseResponse(std::string response) = 0;
@@ -153,6 +154,23 @@ bool TimedRestBatcher<Keys>::httpPostRequest(std::string requestUrl, std::string
   ptime t2 = Utils::getCurrentTime();
   LOG_INFO("POST " << requestUrl << " [" << json.length() << "]  took " <<
   Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
+  return success;
+}
+
+template<typename Keys>
+bool TimedRestBatcher<Keys>::httpDeleteRequest(std::string requestUrl) {
+  ptime t1 = Utils::getCurrentTime();
+  HttpResponse res = mHttpClient.delete_(requestUrl);
+
+  if (!res.mSuccess) {
+    //TODO: handle different failure scenarios
+    return false;
+  }
+
+  bool success = parseResponse(res.mResponse);
+  ptime t2 = Utils::getCurrentTime();
+  LOG_INFO("DELETE " << requestUrl << " took " <<
+                     Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
   return success;
 }
 

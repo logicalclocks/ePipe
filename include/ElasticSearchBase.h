@@ -44,7 +44,6 @@ protected:
   std::string getElasticSearchUrlOnDoc(std::string index, Int64 doc);
   std::string getElasticSearchUpdateDocUrl(std::string index, Int64 doc);
   std::string getElasticSearchBulkUrl(std::string index);
-  std::string getElasticSearchDeleteByQuery(std::string index);
   virtual bool parseResponse(std::string response);
 
 private:
@@ -79,12 +78,6 @@ std::string ElasticSearchBase<Keys>::getElasticSearchUpdateDocUrl(std::string in
 template<typename Keys>
 std::string ElasticSearchBase<Keys>::getElasticSearchBulkUrl(std::string index) {
   std::string str = "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
-  return str;
-}
-
-template<typename Keys>
-std::string ElasticSearchBase<Keys>::getElasticSearchDeleteByQuery(std::string index) {
-  std::string str = "/" + index + "/" + DEFAULT_TYPE + "/_delete_by_query";
   return str;
 }
 

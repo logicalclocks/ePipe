@@ -48,7 +48,7 @@ private:
   bool handleDeleteDataset(Int64 datasetINodeId);
 
   bool handleProject(int projectId, Int64 inodeId, HopsworksOpType opType);
-  bool handleDeleteProject(int projectId);
+  bool handleDeleteProject(int projectId, Int64 projectINodeId);
   bool handleUpsertProject(int projectId, Int64 inodeId, HopsworksOpType opType);
 
   bool handleSchema(int schemaId, HopsworksOpType opType, Int64 inodeId);

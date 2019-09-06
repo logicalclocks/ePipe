@@ -75,25 +75,6 @@ struct DatasetRow {
     return std::string(sbDoc.GetString());
   }
 
-  static std::string to_delete_json(int datasetId) {
-    rapidjson::StringBuffer sbDoc;
-    rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
-    docWriter.StartObject();
-    docWriter.String("query");
-
-    docWriter.StartObject();
-
-    docWriter.String("term");
-    docWriter.StartObject();
-    docWriter.String("dataset_id");
-    docWriter.Int(datasetId);
-    docWriter.EndObject();
-
-    docWriter.EndObject();
-
-    docWriter.EndObject();
-    return std::string(sbDoc.GetString());
-  }
 };
 
 class DPCache : public PairCache {
