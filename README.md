@@ -6,6 +6,7 @@ ePipe is a metadata system for HopsFS that provides replicated-metadata-as-a-ser
 How To build
 ============
 **Software Required**
+
 For compiling ePipe you will need the following software.
 
 * CMake 3.5.0 or higher (3.15.0 is recommended)
@@ -14,7 +15,7 @@ For compiling ePipe you will need the following software.
 * [RapidJson](http://rapidjson.org/) 1.1.0
 * [MySQL Cluster NDB](https://dev.mysql.com/downloads/cluster/)
 
-Untar the MySQL Cluster binarries in /usr/local/
+Untar the MySQL Cluster binaries in /usr/local/
 ```
 cd /usr/local
 wget https://dev.mysql.com/get/Downloads/MySQL-Cluster-7.6/mysql-cluster-gpl-7.6.10-linux-glibc2.12-x86_64.tar.gz
