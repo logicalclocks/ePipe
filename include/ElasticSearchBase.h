@@ -59,7 +59,7 @@ ElasticSearchBase<Keys>::ElasticSearchBase(std::string elastic_addr, int time_to
 
 template<typename Keys>
 std::string ElasticSearchBase<Keys>::getElasticSearchUrlonIndex(std::string index) {
-  std::string str = this->mEndpointAddr + "/" + index;
+  std::string str = "/" + index;
   return str;
 }
 
@@ -78,13 +78,13 @@ std::string ElasticSearchBase<Keys>::getElasticSearchUpdateDocUrl(std::string in
 
 template<typename Keys>
 std::string ElasticSearchBase<Keys>::getElasticSearchBulkUrl(std::string index) {
-  std::string str = this->mEndpointAddr + "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
+  std::string str = "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
   return str;
 }
 
 template<typename Keys>
 std::string ElasticSearchBase<Keys>::getElasticSearchDeleteByQuery(std::string index) {
-  std::string str = this->mEndpointAddr + "/" + index + "/" + DEFAULT_TYPE + "/_delete_by_query";
+  std::string str = "/" + index + "/" + DEFAULT_TYPE + "/_delete_by_query";
   return str;
 }
 
