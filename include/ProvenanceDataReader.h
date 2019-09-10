@@ -19,16 +19,18 @@
 
 #include "NdbDataReaders.h"
 #include "ProvenanceElasticSearch.h"
+#include "tables/ProvenanceLogTable.h"
 
-class ProvenanceDataReader : public NdbDataReader<ProvenanceRow, SConn, PKeys> {
+class ProvenanceDataReader : public NdbDataReader<ProvenanceRow, SConn> {
 public:
   ProvenanceDataReader(SConn connection, const bool hopsworks);
   virtual ~ProvenanceDataReader();
 private:
-  virtual void processAddedandDeleted(Pq* data_batch, PBulk& bulk);
+  ProvenanceLogTable mProvenanceLogTable;
+  virtual void processAddedandDeleted(Pq* data_batch, eBulk& bulk);
 };
 
-class ProvenanceDataReaders :  public NdbDataReaders<ProvenanceRow, SConn, PKeys>{
+class ProvenanceDataReaders :  public NdbDataReaders<ProvenanceRow, SConn>{
   public:
     ProvenanceDataReaders(SConn* connections, int num_readers,const bool hopsworks,
           ProvenanceElasticSearch* elastic) : NdbDataReaders(elastic){

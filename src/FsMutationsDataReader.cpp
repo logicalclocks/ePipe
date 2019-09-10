@@ -19,11 +19,12 @@
 
 FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopsworks,
         const int lru_cap)
-: NdbDataReader<FsMutationRow, MConn, FSKeys>(connection, hopsworks),
+: NdbDataReader<FsMutationRow, MConn>(connection, hopsworks),
         mInodesTable(lru_cap), mDatasetTable(lru_cap) {
 }
 
-void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk) {
+void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, eBulk&
+bulk) {
 
   INodeMap inodes = mInodesTable.get(mNdbConnection.inodeConnection, data_batch);
   XAttrMap xattrs = mXAttrTable.get(mNdbConnection.inodeConnection, data_batch);
@@ -40,21 +41,16 @@ void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, FSBulk& bulk
 }
 
 void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
-    XAttrMap& xattrs, FSBulk& bulk) {
+    XAttrMap& xattrs, eBulk& bulk) {
 
-  std::vector<ptime> arrivalTimes(pending->size());
-  std::stringstream out;
-  int i = 0;
-  for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it, i++) {
+  for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it) {
     FsMutationRow row = *it;
-    arrivalTimes[i] = row.mEventCreationTime;
-    bulk.mPKs.mFSPKs.push_back(row.getPK());
 
     if(row.isINodeOperation()) {
       if (!row.requiresReadingINode()) {
         //Handle the delete and change dataset
-        out << INodeRow::to_delete_change_dataset_json(row);
-        out << std::endl;
+        bulk.push(mFSLogTable.getLogRemovalHandler(row), row
+        .mEventCreationTime, INodeRow::to_delete_change_dataset_json(row));
         continue;
       }
 
@@ -62,8 +58,8 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         LOG_DEBUG(
             " Data for inode: " << row.getParentId() << ", " << row
             .getINodeName() << ", " << row.mInodeId << " was not found");
-        out << INodeRow::to_delete_json(row.mInodeId);
-        out << std::endl;
+        bulk.push(mFSLogTable.getLogRemovalHandler(row), row
+            .mEventCreationTime, INodeRow::to_delete_json(row.mInodeId));
         continue;
       }
 
@@ -77,14 +73,13 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       }
 
       //FsAdd, FsUpdate, FsRename are handled the same way
-      std::string inodeJSON = inode.to_create_json(datasetINodeId, projectId);
-
-      out << inodeJSON << std::endl;
+      bulk.push(mFSLogTable.getLogRemovalHandler(row), row
+          .mEventCreationTime, inode.to_create_json(datasetINodeId, projectId));
     } else if(row.isXAttrOperation()){
       if(!row.requiresReadingXAttr()){
         //handle delete xattr
-        out << XAttrRow::to_delete_json(row);
-        out << std::endl;
+        bulk.push(mFSLogTable.getLogRemovalHandler(row), row
+            .mEventCreationTime, XAttrRow::to_delete_json(row));
         continue;
       }
 
@@ -94,32 +89,33 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
         << row.getNamespace() <<  " for inode " << row.mInodeId
         << " was not ""found");
-        out << XAttrRow::to_delete_json(row);
-        out << std::endl;
+        bulk.push(mFSLogTable.getLogRemovalHandler(row), row
+            .mEventCreationTime, XAttrRow::to_delete_json(row));
         continue;
       }
 
       XAttrVec xattr = xattrs[mutationpk];
-      for(XAttrVec::iterator it = xattr.begin(); it != xattr.end() ; ++it){
+      int i = 0;
+      for(XAttrVec::iterator it = xattr.begin(); it != xattr.end() ; ++it, i++){
+        //only add the first event with a removal handler
+        const LogHandler* const logh = i > 0 ? nullptr : mFSLogTable
+            .getLogRemovalHandler(row);
         XAttrRow xAttrRow = *it;
         if(xAttrRow.mInodeId ==  row.mInodeId){
-          out << xAttrRow.to_upsert_json(row.mOperation);
-          out << std::endl;
+          bulk.push(logh, row.mEventCreationTime, xAttrRow.to_upsert_json
+          (row.mOperation));
         }else{
           LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
           << row.getNamespace() <<  " for inode " << row.mInodeId
           << " was not ""found");
-          out << XAttrRow::to_delete_json(row);
-          out << std::endl;
+          bulk.push(logh, row.mEventCreationTime, XAttrRow::to_delete_json
+          (row));
         }
       }
     }else{
       LOG_ERROR("Unknown fs operation " << row.to_string());
     }
   }
-
-  bulk.mArrivalTimes = arrivalTimes;
-  bulk.mJSON = out.str();
 }
 
 FsMutationsDataReader::~FsMutationsDataReader() {

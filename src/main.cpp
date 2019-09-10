@@ -209,6 +209,6 @@ int main(int argc, char** argv) {
     }
     return EXIT_SUCCESS;
   }catch(const po::error &ex){
-    std::cerr << ex.what() << '\n';
+    LOG_ERROR(ex.what());
   }
 }

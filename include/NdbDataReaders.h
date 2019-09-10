@@ -23,32 +23,31 @@
 
 typedef boost::atomic<Uint64> AtomicLong;
 
-template<typename Keys>
 struct BulkIndexComparator {
   
-  bool operator()(const Bulk<Keys> &r1, const Bulk<Keys> &r2) const {
+  bool operator()(const eBulk &r1, const eBulk &r2) const {
     return r1.mProcessingIndex > r2.mProcessingIndex;
   }
 };
 
-template<typename Data, typename Conn, typename Keys> 
-class NdbDataReaders : public DataReaderOutHandler<Keys>{
+template<typename Data, typename Conn>
+class NdbDataReaders : public DataReaderOutHandler{
 public:
-  typedef std::vector<NdbDataReader<Data, Conn, Keys>* > DataReadersVec;
+  typedef std::vector<NdbDataReader<Data, Conn>* > DataReadersVec;
   typedef typename DataReadersVec::size_type drvec_size_type;
-  NdbDataReaders(TimedRestBatcher<Keys>* elastic);
+  NdbDataReaders(TimedRestBatcher* elastic);
   void start();
   void processBatch(std::vector<Data>* data_batch);
-  void writeOutput(Bulk<Keys> out);
+  void writeOutput(eBulk out);
   virtual ~NdbDataReaders();
   
 private:
-  TimedRestBatcher<Keys>* timedRestBatcher;
+  TimedRestBatcher* timedRestBatcher;
   bool mStarted;
   boost::thread mThread;
   
   ConcurrentQueue<std::vector<Data>*>* mBatchedQueue;
-  ConcurrentPriorityQueue<Bulk<Keys>, BulkIndexComparator<Keys> >* mWaitingOutQueue;
+  ConcurrentPriorityQueue<eBulk, BulkIndexComparator >* mWaitingOutQueue;
   
   AtomicLong mLastSent;
   AtomicLong mCurrIndex;
@@ -58,21 +57,21 @@ private:
   void processWaiting();
   
 protected:
-  std::vector<NdbDataReader<Data, Conn, Keys>* > mDataReaders;
+  std::vector<NdbDataReader<Data, Conn>* > mDataReaders;
 };
 
-template<typename Data, typename Conn, typename Keys>
-NdbDataReaders<Data, Conn, Keys>::NdbDataReaders(TimedRestBatcher<Keys>* batcher) : timedRestBatcher(batcher) {
+template<typename Data, typename Conn>
+NdbDataReaders<Data, Conn>::NdbDataReaders(TimedRestBatcher* batcher) : timedRestBatcher(batcher) {
   mStarted = false;
   mBatchedQueue = new ConcurrentQueue<std::vector<Data>*>();
-  mWaitingOutQueue = new ConcurrentPriorityQueue<Bulk<Keys>, BulkIndexComparator<Keys> >();
+  mWaitingOutQueue = new ConcurrentPriorityQueue<eBulk, BulkIndexComparator>();
   mLastSent = 0; 
   mCurrIndex = 0;
   mRoundRobinDrIndex = -1;
 }
 
-template<typename Data, typename Conn, typename Keys>
-void NdbDataReaders<Data, Conn, Keys>::start() {
+template<typename Data, typename Conn>
+void NdbDataReaders<Data, Conn>::start() {
   if (mStarted) {
     return;
   }
@@ -82,8 +81,8 @@ void NdbDataReaders<Data, Conn, Keys>::start() {
 }
 
 
-template<typename Data, typename Conn, typename Keys>
-void NdbDataReaders<Data, Conn, Keys>::run() {
+template<typename Data, typename Conn>
+void NdbDataReaders<Data, Conn>::run() {
   while (true) {
     std::vector<Data>* curr;
     mBatchedQueue->wait_and_pop(curr);
@@ -100,23 +99,23 @@ void NdbDataReaders<Data, Conn, Keys>::run() {
   }
 }
 
-template<typename Data, typename Conn, typename Keys>
-void NdbDataReaders<Data, Conn, Keys>::processBatch(std::vector<Data>* data_batch) {
+template<typename Data, typename Conn>
+void NdbDataReaders<Data, Conn>::processBatch(std::vector<Data>* data_batch) {
   mBatchedQueue->push(data_batch);
 }
 
-template<typename Data, typename Conn, typename Keys>
-void NdbDataReaders<Data, Conn, Keys>::writeOutput(Bulk<Keys> out) {
+template<typename Data, typename Conn>
+void NdbDataReaders<Data, Conn>::writeOutput(eBulk out) {
   mWaitingOutQueue->push(out);
   processWaiting();
 }
 
-template<typename Data, typename Conn, typename Keys>
-void NdbDataReaders<Data, Conn, Keys>::processWaiting() {
+template<typename Data, typename Conn>
+void NdbDataReaders<Data, Conn>::processWaiting() {
   while (!mWaitingOutQueue->empty()) {
-    boost::optional<Bulk<Keys> > out_ptr = mWaitingOutQueue->pop();
+    boost::optional<eBulk> out_ptr = mWaitingOutQueue->pop();
     if (out_ptr) {
-      Bulk<Keys> out = out_ptr.get();
+      eBulk out = out_ptr.get();
       if (out.mProcessingIndex == mLastSent + 1) {
         LOG_INFO("publish enriched events with index [" << out.mProcessingIndex << "] to Elastic");
         timedRestBatcher->addData(out);
@@ -131,8 +130,8 @@ void NdbDataReaders<Data, Conn, Keys>::processWaiting() {
   }
 }
 
-template<typename Data, typename Conn, typename Keys>
-NdbDataReaders<Data, Conn, Keys>::~NdbDataReaders() {
+template<typename Data, typename Conn>
+NdbDataReaders<Data, Conn>::~NdbDataReaders() {
   delete mBatchedQueue;
 }
 

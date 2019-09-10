@@ -30,7 +30,7 @@ struct SchemabasedMetadataEntry {
   TupleRow mTuple;
   std::string mMetadata;
   HopsworksOpType mOperation;
-
+  int mMetaLogKey;
   ptime mEventCreationTime;
 
   SchemabasedMetadataEntry() {
@@ -42,6 +42,16 @@ struct SchemabasedMetadataEntry {
     mTuple.mId = ml.mMetaPK.mTupleId;
     mOperation = ml.mMetaOpType;
     mEventCreationTime = ml.mEventCreationTime;
+    mMetaLogKey = ml.mId;
+  }
+
+  MetadataLogEntry getMetadataLogEntry() {
+    MetadataLogEntry ml;
+    ml.mMetaPK = MetadataKey(mId, mField.mId, mTuple.mId);
+    ml.mMetaOpType = mOperation;
+    ml.mEventCreationTime = mEventCreationTime;
+    ml.mId = mMetaLogKey;
+    return ml;
   }
 
   bool is_equal(MetadataKey metaKey) {
@@ -198,7 +208,7 @@ public:
     return row;
   }
   
-  SchemabasedMq* get(Ndb* connection, MetaQ* batch, UISet& primaryKeys) {
+  SchemabasedMq* get(Ndb* connection, MetaQ* batch) {
 
     UISet fields_ids;
     UISet tuples_ids;
@@ -206,8 +216,7 @@ public:
     SchemabasedMq schemaBasedQ;
     for (MetaQ::iterator it = batch->begin(); it != batch->end(); ++it) {
       MetadataLogEntry le = *it;
-      primaryKeys.insert(le.mId);
-      
+
       SchemabasedMetadataEntry ml = SchemabasedMetadataEntry(le);
       
       fields_ids.insert(ml.mField.mId);
@@ -247,6 +256,7 @@ public:
           LOG_WARN("Ignore " << row.to_string() << " since it seems to be deleted");
           continue;
         }
+        read.mMetaLogKey = row.mMetaLogKey;
         row = read;
       }
       

@@ -29,6 +29,18 @@ struct EpochsRowsMap{
   boost::unordered_map<Uint64,std::queue<TableRow>* >* mRowsByEpoch;
 };
 
+enum LogType{
+  FSLOG,
+  METALOG,
+  PROVLOG
+};
+
+struct LogHandler{
+  virtual void removeLog(Ndb* connection) const= 0;
+  virtual LogType getType() const = 0;
+  virtual std::string getDescription() const = 0;
+};
+
 template<typename TableRow>
 class DBWatchTable : public DBTable<TableRow> {
 public:
@@ -38,6 +50,7 @@ public:
   EpochsRowsMap<TableRow> getAllForRecovery(Ndb* connection);
   virtual ~DBWatchTable();
   virtual std::string getPKStr(TableRow row);
+  virtual LogHandler* getLogRemovalHandler(TableRow row);
 
 private:
   TEventVec mWatchEvents;
@@ -131,6 +144,11 @@ EpochsRowsMap<TableRow> DBWatchTable<TableRow>::getAllForRecovery(Ndb* connectio
 template<typename TableRow>
 std::string DBWatchTable<TableRow>::getPKStr(TableRow row) {
   return "";
+}
+
+template<typename TableRow>
+LogHandler* DBWatchTable<TableRow>::getLogRemovalHandler(TableRow row) {
+  return nullptr;
 }
 #endif /* DBWATCHTABLE_H */
 

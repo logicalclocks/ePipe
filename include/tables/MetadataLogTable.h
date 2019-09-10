@@ -88,6 +88,22 @@ typedef std::vector<MetadataLogEntry> MetaQ;
 
 class MetadataLogTable : public DBWatchTable<MetadataLogEntry> {
 public:
+  struct MetaLogHandler : public LogHandler{
+    int mPK;
+
+    MetaLogHandler(int pk) : mPK(pk) {}
+    void removeLog(Ndb* connection) const override {
+      MetadataLogTable().removeLog(connection, mPK);
+    }
+    LogType getType() const override {
+      return LogType::METALOG;
+    }
+    std::string getDescription() const override {
+      std::stringstream out;
+      out << "MetaLog (meta_log) Key (" << mPK << ")";
+      return out.str();
+    }
+  };
 
   MetadataLogTable() : DBWatchTable("meta_log") {
     addColumn("id");
@@ -111,18 +127,36 @@ public:
     return row;
   }
 
-  void removeLogs(Ndb* conn, UISet& pks) {
+  void removeLogs(Ndb* conn, std::vector<const LogHandler*>& logrh) {
     start(conn);
-    for (UISet::iterator it = pks.begin(); it != pks.end(); ++it) {
-      int id = *it;
-      doDelete(id);
-      LOG_TRACE("Delete log row: " << id);
+    for (auto log : logrh) {
+      if(log == nullptr){
+        continue;
+      }
+      if(log->getType() != LogType::METALOG){
+        continue;
+      }
+      const MetaLogHandler* logh = static_cast<const
+          MetaLogHandler*>(log);
+      doDelete(logh->mPK);
+      LOG_TRACE("Delete log row: " << logh->mPK);
     }
+    end();
+  }
+
+  void removeLog(Ndb* conn,int pk) {
+    start(conn);
+    doDelete(pk);
+    LOG_TRACE("Delete log row: " << pk);
     end();
   }
 
   std::string getPKStr(MetadataLogEntry row) override {
     return row.mMetaPK.getPKStr();
+  }
+
+  LogHandler* getLogRemovalHandler(MetadataLogEntry row) override {
+    return new MetaLogHandler(row.mId);
   }
 };
 

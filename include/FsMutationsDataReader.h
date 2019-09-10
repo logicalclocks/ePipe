@@ -24,7 +24,7 @@
 #include "NdbDataReaders.h"
 #include "tables/XAttrTable.h"
 
-class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn, FSKeys> {
+class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn> {
 public:
   FsMutationsDataReader(MConn connection, const bool hopsworks, const int lru_cap);
   virtual ~FsMutationsDataReader();
@@ -32,14 +32,15 @@ private:
   INodeTable mInodesTable;
   DatasetTable mDatasetTable;
   XAttrTable mXAttrTable;
+  FsMutationsLogTable mFSLogTable;
 
-  virtual void processAddedandDeleted(Fmq* data_batch, FSBulk& bulk);
+  virtual void processAddedandDeleted(Fmq* data_batch, eBulk& bulk);
 
-  void createJSON(Fmq* pending, INodeMap& inodes, XAttrMap& xattrs, FSBulk&
+  void createJSON(Fmq* pending, INodeMap& inodes, XAttrMap& xattrs, eBulk&
   bulk);
 };
 
-class FsMutationsDataReaders : public NdbDataReaders<FsMutationRow, MConn, FSKeys>{
+class FsMutationsDataReaders : public NdbDataReaders<FsMutationRow, MConn>{
 public:
   FsMutationsDataReaders(MConn* connections, int num_readers, const bool hopsworks,
           ProjectsElasticSearch* elastic, const int lru_cap) : NdbDataReaders(elastic){

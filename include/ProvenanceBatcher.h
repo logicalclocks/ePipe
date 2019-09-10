@@ -20,7 +20,7 @@
 #include "ProvenanceTableTailer.h"
 #include "ProvenanceDataReader.h"
 
-class ProvenanceBatcher : public RCBatcher<ProvenanceRow, SConn, PKeys> {
+class ProvenanceBatcher : public RCBatcher<ProvenanceRow, SConn> {
 public:
 
   ProvenanceBatcher(ProvenanceTableTailer* table_tailer, ProvenanceDataReaders* data_reader,

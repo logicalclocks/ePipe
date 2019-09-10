@@ -21,12 +21,12 @@
 #include "FsMutationsTableTailer.h"
 #include "FsMutationsDataReader.h"
 
-class FsMutationsBatcher : public RCBatcher<FsMutationRow, MConn, FSKeys> {
+class FsMutationsBatcher : public RCBatcher<FsMutationRow, MConn> {
 public:
 
   FsMutationsBatcher(FsMutationsTableTailer* table_tailer, FsMutationsDataReaders* data_reader,
           const int time_before_issuing_ndb_reqs, const int batch_size)
-  : RCBatcher<FsMutationRow, MConn, FSKeys>(table_tailer, data_reader, time_before_issuing_ndb_reqs, batch_size) {
+  : RCBatcher<FsMutationRow, MConn>(table_tailer, data_reader, time_before_issuing_ndb_reqs, batch_size) {
 
   }
 };

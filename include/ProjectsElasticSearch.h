@@ -29,23 +29,17 @@ namespace bc = boost::accumulators;
 
 typedef bc::accumulator_set<double, bc::stats<bc::tag::mean> > Accumulator;
 
-struct FSKeys {
-  UISet mMetaPKs;
-  FPK mFSPKs;
-};
-
-typedef Bulk<FSKeys> FSBulk;
-
 struct MovingCounters{
   virtual void check() = 0;
-  virtual void addTotalTimePerEvent(float total_time_per_event) = 0;
-  virtual void processBulk(float batch_time, float wait_time, float processing_time,
-      float ewait_time, float total_time, int size) = 0;
+  virtual void bulkReceived(const eBulk& bulk) = 0;
+  virtual void bulkProcessed(const ptime elastic_start_time, const eBulk&
+  bulk) = 0;
+  virtual void bulksProcessed(const ptime elastic_start_time, const
+  std::vector<eBulk>* bulk) = 0;
   virtual void datasetAdded() = 0;
   virtual void projectAdded() = 0;
   virtual void datasetRemoved() = 0;
   virtual void projectRemoved() = 0;
-  virtual void elasticSearchRequestFailed() = 0;
   virtual std::string getMetrics(const ptime startTime) const = 0;
 };
 
@@ -53,7 +47,7 @@ struct MovingCountersImpl : public MovingCounters{
 
   MovingCountersImpl(int stepInSeconds, std::string prefix) : mStepSeconds
   (stepInSeconds), mPrefix(prefix){
-    mlastCleared = getCurrentTime();
+    mlastCleared = Utils::getCurrentTime();
     reset();
   }
 
@@ -61,25 +55,36 @@ struct MovingCountersImpl : public MovingCounters{
     if(mStepSeconds == -1)
       return;
 
-    ptime now = getCurrentTime();
-    if(getTimeDiffInSeconds(mlastCleared, now) >= mStepSeconds){
+    ptime now = Utils::getCurrentTime();
+    if(Utils::getTimeDiffInSeconds(mlastCleared, now) >= mStepSeconds){
       reset();
       mlastCleared = now;
     }
   }
 
-  void addTotalTimePerEvent(float total_time_per_event) override{
-    mTotalTimePerEventAcc(total_time_per_event);
+  void bulkReceived(const eBulk& bulk) override{
+    mBatchingAcc(bulk.getBatchTimeMS());
+    mWaitTimeBeforeProcessingAcc(bulk.getWaitTimeMS());
+    mProcessingAcc(bulk.getProcessingTimeMS());
   }
-  void processBulk(float batch_time, float wait_time, float processing_time,
-      float ewait_time, float total_time, int size) override{
-    mBatchingAcc(batch_time);
-    mWaitTimeBeforeProcessingAcc(wait_time);
-    mProcessingAcc(processing_time);
-    mWaitTimeUntillElasticCalledAcc(ewait_time);
-    mTotalTimePerBulkAcc(total_time);
-    mTotalNumOfEventsProcessed += size;
-    mTotalNumOfBulksProcessed++;
+
+  void bulkProcessed(const ptime elastic_start_time, const eBulk& bulk)
+  override{
+    ptime end_time = Utils::getCurrentTime();
+    mElasticBulkTimeAcc(Utils::getTimeDiffInMilliseconds(elastic_start_time,
+        end_time));
+    bulkProcessed(bulk, end_time);
+  }
+
+  void bulksProcessed(const ptime elastic_start_time, const
+  std::vector<eBulk>* bulks) override{
+    ptime end_time = Utils::getCurrentTime();
+    mElasticBulkTimeAcc(Utils::getTimeDiffInMilliseconds(elastic_start_time,
+        end_time));
+    for (auto it = bulks->begin(); it != bulks->end(); ++it) {
+      eBulk bulk = *it;
+      bulkProcessed(bulk, end_time);
+    }
   }
 
   void datasetAdded() override{
@@ -98,15 +103,11 @@ struct MovingCountersImpl : public MovingCounters{
     mDeletedProjects++;
   }
 
-  void elasticSearchRequestFailed() override {
-    mElasticSearchFailedRequests++;
-  }
-
   std::string getMetrics(const ptime startTime) const override{
     std::stringstream out;
     out << "epipe_relative_start_time_seconds{scope=\"" << mPrefix << "\"} " <<
        ( mStepSeconds == -1 || mTotalNumOfEventsProcessed == 0 ? 0 :
-       getTimeDiffInSeconds(startTime,mlastCleared))<< std::endl;
+         Utils::getTimeDiffInSeconds(startTime,mlastCleared))<< std::endl;
     out << "epipe_num_processed_events{scope=\"" << mPrefix << "\"} " <<
     mTotalNumOfEventsProcessed << std::endl;
     out << "epipe_num_processed_batches{scope=\"" << mPrefix << "\"} " <<
@@ -123,6 +124,9 @@ struct MovingCountersImpl : public MovingCounters{
       out << "epipe_avg_elastic_batching_time_milliseconds{scope=\"" <<
       mPrefix << "\"} " << bc::mean(mWaitTimeUntillElasticCalledAcc) <<
       std::endl;
+      out << "epipe_avg_elastic_bulk_req_time_milliseconds{scope=\"" <<
+          mPrefix << "\"} " << bc::mean(mElasticBulkTimeAcc) <<
+          std::endl;
     }else{
       out << "epipe_avg_total_time_per_event_milliseconds{scope=\"" <<
       mPrefix << "\"} 0" << std::endl;
@@ -134,6 +138,8 @@ struct MovingCountersImpl : public MovingCounters{
       "\"} 0" << std::endl;
       out << "epipe_avg_elastic_batching_time_milliseconds{scope=\"" <<
       mPrefix << "\"} 0" << std::endl;
+      out << "epipe_avg_elastic_bulk_req_time_milliseconds{scope=\"" <<
+          mPrefix << "\"} 0"  << std::endl;
     }
 
     out << "epipe_num_added_datasets{scope=\"" << mPrefix << "\"} " <<
@@ -144,8 +150,6 @@ struct MovingCountersImpl : public MovingCounters{
     mCreatedProjects << std::endl;
     out << "epipe_num_deleted_projects{scope=\"" << mPrefix << "\"} " <<
     mDeletedProjects << std::endl;
-    out << "epipe_num_failed_elasticsearch_batch_requests{scope=\"" <<
-    mPrefix << "\"} " << mElasticSearchFailedRequests << std::endl;
    return out.str();
   }
 
@@ -160,13 +164,13 @@ private:
   Accumulator mWaitTimeUntillElasticCalledAcc;
   Accumulator mTotalTimePerEventAcc;
   Accumulator mTotalTimePerBulkAcc;
+  Accumulator mElasticBulkTimeAcc;
   Int64 mTotalNumOfEventsProcessed;
   Int64 mTotalNumOfBulksProcessed;
   Int64 mCreatedDatasets;
   Int64 mCreatedProjects;
   Int64 mDeletedDatasets;
   Int64 mDeletedProjects;
-  Int64 mElasticSearchFailedRequests;
 
   void reset(){
     mBatchingAcc = {};
@@ -181,7 +185,18 @@ private:
     mCreatedProjects = 0;
     mDeletedDatasets = 0;
     mDeletedProjects = 0;
-    mElasticSearchFailedRequests = 0;
+  }
+
+  void bulkProcessed(const eBulk& bulk,
+      const ptime end_time){
+    mWaitTimeUntillElasticCalledAcc(bulk.geteWaitTimeMS(end_time));
+    mTotalTimePerBulkAcc(bulk.getTotalTimeMS(end_time));
+    for(eEvent event : bulk.mEvents){
+      mTotalTimePerEventAcc(Utils::getTimeDiffInMilliseconds(event
+      .getArrivalTime(), end_time));
+    }
+    mTotalNumOfBulksProcessed++;
+    mTotalNumOfEventsProcessed += bulk.mEvents.size();
   }
 };
 
@@ -196,47 +211,70 @@ struct MovingCountersSet : public MovingCounters{
     }
   }
 
-  void addTotalTimePerEvent(float total_time_per_event) override {
+  void bulkReceived(const eBulk& bulk) override {
     for(auto& c : mCounters){
-      c.addTotalTimePerEvent(total_time_per_event);
+      c.check();
+      c.bulkReceived(bulk);
     }
   }
 
-  void processBulk(float batch_time, float wait_time, float processing_time,
-                   float ewait_time, float total_time, int size) override {
+  void bulkProcessed(const ptime elastic_start_time, const eBulk& bulk)
+  override {
     for(auto& c : mCounters){
-      c.processBulk(batch_time, wait_time, processing_time, ewait_time,
-          total_time, size);
+      c.check();
+      c.bulkProcessed(elastic_start_time, bulk);
     }
+  }
+
+  void bulksProcessed(const ptime elastic_start_time, const std::vector<eBulk>*
+      bulks) override {
+    for(auto& c : mCounters){
+      c.check();
+      c.bulksProcessed(elastic_start_time, bulks);
+    }
+
+    ptime t_end = Utils::getCurrentTime();
+
+    ptime firstEventInCurrentBulksArrivalTime = bulks->at(0).getFirstArrivalTime();
+    int numOfEvents = 0;
+    for (auto it = bulks->begin(); it != bulks->end(); ++it) {
+      eBulk bulk = *it;
+      numOfEvents += bulk.mEvents.size();
+    }
+
+    float bulksTotalTime = Utils::getTimeDiffInMilliseconds
+        (firstEventInCurrentBulksArrivalTime, t_end);
+    float bulksEventPerSecond = (numOfEvents * 1000.0) / bulksTotalTime;
+
+    LOG_INFO("Bulks[" << numOfEvents << "/" << bulks->size() << "] took " << bulksTotalTime << " msec at Rate=" << bulksEventPerSecond << " events/second");
+
   }
 
   void datasetAdded() override {
     for(auto& c : mCounters){
+      c.check();
       c.datasetAdded();
     }
   }
 
   void projectAdded() override {
     for(auto& c : mCounters){
+      c.check();
       c.projectAdded();
     }
   }
 
   void datasetRemoved() override {
     for(auto& c : mCounters){
+      c.check();
       c.datasetRemoved();
     }
   }
 
   void projectRemoved() override {
     for(auto& c : mCounters){
+      c.check();
       c.projectRemoved();
-    }
-  }
-
-  void elasticSearchRequestFailed() override {
-    for(auto& c : mCounters){
-      c.elasticSearchRequestFailed();
     }
   }
 
@@ -252,21 +290,20 @@ private:
   std::vector<MovingCountersImpl> mCounters;
 };
 
-class ProjectsElasticSearch : public ElasticSearchBase<FSKeys> {
+class ProjectsElasticSearch : public ElasticSearchBase{
 public:
   ProjectsElasticSearch(std::string elastic_addr, std::string index,
           int time_to_wait_before_inserting, int bulk_size,
           const bool stats, MConn conn);
 
-  bool addDataset(Int64 inodeId, std::string json);
-  bool addProject(Int64 inodeId, std::string json);
-  bool removeDataset(Int64 inodeId);
-  bool removeProject(Int64 inodeId);
+  void addDataset(Int64 inodeId, std::string json);
+  void addProject(Int64 inodeId, std::string json);
+  void removeDataset(Int64 inodeId);
+  void removeProject(Int64 inodeId);
 
-  bool addDoc(Int64 inodeId, std::string json);
-  bool deleteDoc(Int64 inodeId);
-  bool addBulk(std::string json);
-  bool deleteSchemaForINode(Int64 inodeId, std::string json);
+  void addDoc(Int64 inodeId, std::string json);
+  void deleteDoc(Int64 inodeId);
+  void deleteSchemaForINode(Int64 inodeId, std::string json);
 
   std::string getMetrics() const override;
 
@@ -280,10 +317,9 @@ private:
 
   MovingCountersSet mCounters;
 
-  virtual void process(std::vector<FSBulk>* bulks);
+  virtual void process(std::vector<eBulk>* bulks);
 
-  void stats(std::vector<FSBulk>* bulks);
-  void stats(FSBulk bulk, ptime t_elastic_done);
+  bool bulkRequest(eEvent& event);
 };
 
 #endif /* PROJECTSELASTICSEARCH_H */

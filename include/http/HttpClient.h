@@ -38,10 +38,16 @@ struct HttpResponse{
 class HttpClient{
 public:
   HttpClient(std::string addr){
-    auto const i = addr.find(":");
-    auto const ip = addr.substr(0,i);
-    auto const port = static_cast<unsigned short>(std::atoi(addr.substr(i+1,addr.length()).c_str()));
-    mEndpoint = {net::ip::make_address(ip), port};
+    try {
+      auto const i = addr.find(":");
+      auto const ip = addr.substr(0, i);
+      auto const port = static_cast<unsigned short>(std::atoi(
+          addr.substr(i + 1, addr.length()).c_str()));
+      mEndpoint = {net::ip::make_address(ip), port};
+    } catch(const boost::system::system_error & ex){
+      LOG_FATAL("error in http address format [" << addr << "]"
+          << " only ips allowed : " <<  ex.code() << " " << ex.what());
+    }
   }
 
   HttpResponse get(std::string target){
@@ -103,12 +109,12 @@ private:
       stream.socket().shutdown(tcp::socket::shutdown_both, ec);
 
       if(ec && ec != beast::errc::not_connected){
-        LOG_ERROR("Error in http connection "<< ec);
+        LOG_ERROR("Error in http connection with error code "<< ec);
         succeed = false;
       }
     }catch(std::exception const& e)
     {
-      LOG_ERROR("Error in http connection : "<< e.what());
+      LOG_ERROR("Error in http connection : " << e.what());
       succeed = false;
     }
 

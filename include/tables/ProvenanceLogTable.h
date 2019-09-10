@@ -206,6 +206,24 @@ typedef boost::tuple<std::vector<Uint64>*, ProvenanceRowsByGCI* > ProvenanceRows
 
 class ProvenanceLogTable : public DBWatchTable<ProvenanceRow> {
 public:
+  struct ProvLogHandler : public LogHandler{
+    ProvenancePK mPK;
+
+    ProvLogHandler(ProvenancePK pk) : mPK(pk) {}
+    void removeLog(Ndb* connection) const override {
+      ProvenanceLogTable().removeLog(connection, mPK);
+    }
+    LogType getType() const override {
+      return LogType::PROVLOG;
+    }
+    std::string getDescription() const override {
+      std::stringstream out;
+      out << "ProvLog (hdfs_provenance_log) Key (inode=" << mPK.mInodeId
+          << ", user=" << mPK.mUserId  << ", app=" << mPK.mAppId
+          << ", time=" +mPK.mLogicalTime << ")";
+      return out.str();
+    }
+  };
 
   ProvenanceLogTable() : DBWatchTable("hdfs_provenance_log") {
     addColumn("inode_id");
@@ -245,10 +263,20 @@ public:
     return row;
   }
 
-  void removeLogs(Ndb* connection, PKeys& pks) {
+  void removeLogs(Ndb* connection, std::vector<const LogHandler*>&
+      logrh) {
     start(connection);
-    for (PKeys::iterator it = pks.begin(); it != pks.end(); ++it) {
-      ProvenancePK pk = *it;
+    for (auto log : logrh) {
+      if(log == nullptr){
+        continue;
+      }
+      if(log->getType() != LogType::PROVLOG){
+        continue;
+      }
+
+      const ProvLogHandler* provlog =
+          static_cast<const ProvLogHandler*>(log);
+      ProvenancePK pk = provlog->mPK;
       AnyMap a;
       a[0] = pk.mInodeId;
       a[1] = pk.mUserId;
@@ -256,14 +284,32 @@ public:
       a[3] = pk.mLogicalTime;
       doDelete(a);
       LOG_DEBUG("Delete log row: App[" << pk.mAppId << "], INode["
-              << pk.mInodeId << "], User[" << pk.mUserId << "], Timestamp["
-              << pk.mLogicalTime << "]");
+      << pk.mInodeId << "], User[" << pk.mUserId << "], Timestamp["
+      << pk.mLogicalTime << "]");
     }
+    end();
+  }
+
+  void removeLog(Ndb* connection, ProvenancePK pk) {
+    start(connection);
+    AnyMap a;
+    a[0] = pk.mInodeId;
+    a[1] = pk.mUserId;
+    a[2] = pk.mAppId;
+    a[3] = pk.mLogicalTime;
+    doDelete(a);
+    LOG_DEBUG("Delete log row: App[" << pk.mAppId << "], INode["
+    << pk.mInodeId << "], User[" << pk.mUserId << "], Timestamp["
+    << pk.mLogicalTime << "]");
     end();
   }
 
   std::string getPKStr(ProvenanceRow row) override {
     return row.getPK().getPKStr();
+  }
+
+  LogHandler *getLogRemovalHandler(ProvenanceRow row) override {
+    return new ProvLogHandler(row.getPK());
   }
 };
 

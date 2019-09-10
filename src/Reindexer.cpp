@@ -130,8 +130,7 @@ void Reindexer::run() {
       dirs.pop();
       LOG_DEBUG("Copy Dir " << dirInodeId << " : remaining " << dirs.size() << " dirs");
       INodeVec inodes = inodesTable.getByParentId(conn, dirInodeId);
-      FSBulk bulk;
-      std::stringstream out;
+      eBulk bulk;
       for (INodeVec::iterator it = inodes.begin(); it != inodes.end(); ++it) {
         INodeRow inode = *it;
         if (inode.mIsDir) {
@@ -142,11 +141,10 @@ void Reindexer::run() {
           inodesWithXAttrs.insert(inode.mId);
         }
 
-        out << inode.to_create_json(datasetId, projectId) << std::endl;
+        bulk.push(Utils::getCurrentTime(), inode.to_create_json(datasetId, projectId));
         totalInodes++;
         datasetInodes++;
       }
-      bulk.mJSON = out.str();
       mElasticSearch->addData(bulk);
     }
     datasetStats.push_back(DatasetInodes(datasetId, datasetInodes));
@@ -170,12 +168,12 @@ void Reindexer::run() {
   for(ULSet::iterator it = inodesWithXAttrs.begin(); it != inodesWithXAttrs
   .end(); ++it){
     Int64 inodeId = *it;
-    FSBulk bulk;
+    eBulk bulk;
     XAttrVec xattrs = xAttrTable.getByInodeId(conn, inodeId);
     for(XAttrVec::iterator xit = xattrs.begin(); xit != xattrs.end(); ++xit){
       XAttrRow xAttrRow = *xit;
       if(xAttrRow.mInodeId == inodeId){
-        bulk.mJSON += xAttrRow.to_upsert_json();
+        bulk.push(Utils::getCurrentTime(), xAttrRow.to_upsert_json());
       }else{
         LOG_WARN("XAttrs doesn't exists for ["
                      << inodeId << "] - " << xAttrRow.to_string());
@@ -196,8 +194,8 @@ void Reindexer::run() {
     SchemabasedMetadataEntry entry = schemaBasedTable.currRow(metaConn);
     INodeRow inode = inodesTable.getByInodeId(conn, entry.mTuple.mInodeId);
     if (inode.mId == entry.mTuple.mInodeId) {
-      FSBulk bulk;
-      bulk.mJSON = entry.to_create_json();
+      eBulk bulk;
+      bulk.push(Utils::getCurrentTime(), entry.to_create_json());
       mElasticSearch->addData(bulk);
     } else{
       LOG_WARN("SchemaBased extended metadata for non existent inode ["

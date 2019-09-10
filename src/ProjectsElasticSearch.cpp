@@ -27,94 +27,85 @@ mStats(stats), mConn(conn), mStartTime(getCurrentTime()){
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
-void ProjectsElasticSearch::process(std::vector<FSBulk>* bulks) {
-  FSKeys keys;
+void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
+  std::vector<const LogHandler*> logRHandlers;
   std::string batch;
-  for (std::vector<FSBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
-    FSBulk bulk = *it;
-    batch.append(bulk.mJSON);
-    keys.mMetaPKs.insert(bulk.mPKs.mMetaPKs.begin(), bulk.mPKs.mMetaPKs.end());
-    keys.mFSPKs.insert(keys.mFSPKs.end(), bulk.mPKs.mFSPKs.begin(), bulk.mPKs.mFSPKs.end());
+  int fslogs=0, metalogs=0;
+  for (auto it = bulks->begin(); it != bulks->end();++it) {
+    eBulk bulk = *it;
+    batch += bulk.batchJSON();
+    logRHandlers.insert(logRHandlers.end(), bulk.mLogHandlers.begin(),
+        bulk.mLogHandlers.end());
+    fslogs += bulk.getCount(LogType::FSLOG);
+    metalogs += bulk.getCount(LogType::METALOG);
+    if(mStats){
+      mCounters.bulkReceived(bulk);
+    }
   }
 
-  //TODO: handle failures
+  ptime start_time = Utils::getCurrentTime();
   if (httpPostRequest(mElasticBulkAddr, batch)) {
-    if (!keys.mMetaPKs.empty()) {
-      MetadataLogTable().removeLogs(mConn.metadataConnection, keys.mMetaPKs);
+    if (metalogs > 0) {
+      MetadataLogTable().removeLogs(mConn.metadataConnection, logRHandlers);
     }
 
-    if (!keys.mFSPKs.empty()) {
-      FsMutationsLogTable().removeLogs(mConn.inodeConnection, keys.mFSPKs);
+    if (fslogs > 0) {
+      FsMutationsLogTable().removeLogs(mConn.inodeConnection, logRHandlers);
     }
     if (mStats) {
-      stats(bulks);
+      mCounters.bulksProcessed(start_time, bulks);
     }
   }else{
-    if(mStats){
-      mCounters.check();
-      mCounters.elasticSearchRequestFailed();
+    for (auto it = bulks->begin(); it != bulks->end();++it) {
+      eBulk bulk = *it;
+      for(eEvent event : bulk.mEvents){
+        if(!bulkRequest(event)){
+          LOG_FATAL("Failure while processing log : " << event.getLogHandler
+          ()->getDescription() << std::endl << event.getJSON());
+        }
+      }
+      if (mStats) {
+        mCounters.bulkProcessed(start_time, bulk);
+      }
     }
   }
 }
 
-void ProjectsElasticSearch::stats(std::vector<FSBulk>* bulks) {
-  ptime t_end = getCurrentTime();
 
-  ptime firstEventInCurrentBulksArrivalTime = bulks->at(0).mArrivalTimes.at(0);
-  int numOfEvents = 0;
-  for (std::vector<FSBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
-    FSBulk bulk = *it;
-    stats(bulk, t_end);
-    numOfEvents += bulk.mArrivalTimes.size();
+bool ProjectsElasticSearch::bulkRequest(eEvent& event) {
+  if (httpPostRequest(mElasticBulkAddr, event.getJSON())){
+    if(event.getLogHandler()->getType() == LogType::FSLOG){
+      event.getLogHandler()->removeLog(mConn.inodeConnection);
+    }else if(event.getLogHandler()->getType() ==
+             LogType::METALOG){
+      event.getLogHandler()->removeLog(mConn.metadataConnection);
+    }
+    return true;
   }
-
-  float bulksTotalTime = getTimeDiffInMilliseconds(firstEventInCurrentBulksArrivalTime, t_end);
-  float bulksEventPerSecond = (numOfEvents * 1000.0) / bulksTotalTime;
-
-  LOG_INFO("Bulks[" << numOfEvents << "/" << bulks->size() << "] took " << bulksTotalTime << " msec at Rate=" << bulksEventPerSecond << " events/second");
-
+  return false;
 }
 
-void ProjectsElasticSearch::stats(FSBulk bulk, ptime t_elastic_done) {
-  mCounters.check();
-
-  int size = bulk.mArrivalTimes.size();
-  float batch_time, wait_time, processing_time, ewait_time, total_time;
-  if (size > 0) {
-    batch_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[0], bulk.mArrivalTimes[size - 1]);
-    wait_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[size - 1], bulk.mStartProcessing);
-    total_time = getTimeDiffInMilliseconds(bulk.mArrivalTimes[0], t_elastic_done);
-  }
-
-  processing_time = getTimeDiffInMilliseconds(bulk.mStartProcessing, bulk.mEndProcessing);
-  ewait_time = getTimeDiffInMilliseconds(bulk.mEndProcessing, t_elastic_done);
-
-  for (int i = 0; i < size; i++) {
-    float total_time_per_event = getTimeDiffInMilliseconds(bulk.mArrivalTimes[i], t_elastic_done);
-    mCounters.addTotalTimePerEvent(total_time_per_event);
-  }
-
-  mCounters.processBulk(batch_time, wait_time, processing_time,
-      ewait_time, total_time, size);
-}
-
-bool ProjectsElasticSearch::addDoc(Int64 inodeId, std::string json) {
+void ProjectsElasticSearch::addDoc(Int64 inodeId, std::string json) {
   std::string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
-  return httpPostRequest(url, json);
+  if(!httpPostRequest(url, json)){
+    LOG_FATAL("Failure while add doc " << inodeId << std::endl << json);
+  }
 }
 
-bool ProjectsElasticSearch::deleteDoc(Int64 inodeId) {
+void ProjectsElasticSearch::deleteDoc(Int64 inodeId) {
   std::string url = getElasticSearchUrlOnDoc(mIndex, inodeId);
-  return httpDeleteRequest(url);
+  if(!httpDeleteRequest(url)){
+    LOG_FATAL("Failure while deleting doc " << inodeId);
+  }
 }
 
-bool ProjectsElasticSearch::addBulk(std::string json) {
-  return httpPostRequest(mElasticBulkAddr, json);
-}
-
-bool ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, std::string json) {
+void ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, std::string
+json) {
   std::string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
-  return httpPostRequest(url, json);
+  if(!httpPostRequest(url, json)){
+    LOG_FATAL("Failure while deleting schema for inode " << inodeId << std::endl
+    << json);
+  }
 }
 
 ProjectsElasticSearch::~ProjectsElasticSearch() {
@@ -124,60 +115,44 @@ std::string ProjectsElasticSearch::getMetrics() const {
   std::stringstream out;
   out << "up_seconds " << getTimeDiffInSeconds(mStartTime, getCurrentTime())
   << std::endl;
+  out << "epipe_elastic_queue_length " << mCurrentQueueSize << std::endl;
+
+  if(mElasticConnetionFailed) {
+    out << "epipe_elastic_connection_failed " << mElasticConnetionFailed <<
+    std::endl;
+    out << "epipe_elastic_connection_failed_since_seconds " <<
+    Utils::getTimeDiffInSeconds(mTimeElasticConnectionFailed,
+        Utils::getCurrentTime()) << std::endl;
+  }
   out << mCounters.getMetrics(mStartTime);
   return out.str();
 }
 
-bool ProjectsElasticSearch::addDataset(Int64 inodeId, std::string json) {
-  bool res = addDoc(inodeId, json);
+void ProjectsElasticSearch::addDataset(Int64 inodeId, std::string json) {
+ addDoc(inodeId, json);
   if(mStats){
-    mCounters.check();
-  }
-  if(res){
     mCounters.datasetAdded();
-  }else{
-    mCounters.elasticSearchRequestFailed();
   }
-
-  return res;
 }
 
-bool ProjectsElasticSearch::addProject(Int64 inodeId, std::string json) {
-  bool res = addDoc(inodeId, json);
+void ProjectsElasticSearch::addProject(Int64 inodeId, std::string json) {
+  addDoc(inodeId, json);
   if(mStats){
-    mCounters.check();
-  }
-  if(res){
     mCounters.projectAdded();
-  }else{
-    mCounters.elasticSearchRequestFailed();
   }
-  return res;
 }
 
-bool ProjectsElasticSearch::removeDataset(Int64 inodeId) {
-  bool res = deleteDoc(inodeId);
+void ProjectsElasticSearch::removeDataset(Int64 inodeId) {
+  deleteDoc(inodeId);
   if(mStats){
-    mCounters.check();
-  }
-  if(res){
     mCounters.datasetRemoved();
-  }else{
-    mCounters.elasticSearchRequestFailed();
   }
-  return res;
 }
 
-bool ProjectsElasticSearch::removeProject(Int64 inodeId) {
-  bool res = deleteDoc(inodeId);
+void ProjectsElasticSearch::removeProject(Int64 inodeId) {
+  deleteDoc(inodeId);
   if(mStats){
-    mCounters.check();
-  }
-  if(res){
     mCounters.projectRemoved();
-  }else{
-    mCounters.elasticSearchRequestFailed();
   }
-  return res;
 }
 

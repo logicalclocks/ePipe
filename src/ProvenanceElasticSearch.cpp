@@ -24,19 +24,20 @@ mIndex(index), mStats(stats), mConn(conn) {
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
-void ProvenanceElasticSearch::process(std::vector<PBulk>* bulks) {
-  PKeys keys;
+void ProvenanceElasticSearch::process(std::vector<eBulk>* bulks) {
   std::string batch;
-  for (std::vector<PBulk>::iterator it = bulks->begin(); it != bulks->end(); ++it) {
-    PBulk bulk = *it;
-    batch.append(bulk.mJSON);
-    keys.insert(keys.end(), bulk.mPKs.begin(), bulk.mPKs.end());
+  std::vector<const LogHandler*> logRHandlers;
+  for (auto it = bulks->begin(); it != bulks->end(); ++it) {
+    eBulk bulk = *it;
+    batch.append(bulk.batchJSON());
+    logRHandlers.insert(logRHandlers.end(), bulk.mLogHandlers.begin(),
+                        bulk.mLogHandlers.end());
   }
 
   //TODO: handle failures
   if (httpPostRequest(mElasticBulkAddr, batch)) {
-    if (!keys.empty()) {
-      ProvenanceLogTable().removeLogs(mConn, keys);
+    if (!logRHandlers.empty()) {
+      ProvenanceLogTable().removeLogs(mConn, logRHandlers);
     }
 
   }

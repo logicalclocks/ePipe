@@ -17,8 +17,8 @@
 #include "Batcher.h"
 
 Batcher::Batcher(const int time_to_wait, const int batch_size)
-: mBatchSize(batch_size), mTimerProcessing(false), mStarted(false),
-mFirstTimer(true), mTimeToWait(time_to_wait), mScheduleShutdown(false), mShutdownTimer(false) {
+: mBatchSize(batch_size), mTimerProcessing(false), mTimeToWait(time_to_wait),
+mStarted(false), mFirstTimer(true), mScheduleShutdown(false), mShutdownTimer(false) {
   srand(time(NULL));
 }
 
