@@ -130,6 +130,7 @@ std::string TimedRestBatcher::handleHttpRequestWithRetry(HttpVerb verb,
     boost::this_thread::sleep(boost::posix_time::milliseconds(mTimeToWait));
 
   } while(mElasticConnetionFailed);
+  return "";
 }
 
 TimedRestBatcher::~TimedRestBatcher() {
