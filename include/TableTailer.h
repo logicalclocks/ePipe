@@ -281,11 +281,11 @@ void TableTailer<TableRow>::waitForEvents() {
     }
 
     if (mStartProcessingDeferredEvents) {
-      if(mLastEpochInRecovery == 0){
+      if(mLastEpochInRecovery == 0 && !mEpochsDuringRecovery.empty()){
         std::vector<Uint64> orderedEpochs;
         orderedEpochs.insert(orderedEpochs.end(), mEpochsDuringRecovery.begin(), mEpochsDuringRecovery.end());
         std::sort(orderedEpochs.begin(), orderedEpochs.end());
-        mLastEpochInRecovery=orderedEpochs[orderedEpochs.size() -1];
+        mLastEpochInRecovery = orderedEpochs[orderedEpochs.size() - 1];
       }
 
       if(mNdbConnection->getHighestQueuedEpoch() > mLastEpochInRecovery) {
