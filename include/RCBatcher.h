@@ -21,18 +21,18 @@
 #include "RCTableTailer.h"
 #include "NdbDataReaders.h"
 
-template<typename DataRow, typename Conn, typename Keys>
+template<typename DataRow, typename Conn>
 class RCBatcher : public Batcher {
 public:
-  RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReaders<DataRow, Conn, Keys>* ndb_data_readers,
+  RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReaders<DataRow, Conn>* ndb_data_readers,
           const int time_before_issuing_ndb_reqs, const int batch_size);
 
-  RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReaders<DataRow, Conn, Keys>* ndb_data_readers,
+  RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReaders<DataRow, Conn>* ndb_data_readers,
           const int time_before_issuing_ndb_reqs, const int batch_size, const int queue_id);
 private:
 
   RCTableTailer<DataRow>* mTableTailer;
-  NdbDataReaders<DataRow, Conn, Keys>* mNdbDataReaders;
+  NdbDataReaders<DataRow, Conn>* mNdbDataReaders;
   const int mQueueId;
 
   int mCurrentCount;
@@ -42,24 +42,24 @@ private:
   virtual void processBatch();
 };
 
-template<typename DataRow, typename Conn, typename Keys>
-RCBatcher<DataRow, Conn, Keys>::RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReaders<DataRow, Conn, Keys>* ndb_data_readers,
+template<typename DataRow, typename Conn>
+RCBatcher<DataRow, Conn>::RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReaders<DataRow, Conn>* ndb_data_readers,
         const int time_before_issuing_ndb_reqs, const int batch_size)
 : Batcher(time_before_issuing_ndb_reqs, batch_size), mTableTailer(table_tailer), mNdbDataReaders(ndb_data_readers), mQueueId(SINGLE_QUEUE) {
   mCurrentCount = 0;
   mOperations = new std::vector<DataRow>();
 }
 
-template<typename DataRow, typename Conn, typename Keys>
-RCBatcher<DataRow, Conn, Keys>::RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReaders<DataRow, Conn, Keys>* ndb_data_readers,
+template<typename DataRow, typename Conn>
+RCBatcher<DataRow, Conn>::RCBatcher(RCTableTailer<DataRow>* table_tailer, NdbDataReaders<DataRow, Conn>* ndb_data_readers,
         const int time_before_issuing_ndb_reqs, const int batch_size, const int queue_id)
 : Batcher(time_before_issuing_ndb_reqs, batch_size), mTableTailer(table_tailer), mNdbDataReaders(ndb_data_readers), mQueueId(queue_id) {
   mCurrentCount = 0;
   mOperations = new std::vector<DataRow>();
 }
 
-template<typename DataRow, typename Conn, typename Keys>
-void RCBatcher<DataRow, Conn, Keys>::run() {
+template<typename DataRow, typename Conn>
+void RCBatcher<DataRow, Conn>::run() {
   while (true) {
     DataRow row = mTableTailer->consumeMultiQueue(mQueueId);
 
@@ -75,8 +75,8 @@ void RCBatcher<DataRow, Conn, Keys>::run() {
   }
 }
 
-template<typename DataRow, typename Conn, typename Keys>
-void RCBatcher<DataRow, Conn, Keys>::processBatch() {
+template<typename DataRow, typename Conn>
+void RCBatcher<DataRow, Conn>::processBatch() {
   if (mCurrentCount > 0) {
     LOG_DEBUG("process batch");
 

@@ -23,10 +23,9 @@
 
 using namespace Utils;
 
-template<typename Keys>
 class DataReaderOutHandler{
   public:
-    virtual void writeOutput(Bulk<Keys> out) = 0;
+    virtual void writeOutput(eBulk out) = 0;
 };
 
 template<typename Data>
@@ -42,11 +41,11 @@ struct IndexedDataBatch{
   }
 };
 
-template<typename Data, typename Conn, typename Keys>
+template<typename Data, typename Conn>
 class NdbDataReader {
 public:
   NdbDataReader(Conn connection, const bool hopsworks);
-  void start(int readerId, DataReaderOutHandler<Keys>* outHandler);
+  void start(int readerId, DataReaderOutHandler* outHandler);
   void processBatch(Uint64 index, std::vector<Data>* data_batch);
   virtual ~NdbDataReader();
   
@@ -54,37 +53,38 @@ protected:
   boost::thread mThread;
   Conn mNdbConnection;
   const bool mHopsworksEnalbed;
-  virtual void processAddedandDeleted(std::vector<Data>* data_batch, Bulk<Keys>& bulk) = 0;
+  virtual void processAddedandDeleted(std::vector<Data>* data_batch,
+      eBulk& bulk) = 0;
   
  private:
   int mReaderId;
-  DataReaderOutHandler<Keys>* mOutHandler;
+  DataReaderOutHandler* mOutHandler;
   ConcurrentQueue<IndexedDataBatch<Data> >* mBatchedQueue;
   void run();
 };
 
-template<typename Data, typename Conn, typename Keys>
-NdbDataReader<Data, Conn, Keys>::NdbDataReader(Conn connection, const bool hopsworks)
+template<typename Data, typename Conn>
+NdbDataReader<Data, Conn>::NdbDataReader(Conn connection, const bool hopsworks)
 : mNdbConnection(connection), mHopsworksEnalbed(hopsworks) {
   mBatchedQueue = new ConcurrentQueue<IndexedDataBatch<Data> >();
 }
 
-template<typename Data, typename Conn, typename Keys>
-void NdbDataReader<Data, Conn, Keys>::start(int readerId, DataReaderOutHandler<Keys>* outHandler) {
+template<typename Data, typename Conn>
+void NdbDataReader<Data, Conn>::start(int readerId, DataReaderOutHandler* outHandler) {
   mOutHandler = outHandler;
   mThread = boost::thread(&NdbDataReader::run, this);
   mReaderId = readerId;
   LOG_DEBUG("Reader-" << readerId << " created with thread "  << mThread.get_id());
 }
 
-template<typename Data, typename Conn, typename Keys>
-void NdbDataReader<Data, Conn, Keys>::run() {
+template<typename Data, typename Conn>
+void NdbDataReader<Data, Conn>::run() {
   while (true) {
     IndexedDataBatch<Data> batch;
     mBatchedQueue->wait_and_pop(batch);
 
     if (!batch.mDataBatch->empty()) {
-      Bulk<Keys> bulk;
+      eBulk bulk;
 
       bulk.mProcessingIndex = batch.mIndex;
       
@@ -94,8 +94,8 @@ void NdbDataReader<Data, Conn, Keys>::run() {
       
       bulk.mEndProcessing = getCurrentTime();
 
-      sort(bulk.mArrivalTimes.begin(), bulk.mArrivalTimes.end());
-      
+      bulk.sortArrivalTimes();
+
       mOutHandler->writeOutput(bulk);
       
       LOG_DEBUG("Reader-" << mReaderId << " processing batch " << batch.mIndex << " of size [" << batch.mDataBatch->size() << "] took "
@@ -105,14 +105,14 @@ void NdbDataReader<Data, Conn, Keys>::run() {
   }
 }
 
-template<typename Data, typename Conn, typename Keys>
-void NdbDataReader<Data, Conn, Keys>::processBatch(Uint64 index, std::vector<Data>* data_batch) {
+template<typename Data, typename Conn>
+void NdbDataReader<Data, Conn>::processBatch(Uint64 index, std::vector<Data>* data_batch) {
   mBatchedQueue->push(IndexedDataBatch<Data>(index, data_batch));
   LOG_DEBUG("Reader-" << mReaderId << ": Process batch " << index);
 }
 
-template<typename Data, typename Conn, typename Keys>
-NdbDataReader<Data, Conn, Keys>::~NdbDataReader() {
+template<typename Data, typename Conn>
+NdbDataReader<Data, Conn>::~NdbDataReader() {
 
 }
 

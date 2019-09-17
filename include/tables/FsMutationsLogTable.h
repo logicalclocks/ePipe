@@ -193,6 +193,24 @@ typedef boost::tuple<std::vector<Uint64>*, FsMutationRowsByGCI* > FsMutationRows
 
 class FsMutationsLogTable : public DBWatchTable<FsMutationRow> {
 public:
+  struct FSLogHandler : public LogHandler{
+    FsMutationPK mPK;
+
+    FSLogHandler(FsMutationPK pk) : mPK(pk) {}
+    void removeLog(Ndb* connection) const override {
+      FsMutationsLogTable().removeLog(connection, mPK);
+    }
+    LogType getType() const override {
+      return LogType::FSLOG;
+    }
+
+    std::string getDescription() const override {
+      std::stringstream out;
+      out << "FsLog (hdfs_metadata_log) Key (inode=" << mPK.mInodeId
+      << ", ds=" << mPK.mDatasetINodeId << ", time=" << mPK.mLogicalTime << ")";
+      return out.str();
+    }
+  };
 
   FsMutationsLogTable() : DBWatchTable("hdfs_metadata_log") {
     addColumn("dataset_id");
@@ -218,10 +236,21 @@ public:
     return row;
   }
 
-  void removeLogs(Ndb* connection, FPK& pks) {
+  void removeLogs(Ndb* connection, std::vector<const LogHandler*>&
+      logrh) {
     start(connection);
-    for (FPK::iterator it = pks.begin(); it != pks.end(); ++it) {
-      FsMutationPK pk = *it;
+    for (auto log : logrh) {
+      if(log == nullptr){
+        continue;
+      }
+      if(log->getType() != LogType::FSLOG){
+        continue;
+      }
+
+      const FSLogHandler* fslog = static_cast<const FSLogHandler*>
+          (log);
+
+      FsMutationPK pk = fslog->mPK;
       AnyMap a;
       a[0] = pk.mDatasetINodeId;
       a[1] = pk.mInodeId;
@@ -233,11 +262,26 @@ public:
     end();
   }
 
+  void removeLog(Ndb* connection, FsMutationPK pk) {
+    start(connection);
+    AnyMap a;
+    a[0] = pk.mDatasetINodeId;
+    a[1] = pk.mInodeId;
+    a[2] = pk.mLogicalTime;
+    doDelete(a);
+    LOG_DEBUG("Delete log row: Dataset[" << pk.mDatasetINodeId << "], INode["
+    << pk.mInodeId << "], Timestamp[" << pk.mLogicalTime << "]");
+    end();
+  }
+
   std::string getPKStr(FsMutationRow row) override {
     return row.getPKStr();
   }
-};
 
+  LogHandler* getLogRemovalHandler(FsMutationRow row) override {
+    return new FSLogHandler(row.getPK());
+  }
+};
 
 #endif /* FSMUTATIONSLOGTABLE_H */
 

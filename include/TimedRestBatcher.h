@@ -22,153 +22,158 @@
 #include "ConcurrentQueue.h"
 #include "tables/DBTableBase.h"
 #include "http/HttpClient.h"
+#include "tables/DBWatchTable.h"
 
-using namespace Utils;
+struct eEvent{
+  eEvent(const LogHandler* ptr, const ptime arrivalTime, const
+  std::string json) : mLogHandler(ptr), mArrivalTime(arrivalTime){
+    mJSON = json + "\n";
+  }
 
-template<typename Keys>
-struct Bulk {
-  Uint64 mProcessingIndex;
+  const LogHandler* getLogHandler(){
+    return mLogHandler;
+  };
+
+  const ptime& getArrivalTime(){
+    return mArrivalTime;
+  }
+
+  const std::string& getJSON(){
+    return mJSON;
+  }
+
+private:
+  const LogHandler* mLogHandler;
+  ptime mArrivalTime;
   std::string mJSON;
-  std::vector<ptime> mArrivalTimes;
-  ptime mStartProcessing;
-  ptime mEndProcessing;
-  Keys mPKs;
 };
 
-template<typename Keys>
+struct eBulk {
+  Uint64 mProcessingIndex;
+  std::deque<eEvent> mEvents;
+  Uint32 mJSONLength;
+  ptime mStartProcessing;
+  ptime mEndProcessing;
+
+  std::vector<const LogHandler*> mLogHandlers;
+
+  void push(const ptime arrivaltime, const std::string json){
+    push(nullptr, arrivaltime, json);
+  }
+
+  void push(const LogHandler* lh, const ptime arrivaltime, const
+  std::string json){
+    eEvent e(lh, arrivaltime, json);
+    mEvents.push_back(e);
+    mJSONLength += e.getJSON().length();
+    mArrivalTimes.push_back(e.getArrivalTime());
+    mLogHandlers.push_back(e.getLogHandler());
+    if(mLogHandlerCounters.find(e.getLogHandler()->getType()) ==
+       mLogHandlerCounters.end()){
+      mLogHandlerCounters[e.getLogHandler()->getType()] = 1;
+    }else{
+      mLogHandlerCounters[e.getLogHandler()->getType()] += 1;
+    }
+  }
+
+  std::string batchJSON(){
+    std::string out;
+    for(auto e : mEvents){
+      out += e.getJSON();
+    }
+    out += "\n";
+    return out;
+  }
+
+  int getCount(LogType type){
+    if(mLogHandlerCounters.find(type) ==
+       mLogHandlerCounters.end()){
+      return 0;
+    }
+    return mLogHandlerCounters[type];
+  }
+
+  void sortArrivalTimes(){
+    sort(mArrivalTimes.begin(), mArrivalTimes.end());
+  }
+
+  ptime getFirstArrivalTime() const{
+    return mArrivalTimes[0];
+  }
+
+  ptime getLastArrivalTime() const{
+    return mArrivalTimes[mArrivalTimes.size() - 1];
+  }
+
+  int getBatchTimeMS() const{
+    return Utils::getTimeDiffInMilliseconds(getFirstArrivalTime(),
+        getLastArrivalTime());
+  }
+
+  int getWaitTimeMS() const{
+    return Utils::getTimeDiffInMilliseconds(getLastArrivalTime(),
+                                            mStartProcessing);
+  }
+
+  int getProcessingTimeMS() const{
+    return Utils::getTimeDiffInMilliseconds(mStartProcessing,
+                                            mEndProcessing);
+  }
+
+  int geteWaitTimeMS(ptime done) const{
+    return Utils::getTimeDiffInMilliseconds(mEndProcessing, done);
+  }
+
+  int getTotalTimeMS(ptime done) const{
+    return Utils::getTimeDiffInMilliseconds(getFirstArrivalTime(), done);
+  }
+
+private:
+  std::vector<ptime> mArrivalTimes;
+  boost::unordered_map<LogType, int> mLogHandlerCounters;
+
+};
+
 class TimedRestBatcher : public Batcher {
 public:
   TimedRestBatcher(std::string endpoint_addr, int time_to_wait_before_inserting, int bulk_size);
 
-  void addData(Bulk<Keys> data);
+  void addData(eBulk data);
   
   void shutdown();
   
   virtual ~TimedRestBatcher();
 
 protected:
+  bool mElasticConnetionFailed;
+  ptime mTimeElasticConnectionFailed;
+  Uint32 mCurrentQueueSize;
 
   bool httpPostRequest(std::string requestUrl, std::string json);
   bool httpDeleteRequest(std::string requestUrl);
 
-  virtual void process(std::vector<Bulk<Keys> >* data) = 0;
+  virtual void process(std::vector<eBulk>* data) = 0;
   virtual bool parseResponse(std::string response) = 0;
 
 private:
-  ConcurrentQueue<Bulk<Keys> > mQueue;
-  std::vector<Bulk<Keys> >* mToProcess;
+  ConcurrentQueue<eBulk> mQueue;
+  std::vector<eBulk>* mToProcess;
   int mToProcessLength;
   boost::mutex mLock;
   bool mShutdown;
   HttpClient mHttpClient;
+  int mToProcessEvents;
 
   virtual void run();
   virtual void processBatch();
+
+  enum HttpVerb{
+    POST,
+    DELETE
+  };
+
+  std::string  handleHttpRequestWithRetry(HttpVerb verb,std::string
+  requestUrl, std::string json);
+
 };
-
-template<typename Keys>
-TimedRestBatcher<Keys>::TimedRestBatcher(std::string endpoint_addr, int time_to_wait_before_inserting, int bulk_size)
-: Batcher(time_to_wait_before_inserting, bulk_size), mToProcessLength(0), mHttpClient(endpoint_addr){
-  mToProcess = new std::vector<Bulk<Keys> >();
-  mShutdown = false;
-}
-
-template<typename Keys>
-void TimedRestBatcher<Keys>::addData(Bulk<Keys> data) {
-  LOG_DEBUG("Add Bulk JSON:" << std::endl << data.mJSON << std::endl);
-  mQueue.push(data);
-}
-
-template<typename Keys>
-void TimedRestBatcher<Keys>::shutdown(){
-  LOG_INFO("Shutting down timed rest batcher...");
-  mShutdown = true;
-}
-
-template<typename Keys>
-void TimedRestBatcher<Keys>::run() {
-  while (true) {
-    if(mShutdown && mQueue.empty()){
-      LOG_INFO("Shutdown timed rest batcher.");
-      Batcher::shutdown();
-      break;
-    }
-    Bulk<Keys> msg;
-    mQueue.wait_and_pop(msg);
-    
-    mLock.lock();
-    mToProcess->push_back(msg);
-    mToProcessLength += msg.mJSON.length();
-    mLock.unlock();
-
-    if (mToProcessLength >= mBatchSize && !mTimerProcessing) {
-      processBatch();
-    }
-  }
-}
-
-template<typename Keys>
-void TimedRestBatcher<Keys>::processBatch() {
-  if (mToProcessLength > 0) {
-    LOG_DEBUG("Process Bulk JSONs [" << mToProcessLength << "]");
-
-    mLock.lock();
-    std::vector<Bulk<Keys> >* data = mToProcess;
-    mToProcess = new std::vector<Bulk<Keys> >;
-    mToProcessLength = 0;
-    mLock.unlock();
-
-    process(data);
-
-    delete data;
-  }
-  
-  if(mShutdown){
-    LOG_INFO("Shutting down, remaining " << mQueue.size() << " bulks to process");
-    if(mQueue.empty()){
-      mQueue.push(Bulk<Keys>());
-      Batcher::shutdown();
-    }
-  }
-}
-
-template<typename Keys>
-bool TimedRestBatcher<Keys>::httpPostRequest(std::string requestUrl, std::string json) {
-  ptime t1 = Utils::getCurrentTime();
-  HttpResponse res = mHttpClient.post(requestUrl, json);
-
-  if(!res.mSuccess){
-    //TODO: handle different failure scenarios
-    return false;
-  }
-
-  bool success = parseResponse(res.mResponse);
-  ptime t2 = Utils::getCurrentTime();
-  LOG_INFO("POST " << requestUrl << " [" << json.length() << "]  took " <<
-  Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
-  return success;
-}
-
-template<typename Keys>
-bool TimedRestBatcher<Keys>::httpDeleteRequest(std::string requestUrl) {
-  ptime t1 = Utils::getCurrentTime();
-  HttpResponse res = mHttpClient.delete_(requestUrl);
-
-  if (!res.mSuccess) {
-    //TODO: handle different failure scenarios
-    return false;
-  }
-
-  bool success = parseResponse(res.mResponse);
-  ptime t2 = Utils::getCurrentTime();
-  LOG_INFO("DELETE " << requestUrl << " took " <<
-                     Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
-  return success;
-}
-
-template<typename Keys>
-TimedRestBatcher<Keys>::~TimedRestBatcher() {
-
-}
-
 #endif //TIMEDRESTBATCHER_H

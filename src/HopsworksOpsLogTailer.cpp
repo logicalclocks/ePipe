@@ -16,133 +16,117 @@
 
 #include "HopsworksOpsLogTailer.h"
 
-using namespace Utils;
 
-HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb* ndb, Ndb* ndbRecovery, const
-int poll_maxTimeToWait, const Barrier barrier, ProjectsElasticSearch*
+HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb *ndb, Ndb *ndbRecovery, const
+int poll_maxTimeToWait, const Barrier barrier, ProjectsElasticSearch *
 elastic, const int lru_cap)
-: TableTailer(ndb, ndbRecovery, new HopsworksOpsLogTable(), poll_maxTimeToWait,
-    barrier), mElasticSearch(elastic), mDatasetTable(lru_cap), mTemplateTable(lru_cap) {
+    : TableTailer(ndb, ndbRecovery, new HopsworksOpsLogTable(),
+                  poll_maxTimeToWait,
+                  barrier), mElasticSearch(elastic), mDatasetTable(lru_cap),
+      mTemplateTable(lru_cap) {
 }
 
-void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, HopsworksOpRow pre, HopsworksOpRow row) {
+void
+HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType,
+                                   HopsworksOpRow pre, HopsworksOpRow row) {
   LOG_DEBUG(row.to_string());
-  bool success = false;
   switch (row.mOpOn) {
     case Dataset:
-      success = handleDataset(row.mOpId, row.mOpType, row.mInodeId, row.mProjectId);
+      handleDataset(row.mOpId, row.mOpType, row.mInodeId, row.mProjectId);
       break;
     case Project:
-      success = handleProject(row.mOpId, row.mInodeId, row.mOpType);
+      handleProject(row.mOpId, row.mInodeId, row.mOpType);
       break;
     case Schema:
-      success = handleSchema(row.mOpId, row.mOpType, row.mInodeId);
+      handleSchema(row.mOpId, row.mOpType, row.mInodeId);
       break;
   }
 
-  if (success) {
-    mHopsworksLogTable.removeLog(mNdbConnection, row.mId);
-  }
+  //Elastic should fail if it didn't succeeded to perform the request
+  mHopsworksLogTable.removeLog(mNdbConnection, row.mId);
 }
 
-bool HopsworksOpsLogTailer::handleDataset(int opId, HopsworksOpType opType,
-        Int64 datasetINodeId, int projectId) {
+void HopsworksOpsLogTailer::handleDataset(int opId, HopsworksOpType opType,
+                                          Int64 datasetINodeId, int projectId) {
   if (opType == HopsworksDelete) {
-    return handleDeleteDataset(datasetINodeId);
+    handleDeleteDataset(datasetINodeId);
   } else {
-    return handleUpsertDataset(opId, opType, datasetINodeId, projectId);
+    handleUpsertDataset(opId, opType, datasetINodeId, projectId);
   }
 }
 
-bool HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType opType, Int64 datasetINodeId, int projectId) {
+void HopsworksOpsLogTailer::handleUpsertDataset(int opId, HopsworksOpType
+opType, Int64 datasetINodeId, int projectId) {
   DatasetRow row = mDatasetTable.get(mNdbConnection, opId);
-  bool success = mElasticSearch->addDataset(datasetINodeId, row.to_create_json());
-  if (success) {
-    switch (opType) {
-      case HopsworksAdd:
-        LOG_INFO("Add Dataset[" << datasetINodeId << "]: Succeeded");
-        break;
-      case HopsworksUpdate:
-        LOG_INFO("Update Dataset[" << datasetINodeId << "]: Succeeded");
-        break;
-    }
+  mElasticSearch->addDataset(datasetINodeId, row.to_create_json());
+  switch (opType) {
+    case HopsworksAdd:
+      LOG_INFO("Add Dataset[" << datasetINodeId << "]: Succeeded");
+      break;
+    case HopsworksUpdate:
+      LOG_INFO("Update Dataset[" << datasetINodeId << "]: Succeeded");
+      break;
   }
-
-  return success;
 }
 
-bool HopsworksOpsLogTailer::handleDeleteDataset(Int64 datasetINodeId) {
-  //TODO: handle failures in elastic search
-  bool success = mElasticSearch->removeDataset(datasetINodeId);
-  if (success) {
-    LOG_INFO("Delete Dataset[" << datasetINodeId << "] Succeeded");
-  }
-
+void HopsworksOpsLogTailer::handleDeleteDataset(Int64 datasetINodeId) {
+  mElasticSearch->removeDataset(datasetINodeId);
+  LOG_INFO("Delete Dataset[" << datasetINodeId << "] Succeeded");
   mDatasetTable.removeDatasetFromCache(datasetINodeId);
-  return success;
 }
 
-bool HopsworksOpsLogTailer::handleProject(int projectId, Int64 inodeId, HopsworksOpType opType) {
+void HopsworksOpsLogTailer::handleProject(int projectId, Int64 inodeId,
+                                          HopsworksOpType opType) {
   if (opType == HopsworksDelete) {
-    return handleDeleteProject(projectId, inodeId);
+    handleDeleteProject(projectId, inodeId);
   } else {
-    return handleUpsertProject(projectId, inodeId, opType);
+    handleUpsertProject(projectId, inodeId, opType);
   }
 }
 
-bool HopsworksOpsLogTailer::handleDeleteProject(int projectId, Int64
+void HopsworksOpsLogTailer::handleDeleteProject(int projectId, Int64
 projectINodeId) {
-  //TODO: handle failures in elastic search
-  bool success = mElasticSearch->removeProject(projectINodeId);
-  if (success) {
-    LOG_INFO("Delete Project[" << projectId << ", " << projectINodeId
-                               << "] Succeeded");
-  }
-
+  mElasticSearch->removeProject(projectINodeId);
+  LOG_INFO("Delete Project[" << projectId << ", " << projectINodeId
+                             << "] Succeeded");
   mDatasetTable.removeProjectFromCache(projectId);
-  return success;
 }
 
-bool HopsworksOpsLogTailer::handleUpsertProject(int projectId, Int64 inodeId, HopsworksOpType opType) {
-
+void HopsworksOpsLogTailer::handleUpsertProject(int projectId, Int64 inodeId,
+                                                HopsworksOpType opType) {
   ProjectRow row = mProjectTable.get(mNdbConnection, projectId);
-  bool success = mElasticSearch->addProject(inodeId, row.to_create_json());
-  if (success) {
-    switch (opType) {
-      case HopsworksAdd:
-        LOG_INFO("Add Project[" << projectId << "]: Succeeded");
-        break;
-      case HopsworksUpdate:
-        LOG_INFO("Update Project[" << projectId << "]: Succeeded");
-        break;
-    }
+  mElasticSearch->addProject(inodeId, row.to_create_json());
+  switch (opType) {
+    case HopsworksAdd:
+      LOG_INFO("Add Project[" << projectId << "]: Succeeded");
+      break;
+    case HopsworksUpdate:
+      LOG_INFO("Update Project[" << projectId << "]: Succeeded");
+      break;
   }
-
-  return success;
-
 }
 
-bool HopsworksOpsLogTailer::handleSchema(int schemaId, HopsworksOpType opType, Int64 inodeId) {
+void HopsworksOpsLogTailer::handleSchema(int schemaId, HopsworksOpType opType,
+                                         Int64 inodeId) {
   if (opType == HopsworksDelete) {
-    return handleSchemaDelete(schemaId, inodeId);
+    handleSchemaDelete(schemaId, inodeId);
   } else {
-    LOG_ERROR("Unsupported Schema Operation [" << HopsworksOpTypeToStr(opType) << "]. Only Delete is supported.");
-    return true;
+    LOG_ERROR("Unsupported Schema Operation [" << HopsworksOpTypeToStr(opType)
+                                               << "]. Only Delete is supported.");
   }
 }
 
-bool HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, Int64 inodeId) {
-  boost::optional<TemplateRow> tmplate_ptr = mTemplateTable.get(mNdbConnection, schemaId);
+void HopsworksOpsLogTailer::handleSchemaDelete(int schemaId, Int64 inodeId) {
+  boost::optional<TemplateRow> tmplate_ptr = mTemplateTable.get(mNdbConnection,
+                                                                schemaId);
   if (tmplate_ptr) {
     TemplateRow tmplate = tmplate_ptr.get();
-    bool success = mElasticSearch->deleteSchemaForINode(inodeId, tmplate.to_delete_json());
-    if (success) {
-      LOG_INFO("Delete Schema/Template [" << schemaId << ", " << tmplate.mName << "] for INode [" << inodeId << "] : Succeeded");
-    }
-    return success;
+    mElasticSearch->deleteSchemaForINode(inodeId, tmplate.to_delete_json());
+    LOG_INFO("Delete Schema/Template [" << schemaId << ", " << tmplate.mName
+                                        << "] for INode [" << inodeId
+                                        << "] : Succeeded");
   } else {
     LOG_WARN("Schema/Template [" << schemaId << "] does not exist");
-    return true;
   }
 }
 

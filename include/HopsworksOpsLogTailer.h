@@ -35,16 +35,16 @@ private:
   HopsworksOpsLogTable mHopsworksLogTable;
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, HopsworksOpRow pre, HopsworksOpRow row);
 
-  bool handleDataset(int opId, HopsworksOpType opType, Int64 datasetINodeId, int projectId);
-  bool handleUpsertDataset(int opId, HopsworksOpType opType, Int64 datasetINodeId, int projectId);
-  bool handleDeleteDataset(Int64 datasetINodeId);
+  void handleDataset(int opId, HopsworksOpType opType, Int64 datasetINodeId, int projectId);
+  void handleUpsertDataset(int opId, HopsworksOpType opType, Int64 datasetINodeId, int projectId);
+  void handleDeleteDataset(Int64 datasetINodeId);
 
-  bool handleProject(int projectId, Int64 inodeId, HopsworksOpType opType);
-  bool handleDeleteProject(int projectId, Int64 projectINodeId);
-  bool handleUpsertProject(int projectId, Int64 inodeId, HopsworksOpType opType);
+  void handleProject(int projectId, Int64 inodeId, HopsworksOpType opType);
+  void handleDeleteProject(int projectId, Int64 projectINodeId);
+  void handleUpsertProject(int projectId, Int64 inodeId, HopsworksOpType opType);
 
-  bool handleSchema(int schemaId, HopsworksOpType opType, Int64 inodeId);
-  bool handleSchemaDelete(int schemaId, Int64 inodeId);
+  void handleSchema(int schemaId, HopsworksOpType opType, Int64 inodeId);
+  void handleSchemaDelete(int schemaId, Int64 inodeId);
 
   ProjectsElasticSearch* mElasticSearch;
 

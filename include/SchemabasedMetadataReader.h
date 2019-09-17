@@ -22,19 +22,21 @@
 #include <boost/lexical_cast.hpp>
 #include "ProjectsElasticSearch.h"
 #include "tables/SchemabasedMetadataTable.h"
+#include "tables/MetadataLogTable.h"
 
-class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn, FSKeys> {
+class SchemabasedMetadataReader : public NdbDataReader<MetadataLogEntry, MConn> {
 public:
   SchemabasedMetadataReader(MConn connection, const bool hopsworks, const int lru_cap);
   virtual ~SchemabasedMetadataReader();
 private:
-  virtual void processAddedandDeleted(MetaQ* data_batch, FSBulk& bulk);
-  void createJSON(SchemabasedMq* data_batch, FSBulk& bulk);
+  virtual void processAddedandDeleted(MetaQ* data_batch, eBulk& bulk);
+  void createJSON(SchemabasedMq* data_batch, eBulk& bulk);
 
   SchemabasedMetadataTable mSchemabasedTable;
+  MetadataLogTable mMetadataLogTable;
 };
 
-class SchemabasedMetadataReaders : public NdbDataReaders<MetadataLogEntry, MConn, FSKeys>{
+class SchemabasedMetadataReaders : public NdbDataReaders<MetadataLogEntry, MConn>{
   public:
     SchemabasedMetadataReaders(MConn* connections, int num_readers, const bool hopsworks,
           ProjectsElasticSearch* elastic, const int lru_cap) : NdbDataReaders(elastic){

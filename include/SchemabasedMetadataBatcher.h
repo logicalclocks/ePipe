@@ -20,12 +20,12 @@
 #include "MetadataLogTailer.h"
 #include "SchemabasedMetadataReader.h"
 
-class SchemabasedMetadataBatcher : public RCBatcher<MetadataLogEntry, MConn, FSKeys> {
+class SchemabasedMetadataBatcher : public RCBatcher<MetadataLogEntry, MConn> {
 public:
 
   SchemabasedMetadataBatcher(MetadataLogTailer* table_tailer, SchemabasedMetadataReaders* data_reader,
           const int time_before_issuing_ndb_reqs, const int batch_size)
-  : RCBatcher<MetadataLogEntry, MConn, FSKeys>(table_tailer, data_reader,
+  : RCBatcher<MetadataLogEntry, MConn>(table_tailer, data_reader,
   time_before_issuing_ndb_reqs, batch_size) {
 
   }

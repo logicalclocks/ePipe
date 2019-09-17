@@ -18,34 +18,28 @@
 
 SchemabasedMetadataReader::SchemabasedMetadataReader(MConn connection,
         const bool hopsworks, const int lru_cap)
-: NdbDataReader<MetadataLogEntry, MConn, FSKeys>(connection, hopsworks)
+: NdbDataReader<MetadataLogEntry, MConn>(connection, hopsworks)
 , mSchemabasedTable(lru_cap) {
 
 }
 
-void SchemabasedMetadataReader::processAddedandDeleted(MetaQ* data_batch, FSBulk& bulk) {
+void SchemabasedMetadataReader::processAddedandDeleted(MetaQ* data_batch,
+    eBulk& bulk) {
 
   SchemabasedMq* data_queue = mSchemabasedTable.get(mNdbConnection.metadataConnection,
-          data_batch, bulk.mPKs.mMetaPKs);
+          data_batch);
 
   createJSON(data_queue, bulk);
 }
 
-void SchemabasedMetadataReader::createJSON(SchemabasedMq* data_batch, FSBulk& bulk) {
-
-  std::vector<ptime> arrivalTimes(data_batch->size());
-  std::stringstream out;
-  int i = 0;
-  for (SchemabasedMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it, i++) {
+void SchemabasedMetadataReader::createJSON(SchemabasedMq* data_batch, eBulk&
+bulk) {
+  for (SchemabasedMq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
     SchemabasedMetadataEntry entry = *it;
     LOG_TRACE("create JSON for " << entry.to_string());
-    arrivalTimes[i] = entry.mEventCreationTime;
-
-    out << entry.to_create_json() << std::endl;
+    bulk.push(mMetadataLogTable.getLogRemovalHandler(entry
+    .getMetadataLogEntry()), entry.mEventCreationTime, entry.to_create_json());
   }
-
-  bulk.mArrivalTimes = arrivalTimes;
-  bulk.mJSON = out.str();
 }
 
 SchemabasedMetadataReader::~SchemabasedMetadataReader() {

@@ -37,12 +37,12 @@ protected:
 
   const int mBatchSize;
   bool mTimerProcessing;
+  const int mTimeToWait;
 
 private:
   boost::thread mThread;
   bool mStarted;
-  bool mFirstTimer;  
-  const int mTimeToWait;
+  bool mFirstTimer;
   bool mScheduleShutdown;
   bool mShutdownTimer;
   boost::thread mTimerThread;

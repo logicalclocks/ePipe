@@ -20,21 +20,12 @@ ProvenanceDataReader::ProvenanceDataReader(SConn connection, const bool hopswork
 : NdbDataReader(connection, hopsworks) {
 }
 
-void ProvenanceDataReader::processAddedandDeleted(Pq* data_batch, PBulk& bulk) {
-  std::vector<ptime> arrivalTimes(data_batch->size());
-  std::stringstream out;
-  int i = 0;
-  for (Pq::iterator it = data_batch->begin(); it != data_batch->end(); ++it, i++) {
+void ProvenanceDataReader::processAddedandDeleted(Pq* data_batch, eBulk& bulk) {
+  for (Pq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
     ProvenanceRow row = *it;
-    arrivalTimes[i] = row.mEventCreationTime;
-    ProvenancePK rowPK = row.getPK();
-    bulk.mPKs.push_back(rowPK);
-
-    out << row.to_create_json() << std::endl;
+    bulk.push(mProvenanceLogTable.getLogRemovalHandler(row), row
+    .mEventCreationTime, row.to_create_json());
   }
-
-  bulk.mArrivalTimes = arrivalTimes;
-  bulk.mJSON = out.str();
 }
 
 ProvenanceDataReader::~ProvenanceDataReader() {

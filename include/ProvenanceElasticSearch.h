@@ -20,9 +20,8 @@
 #include "ElasticSearchBase.h"
 #include "ProvenanceTableTailer.h"
 
-typedef Bulk<PKeys> PBulk;
 
-class ProvenanceElasticSearch : public ElasticSearchBase<PKeys> {
+class ProvenanceElasticSearch : public ElasticSearchBase {
 public:
   ProvenanceElasticSearch(std::string elastic_addr, std::string index,
           int time_to_wait_before_inserting, int bulk_size, const bool stats,
@@ -36,7 +35,7 @@ private:
 
   SConn mConn;
 
-  virtual void process(std::vector<PBulk>* bulks);
+  virtual void process(std::vector<eBulk>* bulks);
 
 };
 
