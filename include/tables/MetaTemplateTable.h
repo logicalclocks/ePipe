@@ -32,8 +32,10 @@ struct TemplateRow {
     docWriter.String("script");
 
     std::stringstream scriptStream;
+    scriptStream << "if(ctx._source.containsKey(\"" << XATTR_FIELD_NAME << "\")){ ";
     scriptStream << "if(ctx._source." << XATTR_FIELD_NAME << ".containsKey(\"" << mName << "\")){ ";
     scriptStream << "ctx._source[\"" << XATTR_FIELD_NAME << "\"].remove(\""<< mName << "\");";
+    scriptStream << "} else{ ctx.op=\"noop\";}";
     scriptStream << "} else{ ctx.op=\"noop\";}";
     docWriter.String(scriptStream.str().c_str());
 
