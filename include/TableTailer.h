@@ -55,7 +55,7 @@ private:
   const char* getEventName(NdbDictionary::Event::TableEvent event);
   Uint64 getGCI(Uint64 epoch);
   void checkIfBarrierReached(Uint64 epoch);
-  void deferEvent(Uint64 epoch, NdbDictionary::Event::TableEvent event,
+  bool deferEvent(Uint64 epoch, NdbDictionary::Event::TableEvent event,
       TableRow pre, TableRow row);
   void processEvent(Uint64 epoch, NdbDictionary::Event::TableEvent event,
       TableRow pre, TableRow row);
@@ -86,6 +86,7 @@ private:
   };
 
   bool mStartProcessingDeferredEvents;
+  Uint64 mLastEpochInRecovery;
 
   boost::unordered_map<Uint64, std::queue<DeferredEvent>> mEventsDuringRecovery;
   boost::unordered_set<std::string> mEventsPKDuringRecovery;
@@ -98,7 +99,8 @@ TableTailer<TableRow>::TableTailer(Ndb* ndb, Ndb* recoveryNdb, DBWatchTable<Tabl
 mEventName(Utils::concat("tail-", table->getName())), mTable(table),
 mPollMaxTimeToWait(poll_maxTimeToWait), mBarrier(barrier),
 mLastReportedBarrier(0), mNdbRecoveryConnection(recoveryNdb), mUnderRecovery(false),
-    mFirstEpochToWatch(0), mStartProcessingDeferredEvents(false) {
+    mFirstEpochToWatch(0), mStartProcessingDeferredEvents(false),
+    mLastEpochInRecovery(0) {
 }
 
 template<typename TableRow>
@@ -152,9 +154,7 @@ void TableTailer<TableRow>::recover() {
       while(!rows->empty()){
         TableRow row = rows->front();
         //event is not in our deferred queue
-        if(mEventsPKDuringRecovery.find(mTable->getPKStr(row)) ==
-        mEventsPKDuringRecovery.end()){
-          deferEvent(epoch, NdbDictionary::Event::TE_INSERT, row, row);
+        if(deferEvent(epoch, NdbDictionary::Event::TE_INSERT, row, row)){
           eventsToAdd++;
         }else{
           alreadyExistsingEvents++;
@@ -281,13 +281,28 @@ void TableTailer<TableRow>::waitForEvents() {
     }
 
     if (mStartProcessingDeferredEvents) {
-      ptime t1 = Utils::getCurrentTime();
-      int deferredEventsProcessed = processDeferredEvents();
-      ptime t2 = Utils::getCurrentTime();
-      LOG_INFO(mTable->getName()
-                   << " processing deferred events and recovered events in "
-                   <<  Utils::getTimeDiffInMilliseconds(t1, t2)
-                   << " msec " << deferredEventsProcessed << " events processed");
+      if(mLastEpochInRecovery == 0){
+        std::vector<Uint64> orderedEpochs;
+        orderedEpochs.insert(orderedEpochs.end(), mEpochsDuringRecovery.begin(), mEpochsDuringRecovery.end());
+        std::sort(orderedEpochs.begin(), orderedEpochs.end());
+        mLastEpochInRecovery=orderedEpochs[orderedEpochs.size() -1];
+      }
+
+      if(mNdbConnection->getHighestQueuedEpoch() > mLastEpochInRecovery) {
+        ptime t1 = Utils::getCurrentTime();
+        int deferredEventsProcessed = processDeferredEvents();
+        ptime t2 = Utils::getCurrentTime();
+        LOG_INFO(mTable->getName()
+                     << " processing deferred events and recovered events in "
+                     << Utils::getTimeDiffInMilliseconds(t1, t2)
+                     << " msec " << deferredEventsProcessed
+                     << " events processed");
+      }else{
+        LOG_INFO(mTable->getName()
+        << " defer events since the seen epoch during recovery (" <<
+        mLastEpochInRecovery << ") is higher than the current received epoch ("
+        << mNdbConnection->getHighestQueuedEpoch() << ")");
+      }
     }
 
     if (r > 0) {
@@ -391,8 +406,14 @@ void TableTailer<TableRow>::checkIfBarrierReached(Uint64 epoch) {
 }
 
 template<typename TableRow>
-void TableTailer<TableRow>::deferEvent(Uint64 epoch,
+bool TableTailer<TableRow>::deferEvent(Uint64 epoch,
     NdbDictionary::Event::TableEvent event, TableRow pre, TableRow row) {
+  //event already exists
+  if(mEventsPKDuringRecovery.find(mTable->getPKStr(row)) !=
+     mEventsPKDuringRecovery.end()){
+    return false;
+  }
+
   if(mEventsDuringRecovery.find(epoch) == mEventsDuringRecovery
       .end()){
     mEventsDuringRecovery[epoch] = std::queue<DeferredEvent>();
@@ -401,6 +422,7 @@ void TableTailer<TableRow>::deferEvent(Uint64 epoch,
   mEventsDuringRecovery[epoch].push({event, pre, row});
   mEventsPKDuringRecovery.insert(mTable->getPKStr(row));
   mEpochsDuringRecovery.insert(epoch);
+  return true;
 }
 
 template<typename TableRow>
