@@ -34,13 +34,18 @@ std::string ElasticSearchBase::getElasticSearchUrlOnDoc(std::string index, Int64
   return out.str();
 }
 
-std::string ElasticSearchBase::getElasticSearchUpdateDocUrl(std::string index, Int64 doc) {
+std::string ElasticSearchBase::getElasticSearchUpdateDocUrl(std::string index,  Int64 doc) {
   std::string str = getElasticSearchUrlOnDoc(index, doc) + "/_update";
   return str;
 }
 
 std::string ElasticSearchBase::getElasticSearchBulkUrl(std::string index) {
   std::string str = "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
+  return str;
+}
+
+std::string ElasticSearchBase::getElasticSearchBulkUrl() {
+  std::string str = "/_bulk";
   return str;
 }
 

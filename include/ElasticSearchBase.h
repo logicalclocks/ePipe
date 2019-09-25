@@ -37,9 +37,10 @@ protected:
   std::string getElasticSearchUrlOnDoc(std::string index, Int64 doc);
   std::string getElasticSearchUpdateDocUrl(std::string index, Int64 doc);
   std::string getElasticSearchBulkUrl(std::string index);
+  std::string getElasticSearchBulkUrl();
   virtual bool parseResponse(std::string response);
 
-private:
+protected:
   const std::string DEFAULT_TYPE;
 
 };

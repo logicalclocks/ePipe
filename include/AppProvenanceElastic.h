@@ -17,30 +17,26 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef PROVENANCETABLETAILER_H
-#define PROVENANCETABLETAILER_H
+#ifndef APPPROVENANCEELASTIC_H
+#define APPPROVENANCEELASTIC_H
 
-#include "RCTableTailer.h"
-#include "tables/ProvenanceLogTable.h"
+#include "ElasticSearchWithMetrics.h"
+#include "AppProvenanceTableTailer.h"
 
-class ProvenanceTableTailer : public RCTableTailer<ProvenanceRow> {
+class AppProvenanceElastic : public ElasticSearchWithMetrics {
 public:
-  ProvenanceTableTailer(Ndb* ndb, Ndb* ndbRecovery, const int
-  poll_maxTimeToWait, const Barrier barrier);
-  ProvenanceRow consume();
-  virtual ~ProvenanceTableTailer();
+  AppProvenanceElastic(std::string elastic_addr, std::string index,
+          int time_to_wait_before_inserting, int bulk_size,
+          const bool stats, SConn conn);
 
+  virtual ~AppProvenanceElastic();
 private:
-  virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, ProvenanceRow pre, ProvenanceRow row);
-  void barrierChanged();
+  const std::string mIndex;
+  std::string mElasticBulkAddr;
+  SConn mConn;
 
-  void pushToQueue(PRpq* curr);
-
-  CPRq *mQueue;
-  PRpq* mCurrentPriorityQueue;
-  boost::mutex mLock;
-
+  virtual void process(std::vector<eBulk>* bulks);
+  bool bulkRequest(eEvent& event);
 };
 
-
-#endif //PROVENANCETABLETAILER_H
+#endif /* APPPROVENANCEELASTIC_H */
