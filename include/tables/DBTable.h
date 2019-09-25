@@ -31,7 +31,7 @@ template<typename TableRow>
 class DBTable : public DBTableBase {
 public:
   DBTable(const std::string table);
-  DBTable(const std::string table, bool readEpoch);
+  DBTable(const std::string table, const std::string companionTable);
 
   void getAll(Ndb* connection);
   bool next();
@@ -51,6 +51,8 @@ private:
   NdbTransaction* mCurrentTransaction;
   NdbOperation* mCurrentOperation;
   NdbRecAttr** mCurrentRow;
+  std::string mCompanionTableName;
+  const NdbDictionary::Table* mCompanionTable;
 
   void close();
   void applyConditionOnOperation(NdbOperation* operation, AnyMap& any);
@@ -71,6 +73,7 @@ protected:
 
   void doDelete(Any any);
   void doDelete(AnyMap& any);
+  void doDeleteOnCompanionTable(AnyMap& any);
 
   void getAll(Ndb* connection, std::string index);
   void setReadEpoch(bool readEpoch);
@@ -85,8 +88,14 @@ protected:
 
 template<typename TableRow>
 DBTable<TableRow>::DBTable(const std::string table)
-: DBTableBase(table), mReadEpoch(false) {
+: DBTableBase(table), mReadEpoch(false), mCompanionTableName("") {
 
+}
+
+template<typename TableRow>
+DBTable<TableRow>::DBTable(const std::string table, const std::string companionTable)
+    : DBTableBase(table), mReadEpoch(false), mCompanionTableName
+    (companionTable) {
 }
 
 template<typename TableRow>
@@ -138,6 +147,9 @@ template<typename TableRow>
 void DBTable<TableRow>::start(Ndb* connection) {
   mDatabase = getDatabase(connection);
   mTable = getTable(mDatabase);
+  if(mCompanionTableName != ""){
+    mCompanionTable = getTable(mDatabase, mCompanionTableName);
+  }
   mCurrentTransaction = startNdbTransaction(connection);
   LOG_DEBUG(getName() << " -- Start Transaction");
 }
@@ -262,6 +274,15 @@ void DBTable<TableRow>::doDelete(AnyMap& any) {
   mCurrentOperation->deleteTuple();
   applyConditionOnOperation(mCurrentOperation, any);
 }
+
+template<typename TableRow>
+void DBTable<TableRow>::doDeleteOnCompanionTable(AnyMap& any) {
+  LOG_DEBUG(getName() << " -- doDelete ");
+  mCurrentOperation = getNdbOperation(mCurrentTransaction, mCompanionTable);
+  mCurrentOperation->deleteTuple();
+  applyConditionOnOperation(mCurrentOperation, any);
+}
+
 
 template<typename TableRow>
 boost::unordered_map<int, TableRow> DBTable<TableRow>::doRead(Ndb* connection, UISet& ids){

@@ -81,7 +81,12 @@ protected:
   }
 
   const NdbDictionary::Table* getTable(const NdbDictionary::Dictionary* database) {
-    const NdbDictionary::Table* table = database->getTable(getName().c_str());
+    return getTable(database, getName());
+  }
+
+  const NdbDictionary::Table* getTable(const NdbDictionary::Dictionary*
+  database, std::string name) {
+    const NdbDictionary::Table* table = database->getTable(name.c_str());
     if (!table) LOG_NDB_API_ERROR(database->getNdbError());
     return table;
   }
