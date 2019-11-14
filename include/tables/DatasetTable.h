@@ -33,7 +33,6 @@ struct DatasetRow {
   int mProjectId;
   std::string mDescription;
   bool mPublicDS;
-  bool mShared;
 
   std::string to_create_json() {
     rapidjson::StringBuffer sbDoc;
@@ -94,7 +93,6 @@ public:
     addColumn("projectId");
     addColumn("description");
     addColumn("public_ds");
-    addColumn("shared");
     DatasetProjectCache::getInstance(lru_cap, "DatasetProject");
   }
 
@@ -107,7 +105,6 @@ public:
     row.mProjectId = values[4]->int32_value();
     row.mDescription = get_string(values[5]);
     row.mPublicDS = values[6]->int8_value() == 1;
-    row.mShared = values[7]->int8_value() == 1;
     return row;
   }
 
@@ -158,10 +155,6 @@ public:
           LOG_ERROR("Dataset [" << dataset_inode_id << "] doesn't exists");
           continue;
         }
-
-        if(row.mShared){
-          continue;
-        }
         
         if (projectIds.empty()) {
           DatasetProjectCache::getInstance().addPair(dataset_inode_id, row.mProjectId);
@@ -181,7 +174,6 @@ protected:
   void applyConditionOnGetAll(NdbScanFilter& filter) {
     filter.begin(NdbScanFilter::AND);
     filter.eq(getColumnIdInDB("searchable"), (Uint32) 1);
-    filter.eq(getColumnIdInDB("shared"), (Uint32) 0);
     filter.end();
   }
 
