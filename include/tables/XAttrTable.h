@@ -119,8 +119,11 @@ private:
     rmout << "} else{ ctx.op=\"noop\";}";
     opWriter.String(rmout.str().c_str());
 
+    opWriter.String("upsert");
+    opWriter.StartObject();
     opWriter.EndObject();
 
+    opWriter.EndObject();
     return std::string(sbOp.GetString());
 
   }
