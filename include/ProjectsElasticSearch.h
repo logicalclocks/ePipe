@@ -295,8 +295,8 @@ private:
 
 class ProjectsElasticSearch : public ElasticSearchBase{
 public:
-  ProjectsElasticSearch(std::string elastic_addr, std::string index,
-          int time_to_wait_before_inserting, int bulk_size,
+  ProjectsElasticSearch(const HttpClientConfig elastic_client_config,
+      std::string index, int time_to_wait_before_inserting, int bulk_size,
           const bool stats, MConn conn);
 
   void addDataset(Int64 inodeId, std::string json);

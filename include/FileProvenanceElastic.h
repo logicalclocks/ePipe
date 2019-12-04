@@ -24,7 +24,7 @@
 
 class FileProvenanceElastic : public ElasticSearchWithMetrics {
 public:
-  FileProvenanceElastic(std::string elastic_addr,int time_to_wait_before_inserting, int bulk_size,
+  FileProvenanceElastic(const HttpClientConfig elastic_client_config,int time_to_wait_before_inserting, int bulk_size,
       const bool stats, SConn conn);
 
   virtual ~FileProvenanceElastic();

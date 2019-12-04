@@ -43,7 +43,8 @@ public:
   Notifier(const char* connection_string, const char* database_name,
           const char* meta_database_name, const char* hive_meta_database_name,
           const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu,const TableUnitConf provenance_tu,
-          const int poll_maxTimeToWait, const std::string elastic_addr, const bool hopsworks, const std::string elastic_index,
+          const int poll_maxTimeToWait, const HttpClientConfig
+      elastic_client_config, const bool hopsworks, const std::string elastic_index,
           const std::string elastic_app_provenance_index,
           const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery, const bool stats,
           Barrier barrier, const bool hiveCleaner, const std::string
@@ -59,7 +60,7 @@ private:
   const TableUnitConf mAppProvenanceTU;
 
   const int mPollMaxTimeToWait;
-  const std::string mElasticAddr;
+  const HttpClientConfig mElasticClientConfig;
   const bool mHopsworksEnabled;
   const std::string mElasticIndex;
   const std::string mElasticAppProvenanceIndex;

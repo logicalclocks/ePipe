@@ -15,8 +15,9 @@
  */
 #include "ElasticSearchWithMetrics.h"
 
-ElasticSearchWithMetrics::ElasticSearchWithMetrics(std::string elastic_addr, int time_to_wait_before_inserting, int bulk_size, const bool stats)
-    : ElasticSearchBase(elastic_addr, time_to_wait_before_inserting, bulk_size), mStats(stats), mStartTime(Utils::getCurrentTime()) {
+ElasticSearchWithMetrics::ElasticSearchWithMetrics(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting, int bulk_size, const bool stats)
+    : ElasticSearchBase(elastic_client_config, time_to_wait_before_inserting,
+        bulk_size), mStats(stats), mStartTime(Utils::getCurrentTime()) {
 }
 
 ElasticSearchWithMetrics::~ElasticSearchWithMetrics() {

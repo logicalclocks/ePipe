@@ -26,7 +26,7 @@
 class ElasticSearchBase : public TimedRestBatcher, public
     MetricsProvider {
 public:
-  ElasticSearchBase(std::string elastic_addr, int time_to_wait_before_inserting, int bulk_size);
+  ElasticSearchBase(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting, int bulk_size);
   
   virtual ~ElasticSearchBase();
 

@@ -17,9 +17,10 @@
 #include <FileProvenanceConstants.h>
 #include "FileProvenanceElastic.h"
 
-FileProvenanceElastic::FileProvenanceElastic(std::string elastic_addr, int time_to_wait_before_inserting,
+FileProvenanceElastic::FileProvenanceElastic(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting,
     int bulk_size, const bool stats, SConn conn) :
-ElasticSearchWithMetrics(elastic_addr, time_to_wait_before_inserting, bulk_size, stats), mConn(conn) {}
+ElasticSearchWithMetrics(elastic_client_config,
+    time_to_wait_before_inserting, bulk_size, stats), mConn(conn) {}
 
 void FileProvenanceElastic::intProcessOneByOne(eBulk bulk) {
   std::vector<eBulk>::iterator itB, endB;
