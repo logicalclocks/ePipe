@@ -17,21 +17,28 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include "ProvenanceDataReader.h"
+#ifndef APPPROVENANCETABLETAILER_H
+#define APPPROVENANCETABLETAILER_H
 
-ProvenanceDataReader::ProvenanceDataReader(SConn connection, const bool hopsworks)
-: NdbDataReader(connection, hopsworks) {
-}
+#include "RCTableTailer.h"
+#include "tables/AppProvenanceLogTable.h"
 
-void ProvenanceDataReader::processAddedandDeleted(Pq* data_batch, eBulk& bulk) {
-  for (Pq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
-    ProvenanceRow row = *it;
-    bulk.push(mProvenanceLogTable.getLogRemovalHandler(row), row
-    .mEventCreationTime, row.to_create_json());
-  }
-}
+class AppProvenanceTableTailer : public RCTableTailer<AppProvenanceRow> {
+public:
+  AppProvenanceTableTailer(Ndb* ndb, Ndb* ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier);
+  AppProvenanceRow consume();
+  virtual ~AppProvenanceTableTailer();
 
-ProvenanceDataReader::~ProvenanceDataReader() {
-  
-}
+private:
+  virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, AppProvenanceRow pre, AppProvenanceRow row);
+  void barrierChanged();
 
+  void pushToQueue(AppPRpq* curr);
+
+  AppCPRq *mQueue;
+  AppPRpq* mCurrentPriorityQueue;
+  boost::mutex mLock;
+};
+
+
+#endif //APPPROVENANCETABLETAILER_H

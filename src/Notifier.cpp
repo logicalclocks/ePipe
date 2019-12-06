@@ -18,25 +18,24 @@
  */
 
 #include "Notifier.h"
-#include "ProvenanceBatcher.h"
 
 Notifier::Notifier(const char* connection_string, const char* database_name,
     const char* meta_database_name, const char* hive_meta_database_name,
         const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu,
-        const TableUnitConf provenance_tu, const int poll_maxTimeToWait,
-        const std::string elastic_ip, const bool hopsworks, const std::string
-        elastic_index, const std::string elastic_provenance_index, const int
-        elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery,
+        const TableUnitConf elastic_provenance_tu, const int poll_maxTimeToWait,
+        const std::string elastic_ip, const bool hopsworks, const std::string elastic_index,
+        const std::string elastic_app_provenance_index,
+        const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery,
         const bool stats, Barrier barrier, const bool hiveCleaner, const
         std::string metricsServer)
-: ClusterConnectionBase(connection_string, database_name, meta_database_name,
-    hive_meta_database_name), mMutationsTU(mutations_tu), mSchemabasedTU
-    (schemabased_tu), mProvenanceTU (provenance_tu), mPollMaxTimeToWait
-    (poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
-mElasticIndex(elastic_index), mElasticProvenanceIndex(elastic_provenance_index),
-mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap),
-mRecovery(recovery), mStats(stats), mBarrier(barrier), mHiveCleaner
-(hiveCleaner), mMetricsServer(metricsServer) {
+: ClusterConnectionBase(connection_string, database_name, meta_database_name, hive_meta_database_name), 
+    mMutationsTU(mutations_tu), mSchemabasedTU(schemabased_tu),
+    mFileProvenanceTU(elastic_provenance_tu), mAppProvenanceTU(elastic_provenance_tu), 
+    mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
+    mElasticIndex(elastic_index),
+    mElasticAppProvenanceIndex(elastic_app_provenance_index),
+    mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap),
+    mRecovery(recovery), mStats(stats), mBarrier(barrier), mHiveCleaner(hiveCleaner), mMetricsServer(metricsServer) {
   setup();
 }
 
@@ -65,11 +64,17 @@ void Notifier::start() {
     mhopsworksOpsLogTailer->start();
   }
 
-  if (mProvenanceTU.isEnabled()) {
-    mProvenancElasticSearch->start();
-    mProvenanceDataReaders->start();
-    mProvenanceBatcher->start();
-    mProvenanceTableTailer->start();
+  if (mFileProvenanceTU.isEnabled()) {
+    mFileProvenanceElastic->start();
+    mFileProvenanceElasticDataReaders->start();
+    mFileProvenanceBatcher->start();
+    mFileProvenanceTableTailer->start();
+  }
+  if(mAppProvenanceTU.isEnabled()) {
+    mAppProvenanceElastic->start();
+    mAppProvenanceElasticDataReaders->start();
+    mAppProvenanceBatcher->start();
+    mAppProvenanceTableTailer->start();
   }
 
   if(mHiveCleaner) {
@@ -107,10 +112,15 @@ void Notifier::start() {
     mhopsworksOpsLogTailer->waitToFinish();
   }
 
-  if (mProvenanceTU.isEnabled()) {
-    mProvenanceBatcher->waitToFinish();
-    mProvenanceTableTailer->waitToFinish();
-    mProvenancElasticSearch->waitToFinish();
+  if (mFileProvenanceTU.isEnabled()) {
+    mFileProvenanceBatcher->waitToFinish();
+    mFileProvenanceTableTailer->waitToFinish();
+    mFileProvenanceElastic->waitToFinish();
+  }
+  if (mAppProvenanceTU.isEnabled()) {
+    mAppProvenanceBatcher->waitToFinish();
+    mAppProvenanceTableTailer->waitToFinish();
+    mAppProvenanceElastic->waitToFinish();
   }
 
   if(mHiveCleaner) {
@@ -185,28 +195,49 @@ void Notifier::setup() {
             mProjectsElasticSearch, mLRUCap);
   }
 
-  if (mProvenanceTU.isEnabled()) {
-    Ndb* ndb_elastic_provenance_conn = create_ndb_connection(mDatabaseName);
-    mProvenancElasticSearch = new ProvenanceElasticSearch(mElasticAddr,
-            mElasticProvenanceIndex, mElasticIssueTime,
-            mElasticBatchsize, mStats, ndb_elastic_provenance_conn);
+  if (mFileProvenanceTU.isEnabled()) {
+    //file
+    Ndb* ndb_elastic_file_provenance_conn = create_ndb_connection(mDatabaseName);
+    mFileProvenanceElastic = new FileProvenanceElastic(mElasticAddr,
+      mElasticIssueTime, mElasticBatchsize, mStats, ndb_elastic_file_provenance_conn);
 
+    Ndb* elastic_file_provenance_tailer_connection = create_ndb_connection(mDatabaseName);
+    Ndb* elastic_file_provenance_tailer_recovery_connection = mRecovery ? create_ndb_connection(mDatabaseName) : nullptr;
+    mFileProvenanceTableTailer = new FileProvenanceTableTailer(
+        elastic_file_provenance_tailer_connection, elastic_file_provenance_tailer_recovery_connection,
+        mPollMaxTimeToWait, mBarrier);
 
-    Ndb* provenance_tailer_connection = create_ndb_connection(mDatabaseName);
-    Ndb* provenance_tailer_recovery_connection = mRecovery
-        ? create_ndb_connection(mDatabaseName) : nullptr;
-
-    mProvenanceTableTailer = new ProvenanceTableTailer(provenance_tailer_connection,
-        provenance_tailer_recovery_connection, mPollMaxTimeToWait, mBarrier);
-
-    SConn* provenance_connections = new SConn[mProvenanceTU.mNumReaders];
-    for (int i = 0; i < mProvenanceTU.mNumReaders; i++) {
-      provenance_connections[i] = create_ndb_connection(mDatabaseName);
+    SConn* elastic_file_provenance_connections = new SConn[mFileProvenanceTU.mNumReaders];
+    for (int i = 0; i < mFileProvenanceTU.mNumReaders; i++) {
+      elastic_file_provenance_connections[i] = create_ndb_connection(mDatabaseName);
     }
-    mProvenanceDataReaders = new ProvenanceDataReaders(provenance_connections, mProvenanceTU.mNumReaders,
-            mHopsworksEnabled, mProvenancElasticSearch);
-    mProvenanceBatcher = new ProvenanceBatcher(mProvenanceTableTailer, mProvenanceDataReaders,
-            mProvenanceTU.mWaitTime, mProvenanceTU.mBatchSize);
+    mFileProvenanceElasticDataReaders = new FileProvenanceElasticDataReaders(elastic_file_provenance_connections, 
+      mFileProvenanceTU.mNumReaders, mHopsworksEnabled, mFileProvenanceElastic);
+    mFileProvenanceBatcher = new RCBatcher<FileProvenanceRow, SConn>(
+      mFileProvenanceTableTailer, mFileProvenanceElasticDataReaders,
+      mFileProvenanceTU.mWaitTime, mFileProvenanceTU.mBatchSize);
+  }
+  if (mAppProvenanceTU.isEnabled()) {
+    //app
+    Ndb* ndb_elastic_app_provenance_conn = create_ndb_connection(mDatabaseName);
+    mAppProvenanceElastic = new AppProvenanceElastic(mElasticAddr, mElasticAppProvenanceIndex, 
+      mElasticIssueTime, mElasticBatchsize, mStats, ndb_elastic_app_provenance_conn);
+
+    Ndb* elastic_app_provenance_tailer_connection = create_ndb_connection(mDatabaseName);
+    Ndb* elastic_app_provenance_tailer_recovery_connection = mRecovery ? create_ndb_connection(mDatabaseName) : nullptr;
+    mAppProvenanceTableTailer = new AppProvenanceTableTailer(
+        elastic_app_provenance_tailer_connection, elastic_app_provenance_tailer_recovery_connection,
+        mPollMaxTimeToWait, mBarrier);
+
+    SConn* elastic_app_provenance_connections = new SConn[mAppProvenanceTU.mNumReaders];
+    for (int i = 0; i < mAppProvenanceTU.mNumReaders; i++) {
+      elastic_app_provenance_connections[i] = create_ndb_connection(mDatabaseName);
+    }
+    mAppProvenanceElasticDataReaders = new AppProvenanceElasticDataReaders(elastic_app_provenance_connections, 
+      mAppProvenanceTU.mNumReaders, mHopsworksEnabled, mAppProvenanceElastic);
+    mAppProvenanceBatcher = new RCBatcher<AppProvenanceRow, SConn>(
+      mAppProvenanceTableTailer, mAppProvenanceElasticDataReaders,
+      mAppProvenanceTU.mWaitTime, mAppProvenanceTU.mBatchSize);
   }
 
 
@@ -241,8 +272,11 @@ void Notifier::setup() {
     if(mMutationsTU.isEnabled()){
       providers.push_back(mProjectsElasticSearch);
     }
-    if(mProvenanceTU.isEnabled()){
-      providers.push_back(mProjectsElasticSearch);
+    if(mFileProvenanceTU.isEnabled()){
+      providers.push_back(mFileProvenanceElastic);
+    }
+    if(mAppProvenanceTU.isEnabled()){
+      providers.push_back(mAppProvenanceElastic);
     }
     mMetricsProviders = new MetricsProviders(providers);
     mHttpServer = new HttpServer(mMetricsServer, *mMetricsProviders);

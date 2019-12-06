@@ -17,30 +17,29 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef PROVENANCEELASTICSEARCH_H
-#define PROVENANCEELASTICSEARCH_H
+#ifndef FILEPROVENANCETABLETAILER_H
+#define FILEPROVENANCETABLETAILER_H
 
-#include "ElasticSearchBase.h"
-#include "ProvenanceTableTailer.h"
+#include "RCTableTailer.h"
+#include "tables/FileProvenanceLogTable.h"
 
-
-class ProvenanceElasticSearch : public ElasticSearchBase {
+class FileProvenanceTableTailer : public RCTableTailer<FileProvenanceRow> {
 public:
-  ProvenanceElasticSearch(std::string elastic_addr, std::string index,
-          int time_to_wait_before_inserting, int bulk_size, const bool stats,
-          SConn conn);
-  virtual ~ProvenanceElasticSearch();
+  FileProvenanceTableTailer(Ndb* ndb, Ndb* ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier);
+  FileProvenanceRow consume();
+  virtual ~FileProvenanceTableTailer();
+
 private:
-  const std::string mIndex;
-  const bool mStats;
+  virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, FileProvenanceRow pre, FileProvenanceRow row);
+  void barrierChanged();
 
-  std::string mElasticBulkAddr;
+  void pushToQueue(PRpq* curr);
 
-  SConn mConn;
-
-  virtual void process(std::vector<eBulk>* bulks);
+  CPRq *mQueue;
+  PRpq* mCurrentPriorityQueue;
+  boost::mutex mLock;
 
 };
 
-#endif /* PROVENANCEELASTICSEARCH_H */
 
+#endif //FILEPROVENANCETABLETAILER_H

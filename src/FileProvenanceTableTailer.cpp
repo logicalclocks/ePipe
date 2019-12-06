@@ -17,18 +17,16 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include "ProvenanceTableTailer.h"
+#include "FileProvenanceTableTailer.h"
 
-ProvenanceTableTailer::ProvenanceTableTailer(Ndb *ndb, Ndb* ndbRecovery, const
-int poll_maxTimeToWait, const Barrier barrier)
-: RCTableTailer(ndb, ndbRecovery, new ProvenanceLogTable(), poll_maxTimeToWait,
-    barrier) {
+FileProvenanceTableTailer::FileProvenanceTableTailer(Ndb *ndb, Ndb* ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier)
+: RCTableTailer(ndb, ndbRecovery, new FileProvenanceLogTable(), poll_maxTimeToWait, barrier) {
   mQueue = new CPRq();
   mCurrentPriorityQueue = new PRpq();
 }
 
-void ProvenanceTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, ProvenanceRow pre,
-        ProvenanceRow row) {
+void FileProvenanceTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, FileProvenanceRow pre,
+        FileProvenanceRow row) {
   mLock.lock();
   mCurrentPriorityQueue->push(row);
   int size = mCurrentPriorityQueue->size();
@@ -38,7 +36,7 @@ void ProvenanceTableTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
 
 }
 
-void ProvenanceTableTailer::barrierChanged() {
+void FileProvenanceTableTailer::barrierChanged() {
   PRpq* pq = NULL;
   mLock.lock();
   if (!mCurrentPriorityQueue->empty()) {
@@ -53,14 +51,14 @@ void ProvenanceTableTailer::barrierChanged() {
   }
 }
 
-ProvenanceRow ProvenanceTableTailer::consume() {
-  ProvenanceRow row;
+FileProvenanceRow FileProvenanceTableTailer::consume() {
+  FileProvenanceRow row;
   mQueue->wait_and_pop(row);
   LOG_TRACE(" pop inode [" << row.mInodeId << "] from queue \n" << row.to_string());
   return row;
 }
 
-void ProvenanceTableTailer::pushToQueue(PRpq *curr) {
+void FileProvenanceTableTailer::pushToQueue(PRpq *curr) {
   while (!curr->empty()) {
     mQueue->push(curr->top());
     curr->pop();
@@ -68,6 +66,6 @@ void ProvenanceTableTailer::pushToQueue(PRpq *curr) {
   delete curr;
 }
 
-ProvenanceTableTailer::~ProvenanceTableTailer() {
+FileProvenanceTableTailer::~FileProvenanceTableTailer() {
   delete mQueue;
 }
