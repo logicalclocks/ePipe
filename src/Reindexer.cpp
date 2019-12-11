@@ -57,11 +57,11 @@ typedef boost::unordered_map<Int64, DatasetInfo> DatasetInfoMap;
 
 Reindexer::Reindexer(const char* connection_string, const char* database_name,
         const char* meta_database_name, const char* hive_meta_database_name,
-        const std::string elastic_addr, const std::string index, int
+        const HttpClientConfig elastic_client_config, const std::string index, int
         elastic_batch_size, int elastic_issue_time, int lru_cap)
 : ClusterConnectionBase(connection_string, database_name, meta_database_name,
     hive_meta_database_name), mLRUCap(lru_cap) {
-  mElasticSearch = new ProjectsElasticSearch(elastic_addr, index, elastic_issue_time,
+  mElasticSearch = new ProjectsElasticSearch(elastic_client_config, index, elastic_issue_time,
           elastic_batch_size, false, MConn());
   LOG_INFO("Create Elasticsearch index at " << index);
 }

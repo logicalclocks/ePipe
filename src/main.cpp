@@ -59,6 +59,11 @@ int main(int argc, char** argv) {
 
     std::string metricsServer = "0.0.0.0:9191";
 
+    bool sslEnabled = false;
+    std::string caPath = "";
+    std::string username = "";
+    std::string password = "";
+
     po::options_description generalOptions("General");
     generalOptions.add_options()
         ("help,h", "Help screen")
@@ -125,7 +130,15 @@ int main(int argc, char** argv) {
         ("barrier", po::value<int>()->default_value(barrier),
          "Table tailer barrier type. EPOCH=0, GCI=1")
         ("reindex", po::value<bool>(&reindex)->default_value(reindex),
-         "initialize an empty index with all metadata");
+         "initialize an empty index with all metadata")
+        ("ssl_enabled", po::value<bool>(&sslEnabled)->default_value(sslEnabled),
+         "ssl enabled or disabled for elastic communication")
+        ("ca_path", po::value<std::string>(&caPath)->default_value(caPath),
+        "path to the ca cert used to verify the elastic server")
+        ("username", po::value<std::string>(&username)->default_value(username),
+         "username to access the elastic server")
+        ("password", po::value<std::string>(&password)->default_value(password),
+         "password to access the elastic server");
 
 
     po::variables_map vm;
@@ -181,12 +194,14 @@ int main(int argc, char** argv) {
       return EXIT_FAILURE;
     }
 
+    HttpClientConfig config = {elastic_addr, sslEnabled, caPath, username,
+                               password};
     if (reindex) {
       Reindexer *reindexer = new Reindexer(connection_string.c_str(),
                                            database_name.c_str(),
                                            meta_database_name.c_str(),
                                            hive_meta_database_name.c_str(),
-                                           elastic_addr,
+                                           config,
                                            elastic_index, elastic_batch_size,
                                            elastic_issue_time, lru_cap);
 
@@ -198,7 +213,7 @@ int main(int argc, char** argv) {
                                        hive_meta_database_name.c_str(),
                                        mutations_tu, schamebased_tu,
                                        provenance_tu,
-                                       poll_maxTimeToWait, elastic_addr,
+                                       poll_maxTimeToWait, config,
                                        hopsworks, elastic_index,
                                        elastic_app_provenance_index,
                                        elastic_batch_size, elastic_issue_time,

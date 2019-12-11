@@ -26,11 +26,19 @@
 #include <boost/beast/version.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/beast/ssl.hpp>
+#include <boost/asio/ssl/error.hpp>
+#include <boost/asio/ssl/stream.hpp>
+#include <boost/archive/iterators/binary_from_base64.hpp>
+#include <boost/archive/iterators/base64_from_binary.hpp>
+#include <boost/archive/iterators/transform_width.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
+namespace ssl = net::ssl;
 
 struct HttpResponse{
   bool mSuccess;
@@ -38,9 +46,44 @@ struct HttpResponse{
   std::string mResponse;
 };
 
+struct HttpClientConfig{
+  std::string mAddr;
+  bool mSSLEnabled;
+  std::string mCAPath;
+  std::string mUserName;
+  std::string mPassword;
+
+  bool isValidUserAndPass(){
+    return mUserName != "" && mPassword != "";
+  }
+
+  std::string getAuthorization(){
+    std::string userNP = mUserName + ":" + mPassword;
+    std::string authorization = "Basic " + encode64(userNP);
+    return authorization;
+  }
+
+private:
+  std::string encode64(const std::string &val) {
+    using namespace boost::archive::iterators;
+    using It = base64_from_binary<transform_width<std::string::const_iterator, 6, 8>>;
+    auto tmp = std::string(It(std::begin(val)), It(std::end(val)));
+    return tmp.append((3 - val.size() % 3) % 3, '=');
+  }
+
+  std::string decode64(const std::string &val) {
+    using namespace boost::archive::iterators;
+    using It = transform_width<binary_from_base64<std::string::const_iterator>, 8, 6>;
+    return boost::algorithm::trim_right_copy_if(std::string(It(std::begin(val)), It(std::end(val))), [](char c) {
+      return c == '\0';
+    });
+  }
+};
+
 class HttpClient{
 public:
-  HttpClient(std::string addr){
+  HttpClient(const HttpClientConfig config){
+    std::string addr = config.mAddr;
     try {
       auto const i = addr.find(":");
       auto const ip = addr.substr(0, i);
@@ -51,6 +94,7 @@ public:
       LOG_FATAL("error in http address format [" << addr << "]"
           << " only ips allowed : " <<  ex.code() << " " << ex.what());
     }
+    mConfig = config;
   }
 
   HttpResponse get(std::string target){
@@ -66,6 +110,7 @@ public:
   }
 private:
   tcp::endpoint mEndpoint;
+  HttpClientConfig mConfig;
 
   HttpResponse request(http::verb verb, std::string
   target){
@@ -73,6 +118,15 @@ private:
   }
 
   HttpResponse request(http::verb verb, std::string
+  target, std::string data){
+    if(mConfig.mSSLEnabled){
+      return request_with_ssl(verb, target, data);
+    }else{
+      return request_no_ssl(verb, target, data);
+    }
+  }
+
+  HttpResponse request_no_ssl(http::verb verb, std::string
   target, std::string data){
 
     std::string responseBody;
@@ -90,6 +144,10 @@ private:
       req.set(http::field::host, mEndpoint.address().to_string());
       req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
       req.set(http::field::content_type, "application/json");
+
+      if(mConfig.isValidUserAndPass()) {
+        req.set(http::field::authorization, mConfig.getAuthorization());
+      }
 
       if(data.length() != 0){
         req.body() = data;
@@ -124,5 +182,89 @@ private:
     return {succeed, code, responseBody};
   }
 
+  HttpResponse request_with_ssl(http::verb verb, std::string
+  target, std::string data){
+
+    std::string responseBody;
+    bool succeed = true;
+    unsigned int code = 0;
+
+    try
+    {
+      net::io_context ioc;
+
+      // The SSL context is required, and holds certificates
+      ssl::context ctx(ssl::context::tlsv12_client);
+      load_ca_certificates(ctx);
+      ctx.set_verify_mode(ssl::verify_peer);
+
+      beast::ssl_stream<beast::tcp_stream> stream(ioc, ctx);
+
+      // Set SNI Hostname (many hosts need this to handshake successfully)
+      if(! SSL_set_tlsext_host_name(stream.native_handle(), mEndpoint.address
+      ().to_string().c_str()))
+      {
+        beast::error_code ec{-1, net::error::get_ssl_category()};
+        throw beast::system_error{ec};
+      }
+
+      beast::get_lowest_layer(stream).connect(mEndpoint);
+      stream.handshake(ssl::stream_base::client);
+
+      http::request<http::string_body> req{verb, target, 11};
+      req.set(http::field::host, mEndpoint.address().to_string());
+      req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+      req.set(http::field::content_type, "application/json");
+
+      if(mConfig.isValidUserAndPass()) {
+        req.set(http::field::authorization, mConfig.getAuthorization());
+      }
+
+      if(data.length() != 0){
+        req.body() = data;
+        req.set(http::field::content_length, data.length());
+        req.prepare_payload();
+      }
+
+      http::write(stream, req);
+
+      beast::flat_buffer buffer;
+
+      http::response<http::dynamic_body> response;
+
+      http::read(stream, buffer, response);
+
+      responseBody = beast::buffers_to_string(response.body().data());
+      code = response.result_int();
+
+      beast::error_code ec;
+      stream.shutdown(ec);
+
+      if(ec && ec != beast::errc::not_connected){
+        LOG_ERROR("Error in http connection with error code "<< ec);
+        succeed = false;
+      }
+    }catch(std::exception const& e)
+    {
+      LOG_ERROR("Error in http connection : " << e.what());
+      succeed = false;
+    }
+
+    return {succeed, code, responseBody};
+  }
+
+
+  void load_ca_certificates(ssl::context& ctx){
+    std::ifstream ifs(mConfig.mCAPath.c_str());
+    std::string const cacert = std::string(std::istreambuf_iterator<char>(ifs),
+        std::istreambuf_iterator<char>());
+
+    boost::system::error_code ec;
+
+    ctx.add_certificate_authority(
+        boost::asio::buffer(cacert.data(), cacert.size()), ec);
+    if(ec)
+      LOG_ERROR("Error while loading the ca certificates : " << ec);
+  }
 };
 #endif //EPIPE_HTTPCLIENT_H

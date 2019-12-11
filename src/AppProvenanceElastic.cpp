@@ -16,9 +16,10 @@
 
 #include "AppProvenanceElastic.h"
 
-AppProvenanceElastic::AppProvenanceElastic(std::string elastic_addr, std::string index,
+AppProvenanceElastic::AppProvenanceElastic(const HttpClientConfig elastic_client_config, std::string index,
         int time_to_wait_before_inserting, int bulk_size, const bool stats, SConn conn) : 
-ElasticSearchWithMetrics(elastic_addr, time_to_wait_before_inserting, bulk_size, stats),
+ElasticSearchWithMetrics(elastic_client_config, time_to_wait_before_inserting,
+    bulk_size, stats),
 mIndex(index), mConn(conn) {
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }

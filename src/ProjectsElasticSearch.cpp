@@ -22,9 +22,9 @@
 
 using namespace Utils;
 
-ProjectsElasticSearch::ProjectsElasticSearch(std::string elastic_addr, std::string index,
+ProjectsElasticSearch::ProjectsElasticSearch(const HttpClientConfig elastic_client_config, std::string index,
         int time_to_wait_before_inserting,
-        int bulk_size, const bool stats, MConn conn) : ElasticSearchBase(elastic_addr, time_to_wait_before_inserting, bulk_size),
+        int bulk_size, const bool stats, MConn conn) : ElasticSearchBase(elastic_client_config, time_to_wait_before_inserting, bulk_size),
 mIndex(index),
 mStats(stats), mConn(conn), mStartTime(getCurrentTime()){
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);

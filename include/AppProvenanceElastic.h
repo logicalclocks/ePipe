@@ -25,7 +25,7 @@
 
 class AppProvenanceElastic : public ElasticSearchWithMetrics {
 public:
-  AppProvenanceElastic(std::string elastic_addr, std::string index,
+  AppProvenanceElastic(const HttpClientConfig elastic_client_config, std::string index,
           int time_to_wait_before_inserting, int bulk_size,
           const bool stats, SConn conn);
 

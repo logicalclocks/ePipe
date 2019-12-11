@@ -139,7 +139,7 @@ private:
 
 class TimedRestBatcher : public Batcher {
 public:
-  TimedRestBatcher(std::string endpoint_addr, int time_to_wait_before_inserting, int bulk_size);
+  TimedRestBatcher(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting, int bulk_size);
 
   void addData(eBulk data);
   

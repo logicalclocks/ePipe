@@ -19,8 +19,8 @@
 
 #include "TimedRestBatcher.h"
 
-TimedRestBatcher::TimedRestBatcher(std::string endpoint_addr, int time_to_wait_before_inserting, int bulk_size)
-    : Batcher(time_to_wait_before_inserting, bulk_size), mToProcessLength(0), mHttpClient(endpoint_addr){
+TimedRestBatcher::TimedRestBatcher(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting, int bulk_size)
+    : Batcher(time_to_wait_before_inserting, bulk_size), mToProcessLength(0), mHttpClient(elastic_client_config){
   mToProcess = new std::vector<eBulk>();
   mShutdown = false;
   mElasticConnetionFailed = false;

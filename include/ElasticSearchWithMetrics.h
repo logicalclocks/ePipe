@@ -237,7 +237,7 @@ private:
 
 class ElasticSearchWithMetrics : public ElasticSearchBase {
 public:
-  ElasticSearchWithMetrics(std::string elastic_addr, int time_to_wait_before_inserting, int bulk_size, const bool stats);
+  ElasticSearchWithMetrics(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting, int bulk_size, const bool stats);
 
   virtual ~ElasticSearchWithMetrics();
 

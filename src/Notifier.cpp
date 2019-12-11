@@ -23,7 +23,8 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
     const char* meta_database_name, const char* hive_meta_database_name,
         const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu,
         const TableUnitConf elastic_provenance_tu, const int poll_maxTimeToWait,
-        const std::string elastic_ip, const bool hopsworks, const std::string elastic_index,
+        const HttpClientConfig elastic_client_config, const bool hopsworks,
+        const std::string elastic_index,
         const std::string elastic_app_provenance_index,
         const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery,
         const bool stats, Barrier barrier, const bool hiveCleaner, const
@@ -31,7 +32,7 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
 : ClusterConnectionBase(connection_string, database_name, meta_database_name, hive_meta_database_name), 
     mMutationsTU(mutations_tu), mSchemabasedTU(schemabased_tu),
     mFileProvenanceTU(elastic_provenance_tu), mAppProvenanceTU(elastic_provenance_tu), 
-    mPollMaxTimeToWait(poll_maxTimeToWait), mElasticAddr(elastic_ip), mHopsworksEnabled(hopsworks),
+    mPollMaxTimeToWait(poll_maxTimeToWait),  mElasticClientConfig(elastic_client_config), mHopsworksEnabled(hopsworks),
     mElasticIndex(elastic_index),
     mElasticAppProvenanceIndex(elastic_app_provenance_index),
     mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap),
@@ -140,7 +141,8 @@ void Notifier::setup() {
     ndb_connections_elastic.metadataConnection = create_ndb_connection(mMetaDatabaseName);
     ndb_connections_elastic.inodeConnection = create_ndb_connection(mDatabaseName);
 
-    mProjectsElasticSearch = new ProjectsElasticSearch(mElasticAddr, mElasticIndex,
+    mProjectsElasticSearch = new ProjectsElasticSearch(mElasticClientConfig,
+        mElasticIndex,
             mElasticIssueTime, mElasticBatchsize, mStats, ndb_connections_elastic);
   }
 
@@ -198,7 +200,7 @@ void Notifier::setup() {
   if (mFileProvenanceTU.isEnabled()) {
     //file
     Ndb* ndb_elastic_file_provenance_conn = create_ndb_connection(mDatabaseName);
-    mFileProvenanceElastic = new FileProvenanceElastic(mElasticAddr,
+    mFileProvenanceElastic = new FileProvenanceElastic(mElasticClientConfig,
       mElasticIssueTime, mElasticBatchsize, mStats, ndb_elastic_file_provenance_conn);
 
     Ndb* elastic_file_provenance_tailer_connection = create_ndb_connection(mDatabaseName);
@@ -220,7 +222,7 @@ void Notifier::setup() {
   if (mAppProvenanceTU.isEnabled()) {
     //app
     Ndb* ndb_elastic_app_provenance_conn = create_ndb_connection(mDatabaseName);
-    mAppProvenanceElastic = new AppProvenanceElastic(mElasticAddr, mElasticAppProvenanceIndex, 
+    mAppProvenanceElastic = new AppProvenanceElastic(mElasticClientConfig, mElasticAppProvenanceIndex,
       mElasticIssueTime, mElasticBatchsize, mStats, ndb_elastic_app_provenance_conn);
 
     Ndb* elastic_app_provenance_tailer_connection = create_ndb_connection(mDatabaseName);
