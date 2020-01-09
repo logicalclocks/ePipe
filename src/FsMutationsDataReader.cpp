@@ -91,13 +91,21 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       if(xattrs.find(mutationpk) == xattrs.end()){
         LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
         << row.getNamespace() <<  " for inode " << row.mInodeId
-        << " was not ""found");
+        << " was not found");
         bulk.push(mFSLogTable.getLogRemovalHandler(row), row
             .mEventCreationTime, XAttrRow::to_delete_json(row));
         continue;
       }
 
       XAttrVec xattr = xattrs[mutationpk];
+      if(xattr.empty()){
+        LOG_DEBUG(" Data for all xattrs of inode " << row.mInodeId
+                                      << " was not found");
+        bulk.push(mFSLogTable.getLogRemovalHandler(row), row
+            .mEventCreationTime, XAttrRow::to_delete_json(row));
+        continue;
+      }
+
       int i = 0;
       for(XAttrVec::iterator it = xattr.begin(); it != xattr.end() ; ++it, i++){
         //only add the first event with a removal handler

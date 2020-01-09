@@ -52,7 +52,11 @@ struct XAttrRow {
   static std::string to_delete_json(FsMutationRow row){
     std::stringstream out;
     out << getDocUpdatePrefix(row.mInodeId) << std::endl;
-    out << removeXAttrScript(row.getXAttrName()) << std::endl;
+    if(row.mOperation == XAttrAddAll){
+      out << removeAllXAttrsScript() << std::endl;
+    }else {
+      out << removeXAttrScript(row.getXAttrName()) << std::endl;
+    }
     return out.str();
   }
 
@@ -116,6 +120,30 @@ private:
     rmout << "if(ctx._source." << XATTR_FIELD_NAME << ".containsKey(\"" << xattrname << "\")){ ";
     rmout << "ctx._source." << XATTR_FIELD_NAME << ".remove(\"" << xattrname<<  "\");";
     rmout << "} else{ ctx.op=\"noop\";}";
+    rmout << "} else{ ctx.op=\"noop\";}";
+    opWriter.String(rmout.str().c_str());
+
+    opWriter.String("upsert");
+    opWriter.StartObject();
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+    return std::string(sbOp.GetString());
+
+  }
+
+  static std::string removeAllXAttrsScript(){
+
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    opWriter.String("script");
+
+    std::stringstream rmout;
+    rmout << "if(ctx._source.containsKey(\"" << XATTR_FIELD_NAME << "\")){ ";
+    rmout << "ctx._source.remove(\"" << XATTR_FIELD_NAME<<  "\");";
     rmout << "} else{ ctx.op=\"noop\";}";
     opWriter.String(rmout.str().c_str());
 
