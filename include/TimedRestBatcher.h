@@ -71,11 +71,13 @@ struct eBulk {
     mJSONLength += e.getJSON().length();
     mArrivalTimes.push_back(e.getArrivalTime());
     mLogHandlers.push_back(e.getLogHandler());
-    if(mLogHandlerCounters.find(e.getLogHandler()->getType()) ==
-       mLogHandlerCounters.end()){
-      mLogHandlerCounters[e.getLogHandler()->getType()] = 1;
-    }else{
-      mLogHandlerCounters[e.getLogHandler()->getType()] += 1;
+    if(e.getLogHandler() != nullptr) {
+      if (mLogHandlerCounters.find(e.getLogHandler()->getType()) ==
+          mLogHandlerCounters.end()) {
+        mLogHandlerCounters[e.getLogHandler()->getType()] = 1;
+      } else {
+        mLogHandlerCounters[e.getLogHandler()->getType()] += 1;
+      }
     }
   }
 
