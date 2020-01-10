@@ -24,9 +24,10 @@ using namespace Utils;
 
 ProjectsElasticSearch::ProjectsElasticSearch(const HttpClientConfig elastic_client_config, std::string index,
         int time_to_wait_before_inserting,
-        int bulk_size, const bool stats, MConn conn) : ElasticSearchBase(elastic_client_config, time_to_wait_before_inserting, bulk_size),
-mIndex(index),
-mStats(stats), mConn(conn), mStartTime(getCurrentTime()){
+        int bulk_size, const bool stats, MConn conn) : ElasticSearchBase
+        (elastic_client_config, time_to_wait_before_inserting, bulk_size, stats,
+         new MovingCountersBulkExtendedSet("fs")),
+mIndex(index), mConn(conn){
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
 
@@ -42,7 +43,7 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
     fslogs += bulk.getCount(LogType::FSLOG);
     metalogs += bulk.getCount(LogType::METALOG);
     if(mStats){
-      mCounters.bulkReceived(bulk);
+      mCounters->bulkReceived(bulk);
     }
   }
 
@@ -56,7 +57,7 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
       FsMutationsLogTable().removeLogs(mConn.inodeConnection, logRHandlers);
     }
     if (mStats) {
-      mCounters.bulksProcessed(start_time, bulks);
+      mCounters->bulksProcessed(start_time, bulks);
     }
   }else{
     for (auto it = bulks->begin(); it != bulks->end();++it) {
@@ -68,7 +69,7 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
         }
       }
       if (mStats) {
-        mCounters.bulkProcessed(start_time, bulk);
+        mCounters->bulkProcessed(start_time, bulk);
       }
     }
   }
@@ -114,48 +115,31 @@ json) {
 ProjectsElasticSearch::~ProjectsElasticSearch() {
 }
 
-std::string ProjectsElasticSearch::getMetrics() const {
-  std::stringstream out;
-  out << "up_seconds " << getTimeDiffInSeconds(mStartTime, getCurrentTime())
-  << std::endl;
-  out << "epipe_elastic_queue_length " << mCurrentQueueSize << std::endl;
-
-  if(mElasticConnetionFailed) {
-    out << "epipe_elastic_connection_failed " << mElasticConnetionFailed <<
-    std::endl;
-    out << "epipe_elastic_connection_failed_since_seconds " <<
-    Utils::getTimeDiffInSeconds(mTimeElasticConnectionFailed,
-        Utils::getCurrentTime()) << std::endl;
-  }
-  out << mCounters.getMetrics(mStartTime);
-  return out.str();
-}
-
 void ProjectsElasticSearch::addDataset(Int64 inodeId, std::string json) {
  addDoc(inodeId, json);
   if(mStats){
-    mCounters.datasetAdded();
+    mCounters->datasetAdded();
   }
 }
 
 void ProjectsElasticSearch::addProject(Int64 inodeId, std::string json) {
   addDoc(inodeId, json);
   if(mStats){
-    mCounters.projectAdded();
+    mCounters->projectAdded();
   }
 }
 
 void ProjectsElasticSearch::removeDataset(Int64 inodeId) {
   deleteDoc(inodeId);
   if(mStats){
-    mCounters.datasetRemoved();
+    mCounters->datasetRemoved();
   }
 }
 
 void ProjectsElasticSearch::removeProject(Int64 inodeId) {
   deleteDoc(inodeId);
   if(mStats){
-    mCounters.projectRemoved();
+    mCounters->projectRemoved();
   }
 }
 

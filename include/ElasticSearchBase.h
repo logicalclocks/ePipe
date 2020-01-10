@@ -22,15 +22,18 @@
 
 #include "TimedRestBatcher.h"
 #include "http/server/MetricsProvider.h"
+#include "MetricsMovingCounters.h"
 
 class ElasticSearchBase : public TimedRestBatcher, public
     MetricsProvider {
 public:
-  ElasticSearchBase(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting, int bulk_size);
+  ElasticSearchBase(const HttpClientConfig elastic_client_config, int
+  time_to_wait_before_inserting, int bulk_size, const bool statsEnabled,
+  MovingCountersSet* const metricsCounters);
   
   virtual ~ElasticSearchBase();
 
-  std::string getMetrics() const override;
+  std::string getMetrics() final override;
 
 protected:
   std::string getElasticSearchUrlonIndex(std::string index);
@@ -40,8 +43,8 @@ protected:
   std::string getElasticSearchBulkUrl();
   virtual bool parseResponse(std::string response);
 
-protected:
+  const bool mStats;
+  MovingCountersSet* const mCounters;
   const std::string DEFAULT_TYPE;
-
 };
 #endif //EPIPE_ELASTICSEARCHBASE_H

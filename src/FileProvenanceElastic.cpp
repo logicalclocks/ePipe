@@ -19,8 +19,9 @@
 
 FileProvenanceElastic::FileProvenanceElastic(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting,
     int bulk_size, const bool stats, SConn conn) :
-ElasticSearchWithMetrics(elastic_client_config,
-    time_to_wait_before_inserting, bulk_size, stats), mConn(conn) {}
+ElasticSearchBase(elastic_client_config,
+    time_to_wait_before_inserting, bulk_size, stats, new MovingCountersBulkSet
+    ("file_prov")), mConn(conn) {}
 
 void FileProvenanceElastic::intProcessOneByOne(eBulk bulk) {
   std::vector<eBulk>::iterator itB, endB;
@@ -52,7 +53,7 @@ bool FileProvenanceElastic::intProcessBatch(std::string val, std::vector<eBulk>*
       //bulk success
       FileProvenanceLogTable().cleanLogs(mConn, cleanupHandlers);
       if (mStats && !bulks->empty()) {
-        mCounters.bulksProcessed(start_time, bulks);
+        mCounters->bulksProcessed(start_time, bulks);
       }
       return true;
     } else {
@@ -64,7 +65,7 @@ bool FileProvenanceElastic::intProcessBatch(std::string val, std::vector<eBulk>*
     FileProvenanceLogTable().cleanLogs(mConn, cleanupHandlers);
     if (mStats && !bulks->empty()) {
       LOG_DEBUG("adding to stats");
-      mCounters.bulksProcessed(start_time, bulks);
+      mCounters->bulksProcessed(start_time, bulks);
       LOG_DEBUG("added to stats");
     }
     return true;
@@ -79,7 +80,7 @@ void FileProvenanceElastic::process(std::vector<eBulk>* bulks) {
 
   for(auto bulk : *bulks) {
     if(mStats){
-      mCounters.bulkReceived(bulk);
+      mCounters->bulkReceived(bulk);
     }
     for(auto event : bulk.mEvents) {
       if (event.getJSON() != FileProvenanceConstants::ELASTIC_NOP
@@ -95,7 +96,7 @@ void FileProvenanceElastic::process(std::vector<eBulk>* bulks) {
     for(auto bulk : *bulks) {
       intProcessOneByOne(bulk);
       if (mStats) {
-        mCounters.bulkProcessed(start_time, bulk);
+        mCounters->bulkProcessed(start_time, bulk);
       }
     }
   }

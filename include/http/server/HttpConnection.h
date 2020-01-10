@@ -42,7 +42,7 @@ using tcp = boost::asio::ip::tcp;
 
 class http_connection : public std::enable_shared_from_this<http_connection> {
 public:
-  http_connection(tcp::socket socket, const MetricsProvider& metrics)
+  http_connection(tcp::socket socket, MetricsProvider& metrics)
       : socket_(std::move(socket)), metricsProvider_(metrics) {
   }
 
@@ -57,7 +57,7 @@ private:
   tcp::socket socket_;
 
   // Metrics
-  const MetricsProvider& metricsProvider_;
+  MetricsProvider& metricsProvider_;
 
   // The buffer for performing reads.
   beast::flat_buffer buffer_{8192};

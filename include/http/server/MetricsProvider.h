@@ -21,7 +21,7 @@
 #define EPIPE_METRICSPROVIDER_H
 class MetricsProvider{
 public:
-  virtual std::string getMetrics() const = 0;
+  virtual std::string getMetrics() = 0;
 };
 
 class MetricsProviders : public MetricsProvider{
@@ -29,11 +29,12 @@ public:
   MetricsProviders(const std::vector<MetricsProvider*> providers) :
   mProviders(providers){}
 
-  std::string getMetrics() const override {
+  std::string getMetrics() override {
     std::stringstream out;
     for(auto m : mProviders){
-      out << m->getMetrics() << std::endl;
+      out << m->getMetrics();
     }
+    out << std::endl;
     return out.str();
   }
 
