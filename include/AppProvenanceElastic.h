@@ -20,10 +20,11 @@
 #ifndef APPPROVENANCEELASTIC_H
 #define APPPROVENANCEELASTIC_H
 
-#include "ElasticSearchWithMetrics.h"
+#include "ElasticSearchBase.h"
 #include "AppProvenanceTableTailer.h"
+#include "MetricsMovingCounters.h"
 
-class AppProvenanceElastic : public ElasticSearchWithMetrics {
+class AppProvenanceElastic : public ElasticSearchBase {
 public:
   AppProvenanceElastic(const HttpClientConfig elastic_client_config, std::string index,
           int time_to_wait_before_inserting, int bulk_size,

@@ -17,12 +17,13 @@
 #ifndef FILEPROVENANCEELASTIC_H
 #define FILEPROVENANCEELASTIC_H
 
-#include "ElasticSearchWithMetrics.h"
+#include "ElasticSearchBase.h"
 #include "FileProvenanceTableTailer.h"
 #include "tables/FileProvenanceLogTable.h"
 #include "tables/FileProvenanceXAttrBufferTable.h"
+#include "MetricsMovingCounters.h"
 
-class FileProvenanceElastic : public ElasticSearchWithMetrics {
+class FileProvenanceElastic : public ElasticSearchBase {
 public:
   FileProvenanceElastic(const HttpClientConfig elastic_client_config,int time_to_wait_before_inserting, int bulk_size,
       const bool stats, SConn conn);

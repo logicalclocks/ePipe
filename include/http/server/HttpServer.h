@@ -24,7 +24,7 @@
 
 class HttpServer{
 public:
-  HttpServer(const std::string addr, const
+  HttpServer(const std::string addr,
   MetricsProvider& metricsProvider) : mMetricsProvider
   (metricsProvider){
     std::size_t i = addr.find(":");
@@ -46,9 +46,9 @@ public:
 private:
   std::string mIP;
   unsigned short mPort;
-  const MetricsProvider& mMetricsProvider;
+  MetricsProvider& mMetricsProvider;
 
-  void start(tcp::acceptor &acceptor, tcp::socket &socket, const
+  void start(tcp::acceptor &acceptor, tcp::socket &socket,
   MetricsProvider& metrics) {
     acceptor.async_accept(socket,
                           [&](beast::error_code ec) {

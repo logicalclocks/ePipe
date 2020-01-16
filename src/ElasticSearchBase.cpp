@@ -19,8 +19,12 @@
 
 #include "ElasticSearchBase.h"
 
-ElasticSearchBase::ElasticSearchBase(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting, int bulk_size)
-    : TimedRestBatcher(elastic_client_config, time_to_wait_before_inserting, bulk_size), DEFAULT_TYPE("_doc") {
+ElasticSearchBase::ElasticSearchBase(const HttpClientConfig
+elastic_client_config, int time_to_wait_before_inserting, int bulk_size,
+const bool statsEnabled, MovingCountersSet* const
+metricsCounters) : TimedRestBatcher(elastic_client_config,
+    time_to_wait_before_inserting, bulk_size),  mStats
+    (statsEnabled), mCounters(metricsCounters), DEFAULT_TYPE("_doc") {
 }
 
 std::string ElasticSearchBase::getElasticSearchUrlonIndex(std::string index) {
@@ -107,6 +111,7 @@ ElasticSearchBase::~ElasticSearchBase() {
 
 }
 
-std::string ElasticSearchBase::getMetrics() const {
-  return std::string();
+std::string ElasticSearchBase::getMetrics(){
+  return mCounters->getMetrics(mCurrentQueueSize,
+      mElasticConnetionFailed, mTimeElasticConnectionFailed);
 }

@@ -18,8 +18,8 @@
 
 AppProvenanceElastic::AppProvenanceElastic(const HttpClientConfig elastic_client_config, std::string index,
         int time_to_wait_before_inserting, int bulk_size, const bool stats, SConn conn) : 
-ElasticSearchWithMetrics(elastic_client_config, time_to_wait_before_inserting,
-    bulk_size, stats),
+ElasticSearchBase(elastic_client_config, time_to_wait_before_inserting,
+    bulk_size, stats, new MovingCountersBulkSet("app_prov")),
 mIndex(index), mConn(conn) {
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
@@ -32,7 +32,7 @@ void AppProvenanceElastic::process(std::vector<eBulk>* bulks) {
     batch += bulk.batchJSON();
     logRHandlers.insert(logRHandlers.end(), bulk.mLogHandlers.begin(), bulk.mLogHandlers.end());
     if(mStats){
-      mCounters.bulkReceived(bulk);
+      mCounters->bulkReceived(bulk);
     }
   }
 
@@ -40,7 +40,7 @@ void AppProvenanceElastic::process(std::vector<eBulk>* bulks) {
   if (httpPostRequest(mElasticBulkAddr, batch)) {
     AppProvenanceLogTable().removeLogs(mConn, logRHandlers);
     if (mStats) {
-      mCounters.bulksProcessed(start_time, bulks);
+      mCounters->bulksProcessed(start_time, bulks);
     }
   }else{
     for (auto it = bulks->begin(); it != bulks->end();++it) {
@@ -52,7 +52,7 @@ void AppProvenanceElastic::process(std::vector<eBulk>* bulks) {
         }
       }
       if (mStats) {
-        mCounters.bulkProcessed(start_time, bulk);
+        mCounters->bulkProcessed(start_time, bulk);
       }
     }
   }

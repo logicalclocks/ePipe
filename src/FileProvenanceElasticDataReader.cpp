@@ -191,7 +191,7 @@ public:
         << cleanupBuffer.GetString()    << std::endl 
         << opBuffer.GetString()         << std::endl 
         << dataBuffer.GetString();
-    LOG_INFO("result " << out.str());
+    LOG_DEBUG("result " << out.str());
     return out.str();
   }
 
@@ -371,7 +371,7 @@ public:
     
     std::stringstream out;
     out << opBuffer.GetString() << std::endl << dataBuffer.GetString();
-    LOG_INFO("json5:" <<out.str());
+    LOG_DEBUG("json5:" <<out.str());
     return out.str();
   }
 
@@ -477,7 +477,7 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
   std::list<std::string> bulkOps;
   FileProvenanceConstants::Operation fileOp = FileProvenanceConstants::findOp(row);
   std::pair<FileProvenanceConstants::MLType, std::string> mlAux = FileProvenanceConstants::parseML(row);
-  LOG_INFO("ml type:" << mlAux.first << " inode:" << row.mInodeId << " name:" << row.mInodeName);
+  LOG_DEBUG("ml type:" << mlAux.first << " inode:" << row.mInodeId << " name:" << row.mInodeName);
   FPXAttrVersionsK datasetProvCoreKey(row.mDatasetId, FileProvenanceConstants::XATTRS_USER_NAMESPACE, FileProvenanceConstants::XATTR_PROV_CORE);
   boost::optional<FPXAttrBufferRow> datasetProvCoreRow = getProvCore(datasetProvCoreKey);
   boost::optional<FileProvenanceConstants::ProvOpStoreType> datasetProvCore = boost::make_optional(false, FileProvenanceConstants::ProvOpStoreType::STORE_NONE);
