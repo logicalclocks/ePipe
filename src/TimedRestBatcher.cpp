@@ -89,9 +89,7 @@ void TimedRestBatcher::processBatch() {
 
 bool TimedRestBatcher::httpPostRequest(std::string requestUrl, std::string json) {
   ptime t1 = Utils::getCurrentTime();
-  std::string res = handleHttpRequestWithRetry(HttpVerb::POST,requestUrl, json);
-
-  bool success = parseResponse(res);
+  bool success = handleHttpRequestWithRetry(HttpVerb::POST,requestUrl, json);
   ptime t2 = Utils::getCurrentTime();
   LOG_INFO("POST " << requestUrl << " [" << json.length() << "]  took " <<
                    Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
@@ -100,17 +98,16 @@ bool TimedRestBatcher::httpPostRequest(std::string requestUrl, std::string json)
 
 bool TimedRestBatcher::httpDeleteRequest(std::string requestUrl) {
   ptime t1 = Utils::getCurrentTime();
-  std::string res = handleHttpRequestWithRetry(HttpVerb::DELETE,requestUrl, "");
-
-  bool success = parseResponse(res);
+  bool success = handleHttpRequestWithRetry(HttpVerb::DELETE,requestUrl, "");
   ptime t2 = Utils::getCurrentTime();
   LOG_INFO("DELETE " << requestUrl << " took " <<
                      Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
   return success;
 }
 
-std::string TimedRestBatcher::handleHttpRequestWithRetry(HttpVerb verb,
-                                                         std::string requestUrl, std::string json){
+
+bool TimedRestBatcher::handleHttpRequestWithRetry(HttpVerb verb,
+    std::string requestUrl, std::string json){
   do {
     HttpResponse res;
     if(verb == HttpVerb::POST) {
@@ -119,8 +116,11 @@ std::string TimedRestBatcher::handleHttpRequestWithRetry(HttpVerb verb,
       res = mHttpClient.delete_(requestUrl);
     }
     if(res.mSuccess){
-      mElasticConnetionFailed = false;
-      return res.mResponse;
+      ParsingResponse pr = parseResponse(res.mResponse);
+      mElasticConnetionFailed = pr.mRetryable;
+      if(!pr.mRetryable){
+        return pr.mSuccess;
+      }
     }
 
     if(!mElasticConnetionFailed){

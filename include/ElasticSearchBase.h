@@ -41,7 +41,7 @@ protected:
   std::string getElasticSearchUpdateDocUrl(std::string index, Int64 doc);
   std::string getElasticSearchBulkUrl(std::string index);
   std::string getElasticSearchBulkUrl();
-  virtual bool parseResponse(std::string response);
+  virtual ParsingResponse parseResponse(std::string response);
 
   const bool mStats;
   MovingCountersSet* const mCounters;

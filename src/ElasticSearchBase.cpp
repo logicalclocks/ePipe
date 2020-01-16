@@ -53,9 +53,15 @@ std::string ElasticSearchBase::getElasticSearchBulkUrl() {
   return str;
 }
 
-bool ElasticSearchBase::parseResponse(std::string response) {
+TimedRestBatcher::ParsingResponse ElasticSearchBase::parseResponse(std::string response) {
+  ParsingResponse pr = {false, false};
   try {
     LOG_DEBUG("ES Response: \n" << response);
+    if(response == "Open Distro Security not initialized."){
+      pr.mRetryable = true;
+      LOG_DEBUG("Retry the request until Open Distro Security is initialized");
+      return pr;
+    }
     rapidjson::Document d;
     if (!d.Parse<0>(response.c_str()).HasParseError()) {
       if (d.HasMember("errors")) {
@@ -82,7 +88,7 @@ bool ElasticSearchBase::parseResponse(std::string response) {
           }
           std::string errorsStr = errors.str();
           LOG_ERROR(" ES got errors: " << errorsStr);
-          return false;
+          return pr;
         }
       } else if (d.HasMember("error")) {
         const rapidjson::Value &error = d["error"];
@@ -93,18 +99,19 @@ bool ElasticSearchBase::parseResponse(std::string response) {
         } else if (error.IsString()) {
           LOG_ERROR(" ES got error: " << error.GetString());
         }
-        return false;
+        return pr;
       }
     } else {
       LOG_ERROR(" ES got json error (" << d.GetParseError() << ") while parsing (" << response << ")");
-      return false;
+      return pr;
     }
 
   } catch (std::exception &e) {
     LOG_ERROR(e.what());
-    return false;
+    return pr;
   }
-  return true;
+  pr.mSuccess = true;
+  return pr;
 }
 
 ElasticSearchBase::~ElasticSearchBase() {
