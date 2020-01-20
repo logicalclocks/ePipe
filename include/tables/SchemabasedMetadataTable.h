@@ -84,7 +84,12 @@ struct SchemabasedMetadataEntry {
       LOG_ERROR("Empty Schema : " << to_string());
       return "";
     }
-    
+
+    if(!mField.mSearchable){
+      LOG_WARN("Skip non searchable field " << mField.mId);
+      return "";
+    }
+
     std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);

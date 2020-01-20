@@ -138,10 +138,10 @@ public:
 
       int table_id = field.mTable.mId;
       boost::optional<TableRow> table_ptr = mTablesTable.getFromCache(table_id);
-      if (table_ptr && field.mSearchable) {
+      if (table_ptr) {
         field.mTable = table_ptr.get();
-        FieldsCache::getInstance().put(it->first, field);
       }
+      FieldsCache::getInstance().put(it->first, field);
     }
   }
 
