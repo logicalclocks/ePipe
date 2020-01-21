@@ -39,7 +39,7 @@ std::string ElasticSearchBase::getElasticSearchUrlOnDoc(std::string index, Int64
 }
 
 std::string ElasticSearchBase::getElasticSearchUpdateDocUrl(std::string index,  Int64 doc) {
-  std::string str = getElasticSearchUrlOnDoc(index, doc) + "/_update";
+  std::string str = getElasticSearchUrlOnDoc(index, doc)+"/_update?retry_on_conflict=1" ;
   return str;
 }
 
