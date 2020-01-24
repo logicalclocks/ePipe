@@ -33,6 +33,8 @@
 #include <boost/archive/iterators/base64_from_binary.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
 #include <boost/algorithm/string.hpp>
+#include <random>
+#include <chrono>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -47,7 +49,7 @@ struct HttpResponse{
 };
 
 struct HttpClientConfig{
-  std::string mAddr;
+  std::string mAddresses;
   bool mSSLEnabled;
   std::string mCAPath;
   std::string mUserName;
@@ -63,7 +65,42 @@ struct HttpClientConfig{
     return authorization;
   }
 
+  std::vector<tcp::endpoint> getElasticEndpoints() const {
+    std::vector<tcp::endpoint> _endpoints;
+    std::vector<std::string> _addresVsc;
+    boost::split(_addresVsc, mAddresses, boost::is_any_of(","));
+    auto now = std::chrono::high_resolution_clock::now();
+    std::mt19937 _rgen(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count());
+    std::shuffle(_addresVsc.begin(), _addresVsc.end(), _rgen);
+
+    if(_addresVsc.empty()){
+      LOG_FATAL("No elastic nodes were supplied : " << mAddresses);
+    }
+
+    for(auto& addr : _addresVsc){
+      _endpoints.push_back(getEndpointIfValid(addr));
+    }
+
+    LOG_INFO("Elasitcsearch nodes [" << boost::algorithm::join(_addresVsc, ",") << "] added");
+    return _endpoints;
+  }
+
 private:
+  tcp::endpoint getEndpointIfValid(const std::string addr) const{
+    tcp::endpoint _endpoint;
+    try {
+      auto const i = addr.find(":");
+      auto const ip = addr.substr(0, i);
+      auto const port = static_cast<unsigned short>(std::atoi(
+          addr.substr(i + 1, addr.length()).c_str()));
+      _endpoint = {net::ip::make_address(ip), port};
+    } catch(const boost::system::system_error & ex){
+      LOG_FATAL("error in http address format [" << addr << "]"
+                                                 << " only ips allowed : " <<  ex.code() << " " << ex.what());
+    }
+    return _endpoint;
+  }
+
   std::string encode64(const std::string &val) {
     using namespace boost::archive::iterators;
     using It = base64_from_binary<transform_width<std::string::const_iterator, 6, 8>>;
@@ -83,18 +120,9 @@ private:
 class HttpClient{
 public:
   HttpClient(const HttpClientConfig config){
-    std::string addr = config.mAddr;
-    try {
-      auto const i = addr.find(":");
-      auto const ip = addr.substr(0, i);
-      auto const port = static_cast<unsigned short>(std::atoi(
-          addr.substr(i + 1, addr.length()).c_str()));
-      mEndpoint = {net::ip::make_address(ip), port};
-    } catch(const boost::system::system_error & ex){
-      LOG_FATAL("error in http address format [" << addr << "]"
-          << " only ips allowed : " <<  ex.code() << " " << ex.what());
-    }
+    mEndpoints = config.getElasticEndpoints();
     mConfig = config;
+    mRoundRobinIndex = 0;
   }
 
   HttpResponse get(std::string target){
@@ -109,8 +137,22 @@ public:
     return request(http::verb::delete_, target);
   }
 private:
-  tcp::endpoint mEndpoint;
+  std::vector<tcp::endpoint> mEndpoints;
   HttpClientConfig mConfig;
+  unsigned long mRoundRobinIndex;
+
+  tcp::endpoint& getEndpoint(){
+    return mEndpoints[mRoundRobinIndex];
+  }
+
+  tcp::endpoint& getAnotherEndpoint(){
+    if(mRoundRobinIndex == (mEndpoints.size() - 1)){
+      mRoundRobinIndex = 0;
+    } else{
+      mRoundRobinIndex++;
+    }
+    return mEndpoints[mRoundRobinIndex];
+  }
 
   HttpResponse request(http::verb verb, std::string
   target){
@@ -119,15 +161,33 @@ private:
 
   HttpResponse request(http::verb verb, std::string
   target, std::string data){
+    tcp::endpoint endpoint = getEndpoint();
+    unsigned long count = 1;
+    HttpResponse response;
+    do{
+      response = request(endpoint, verb, target, data);
+      if(!response.mSuccess){
+        endpoint = getAnotherEndpoint();
+        if(count++ == mEndpoints.size()){
+          break;
+        }
+      }
+    }while(!response.mSuccess);
+    return response;
+  }
+
+  HttpResponse request(tcp::endpoint& endpoint, http::verb verb, std::string
+  target, std::string data){
+    LOG_INFO(verb << " "<< endpoint.address().to_string() << target);
     if(mConfig.mSSLEnabled){
-      return request_with_ssl(verb, target, data);
+      return request_with_ssl(endpoint, verb, target, data);
     }else{
-      return request_no_ssl(verb, target, data);
+      return request_no_ssl(endpoint, verb, target, data);
     }
   }
 
-  HttpResponse request_no_ssl(http::verb verb, std::string
-  target, std::string data){
+  HttpResponse request_no_ssl(tcp::endpoint& endpoint, http::verb verb,
+      std::string target, std::string data){
 
     std::string responseBody;
     bool succeed = true;
@@ -138,10 +198,10 @@ private:
       net::io_context ioc;
       beast::tcp_stream stream(ioc);
 
-      stream.connect(mEndpoint);
+      stream.connect(endpoint);
 
       http::request<http::string_body> req{verb, target, 11};
-      req.set(http::field::host, mEndpoint.address().to_string());
+      req.set(http::field::host, endpoint.address().to_string());
       req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
       req.set(http::field::content_type, "application/json");
 
@@ -182,7 +242,7 @@ private:
     return {succeed, code, responseBody};
   }
 
-  HttpResponse request_with_ssl(http::verb verb, std::string
+  HttpResponse request_with_ssl(tcp::endpoint& endpoint, http::verb verb, std::string
   target, std::string data){
 
     std::string responseBody;
@@ -201,18 +261,18 @@ private:
       beast::ssl_stream<beast::tcp_stream> stream(ioc, ctx);
 
       // Set SNI Hostname (many hosts need this to handshake successfully)
-      if(! SSL_set_tlsext_host_name(stream.native_handle(), mEndpoint.address
+      if(! SSL_set_tlsext_host_name(stream.native_handle(), endpoint.address
       ().to_string().c_str()))
       {
         beast::error_code ec{-1, net::error::get_ssl_category()};
         throw beast::system_error{ec};
       }
 
-      beast::get_lowest_layer(stream).connect(mEndpoint);
+      beast::get_lowest_layer(stream).connect(endpoint);
       stream.handshake(ssl::stream_base::client);
 
       http::request<http::string_body> req{verb, target, 11};
-      req.set(http::field::host, mEndpoint.address().to_string());
+      req.set(http::field::host, endpoint.address().to_string());
       req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
       req.set(http::field::content_type, "application/json");
 

@@ -158,7 +158,13 @@ protected:
   bool httpDeleteRequest(std::string requestUrl);
 
   virtual void process(std::vector<eBulk>* data) = 0;
-  virtual bool parseResponse(std::string response) = 0;
+
+  struct ParsingResponse{
+    bool mSuccess;
+    bool mRetryable;
+  };
+
+  virtual ParsingResponse parseResponse(std::string response) = 0;
 
 private:
   ConcurrentQueue<eBulk> mQueue;
@@ -177,7 +183,7 @@ private:
     DELETE
   };
 
-  std::string  handleHttpRequestWithRetry(HttpVerb verb,std::string
+  bool handleHttpRequestWithRetry(HttpVerb verb,std::string
   requestUrl, std::string json);
 
 };
