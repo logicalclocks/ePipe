@@ -209,12 +209,12 @@ void Notifier::setup() {
         elastic_file_provenance_tailer_connection, elastic_file_provenance_tailer_recovery_connection,
         mPollMaxTimeToWait, mBarrier);
 
-    SConn* elastic_file_provenance_connections = new SConn[mFileProvenanceTU.mNumReaders];
+    SConn* file_prov_hops_connections = new SConn[mFileProvenanceTU.mNumReaders];
     for (int i = 0; i < mFileProvenanceTU.mNumReaders; i++) {
-      elastic_file_provenance_connections[i] = create_ndb_connection(mDatabaseName);
+      file_prov_hops_connections[i] = create_ndb_connection(mDatabaseName);
     }
-    mFileProvenanceElasticDataReaders = new FileProvenanceElasticDataReaders(elastic_file_provenance_connections, 
-      mFileProvenanceTU.mNumReaders, mHopsworksEnabled, mFileProvenanceElastic);
+    mFileProvenanceElasticDataReaders = new FileProvenanceElasticDataReaders(file_prov_hops_connections,
+      mFileProvenanceTU.mNumReaders, mHopsworksEnabled, mFileProvenanceElastic, mLRUCap);
     mFileProvenanceBatcher = new RCBatcher<FileProvenanceRow, SConn>(
       mFileProvenanceTableTailer, mFileProvenanceElasticDataReaders,
       mFileProvenanceTU.mWaitTime, mFileProvenanceTU.mBatchSize);

@@ -16,8 +16,8 @@
 
 #include "FileProvenanceElasticDataReader.h"
 
-FileProvenanceElasticDataReader::FileProvenanceElasticDataReader(SConn connection, const bool hopsworks)
-: NdbDataReader(connection, hopsworks) {
+FileProvenanceElasticDataReader::FileProvenanceElasticDataReader(SConn hopsConn, const bool hopsworks, int lru_cap)
+: NdbDataReader(hopsConn, hopsworks), inodesTable(lru_cap) {
 }
 
 class ElasticHelper {
@@ -495,9 +495,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
     row.mProjectId = projectIId.get();
   } else {
     std::stringstream cause;
-    cause << "no project id" << row.to_string();
-    LOG_ERROR(cause.str());
-    throw std::logic_error(cause.str());
+    cause << "no project id - skipping operation" << row.to_string();
+    LOG_WARN(cause.str());
+    return boost::make_tuple(bulkOps, row.getPK(), boost::none);
+  }
+  INodeRow inode = inodesTable.getByInodeId(mNdbConnection, row.mProjectId);
+  if(inode.mId != row.mProjectId) {
+    std::stringstream cause;
+    cause << "no project inode(deleted?) - skipping operation" << row.to_string();
+    LOG_DEBUG(cause.str());
+    return boost::make_tuple(bulkOps, row.getPK(), boost::none);
   }
 
   switch (fileOp) {
