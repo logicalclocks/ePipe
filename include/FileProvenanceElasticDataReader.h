@@ -33,26 +33,29 @@ typedef boost::tuple<std::list<std::string>, FileProvenancePK, boost::optional<F
 
 class FileProvenanceElasticDataReader : public NdbDataReader<FileProvenanceRow, SConn> {
 public:
-  FileProvenanceElasticDataReader(SConn connection, const bool hopsworks);
+  FileProvenanceElasticDataReader(SConn hopsConn, const bool hopsworks, int lru_cap);
   virtual ~FileProvenanceElasticDataReader();
+protected:
+
 private:
   FileProvenanceLogTable mFileLogTable;
   FileProvenanceXAttrBufferTable mXAttrBuffer;
+  INodeTable inodesTable;
 
   void processAddedandDeleted(Pq* data_batch, eBulk& bulk);
   ProcessRowResult process_row(FileProvenanceRow row);
   FPXAttrBufferRow readBufferedXAttr(FPXAttrBufferPK xattrBufferKey);
-  FileProvenanceConstants::ProvOpStoreType readProvType(FileProvenanceRow row);
   boost::optional<FPXAttrBufferRow> getProvCore(FPXAttrVersionsK versionsKey);
 };
 
 class FileProvenanceElasticDataReaders :  public NdbDataReaders<FileProvenanceRow, SConn>{
   public:
-    FileProvenanceElasticDataReaders(SConn* connections, int num_readers,const bool hopsworks,
-          TimedRestBatcher* restEndpoint) :
+    FileProvenanceElasticDataReaders(SConn* hopsConns, int num_readers,const bool hopsworks,
+          TimedRestBatcher* restEndpoint, int lru_cap) :
     NdbDataReaders(restEndpoint){
       for(int i=0; i<num_readers; i++){
-        FileProvenanceElasticDataReader* dr = new FileProvenanceElasticDataReader(connections[i], hopsworks);
+        FileProvenanceElasticDataReader* dr
+          = new FileProvenanceElasticDataReader(hopsConns[i], hopsworks, lru_cap);
         dr->start(i, this);
         mDataReaders.push_back(dr);
       }
