@@ -30,8 +30,12 @@ TimedRestBatcher::TimedRestBatcher(const HttpClientConfig elastic_client_config,
 
 void TimedRestBatcher::addData(eBulk data) {
   LOG_DEBUG("Add Bulk JSON:" << std::endl << data.batchJSON() << std::endl);
-  mQueue.push(data);
-  mCurrentQueueSize += data.mEvents.size();
+  if(!data.mEvents.empty()){
+    mQueue.push(data);
+    mCurrentQueueSize += data.mEvents.size();
+  }else{
+    LOG_DEBUG("Skip empty bulk: " << data.toString());
+  }
 }
 
 void TimedRestBatcher::shutdown(){
@@ -88,6 +92,7 @@ void TimedRestBatcher::processBatch() {
 }
 
 bool TimedRestBatcher::httpPostRequest(std::string requestUrl, std::string json) {
+  LOG_DEBUG("POST " << requestUrl << "\n" << json);
   ptime t1 = Utils::getCurrentTime();
   bool success = handleHttpRequestWithRetry(HttpVerb::POST,requestUrl, json);
   ptime t2 = Utils::getCurrentTime();

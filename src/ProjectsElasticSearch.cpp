@@ -26,7 +26,7 @@ ProjectsElasticSearch::ProjectsElasticSearch(const HttpClientConfig elastic_clie
         int time_to_wait_before_inserting,
         int bulk_size, const bool stats, MConn conn) : ElasticSearchBase
         (elastic_client_config, time_to_wait_before_inserting, bulk_size, stats,
-         new MovingCountersBulkExtendedSet("fs")),
+         new MovingCountersBulkSet("fs")),
 mIndex(index), mConn(conn){
   mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
 }
@@ -34,14 +34,16 @@ mIndex(index), mConn(conn){
 void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
   std::vector<const LogHandler*> logRHandlers;
   std::string batch;
-  int fslogs=0, metalogs=0;
+  int fslogs=0, metalogs=0, hopsworkslogs=0;
   for (auto it = bulks->begin(); it != bulks->end();++it) {
     eBulk bulk = *it;
+    LOG_DEBUG(bulk.toString());
     batch += bulk.batchJSON();
     logRHandlers.insert(logRHandlers.end(), bulk.mLogHandlers.begin(),
         bulk.mLogHandlers.end());
     fslogs += bulk.getCount(LogType::FSLOG);
     metalogs += bulk.getCount(LogType::METALOG);
+    hopsworkslogs += bulk.getCount(LogType::HOPSWORKSLOG);
     if(mStats){
       mCounters->bulkReceived(bulk);
     }
@@ -56,6 +58,11 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
     if (fslogs > 0) {
       FsMutationsLogTable().removeLogs(mConn.inodeConnection, logRHandlers);
     }
+
+    if(hopsworkslogs > 0){
+      HopsworksOpsLogTable().removeLogs(mConn.metadataConnection, logRHandlers);
+    }
+
     if (mStats) {
       mCounters->bulksProcessed(start_time, bulks);
     }
@@ -80,8 +87,7 @@ bool ProjectsElasticSearch::bulkRequest(eEvent& event) {
   if (httpPostRequest(mElasticBulkAddr, event.getJSON())){
     if(event.getLogHandler()->getType() == LogType::FSLOG){
       event.getLogHandler()->removeLog(mConn.inodeConnection);
-    }else if(event.getLogHandler()->getType() ==
-             LogType::METALOG){
+    }else if(event.getLogHandler()->getType() == LogType::METALOG || event.getLogHandler()->getType() == LogType::HOPSWORKSLOG){
       event.getLogHandler()->removeLog(mConn.metadataConnection);
     }
     return true;
@@ -89,57 +95,6 @@ bool ProjectsElasticSearch::bulkRequest(eEvent& event) {
   return false;
 }
 
-void ProjectsElasticSearch::addDoc(Int64 inodeId, std::string json) {
-  std::string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
-  if(!httpPostRequest(url, json)){
-    LOG_FATAL("Failure while add doc " << inodeId << std::endl << json);
-  }
-}
-
-void ProjectsElasticSearch::deleteDoc(Int64 inodeId) {
-  std::string url = getElasticSearchUrlOnDoc(mIndex, inodeId);
-  if(!httpDeleteRequest(url)){
-    LOG_FATAL("Failure while deleting doc " << inodeId);
-  }
-}
-
-void ProjectsElasticSearch::deleteSchemaForINode(Int64 inodeId, std::string
-json) {
-  std::string url = getElasticSearchUpdateDocUrl(mIndex, inodeId);
-  if(!httpPostRequest(url, json)){
-    LOG_FATAL("Failure while deleting schema for inode " << inodeId << std::endl
-    << json);
-  }
-}
-
 ProjectsElasticSearch::~ProjectsElasticSearch() {
-}
-
-void ProjectsElasticSearch::addDataset(Int64 inodeId, std::string json) {
- addDoc(inodeId, json);
-  if(mStats){
-    mCounters->datasetAdded();
-  }
-}
-
-void ProjectsElasticSearch::addProject(Int64 inodeId, std::string json) {
-  addDoc(inodeId, json);
-  if(mStats){
-    mCounters->projectAdded();
-  }
-}
-
-void ProjectsElasticSearch::removeDataset(Int64 inodeId) {
-  deleteDoc(inodeId);
-  if(mStats){
-    mCounters->datasetRemoved();
-  }
-}
-
-void ProjectsElasticSearch::removeProject(Int64 inodeId) {
-  deleteDoc(inodeId);
-  if(mStats){
-    mCounters->projectRemoved();
-  }
 }
 

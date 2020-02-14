@@ -27,22 +27,6 @@ metricsCounters) : TimedRestBatcher(elastic_client_config,
     (statsEnabled), mCounters(metricsCounters), DEFAULT_TYPE("_doc") {
 }
 
-std::string ElasticSearchBase::getElasticSearchUrlonIndex(std::string index) {
-  std::string str = "/" + index;
-  return str;
-}
-
-std::string ElasticSearchBase::getElasticSearchUrlOnDoc(std::string index, Int64 doc) {
-  std::stringstream out;
-  out << getElasticSearchUrlonIndex(index) << "/" << DEFAULT_TYPE << "/" << doc;
-  return out.str();
-}
-
-std::string ElasticSearchBase::getElasticSearchUpdateDocUrl(std::string index,  Int64 doc) {
-  std::string str = getElasticSearchUrlOnDoc(index, doc)+"/_update?retry_on_conflict=1" ;
-  return str;
-}
-
 std::string ElasticSearchBase::getElasticSearchBulkUrl(std::string index) {
   std::string str = "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
   return str;

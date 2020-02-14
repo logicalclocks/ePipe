@@ -29,16 +29,7 @@ public:
   ProjectsElasticSearch(const HttpClientConfig elastic_client_config,
       std::string index, int time_to_wait_before_inserting, int bulk_size,
           const bool stats, MConn conn);
-
-  void addDataset(Int64 inodeId, std::string json);
-  void addProject(Int64 inodeId, std::string json);
-  void removeDataset(Int64 inodeId);
-  void removeProject(Int64 inodeId);
-
-  void addDoc(Int64 inodeId, std::string json);
-  void deleteDoc(Int64 inodeId);
-  void deleteSchemaForINode(Int64 inodeId, std::string json);
-
+          
   virtual ~ProjectsElasticSearch();
 private:
   const std::string mIndex;

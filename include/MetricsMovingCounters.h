@@ -118,11 +118,6 @@ struct MovingCountersBulk{
   std::vector<eBulk>* bulk) = 0;
 };
 
-struct MovingCountersExtra{
-  virtual void added(std::string counter) = 0;
-  virtual void removed(std::string counter) = 0;
-};
-
 struct MovingCountersBulkImpl : public MovingCounters, public MovingCountersBulk{
 
   MovingCountersBulkImpl(int stepInSeconds, std::string timePrefix, std::string
@@ -140,7 +135,7 @@ struct MovingCountersBulkImpl : public MovingCounters, public MovingCountersBulk
     ptime end_time = Utils::getCurrentTime();
     updateAccumlator("avg_elastic_bulk_req_time_milliseconds",
         Utils::getTimeDiffInMilliseconds(elastic_start_time, end_time));
-    bulkProcessed(bulk, end_time);
+    bulkProcessedInternal(bulk, end_time);
   }
 
   void bulksProcessed(const ptime elastic_start_time, const
@@ -150,12 +145,12 @@ struct MovingCountersBulkImpl : public MovingCounters, public MovingCountersBulk
         Utils::getTimeDiffInMilliseconds(elastic_start_time, end_time));
     for (auto it = bulks->begin(); it != bulks->end(); ++it) {
       eBulk bulk = *it;
-      bulkProcessed(bulk, end_time);
+      bulkProcessedInternal(bulk, end_time);
     }
   }
 
 private:
-  void bulkProcessed(const eBulk& bulk,
+  void bulkProcessedInternal(const eBulk& bulk,
                      const ptime end_time){
     updateAccumlator("avg_elastic_batching_time_milliseconds", bulk
     .geteWaitTimeMS(end_time));
@@ -166,22 +161,23 @@ private:
     }
     addToCounter("num_processed_batches", 1);
     addToCounter("num_processed_events", bulk.mEvents.size());
-  }
-};
-
-struct MovingCountersExtraImpl : public MovingCounters, public
-    MovingCountersExtra{
-
-  MovingCountersExtraImpl(int stepInSeconds, std::string timePrefix, std::string
-  pipePrefix) : MovingCounters(stepInSeconds, timePrefix, pipePrefix){
+    updateCounters(bulk);
   }
 
-  void added(std::string counter) override {
-    addToCounter("num_added_" + counter, 1);
-  }
-
-  void removed(std::string counter) override {
-    addToCounter("num_deleted_" + counter, 1);
+  void updateCounters(const eBulk& bulk){
+    for(eEvent event : bulk.mEvents){
+      if(event.getAssetType() != eEvent::AssetType::AssetNA){
+        switch(event.getEventType()){
+          case eEvent::EventType::AddEvent:
+          case eEvent::EventType::UpdateEvent:
+              addToCounter("num_added_" + event.getAssetTypeString(), 1);
+          break;
+          case eEvent::EventType::DeleteEvent:
+              addToCounter("num_deleted_" + event.getAssetTypeString(), 1);
+          break;
+        }
+      }
+    }
   }
 };
 
@@ -195,18 +191,6 @@ struct MovingCountersSet : public MovingCountersBulk{
 
   void bulksProcessed(const ptime elastic_start_time, const
   std::vector<eBulk> *bulk) override {
-  }
-
-  virtual void datasetAdded() {
-  }
-
-  virtual void projectAdded() {
-  }
-
-  virtual void datasetRemoved() {
-  }
-
-  virtual void projectRemoved() {
   }
 
   virtual std::string getMetrics() {
@@ -314,66 +298,6 @@ private:
 
   std::string getVar(std::string var) const{
     return MovingCounters::getVar(mPipePrefix, var);
-  }
-};
-
-struct MovingCountersBulkExtendedSet : public MovingCountersBulkSet{
-  MovingCountersBulkExtendedSet(std::string pipePrefix) : MovingCountersBulkSet(pipePrefix){
-    mExtCounters = {MovingCountersExtraImpl(60, "last_minute", "hopsworks"),
-                    MovingCountersExtraImpl(3600, "last_hour", "hopsworks"),
-                    MovingCountersExtraImpl(-1,"all_time", "hopsworks")};
-  }
-
-  void datasetAdded() override {
-    for(auto& c : mExtCounters){
-      c.check();
-      c.added("datasets");
-    }
-  }
-
-  void projectAdded() override {
-    for(auto& c : mExtCounters){
-      c.check();
-      c.added("projects");
-    }
-  }
-
-  void datasetRemoved() override {
-    for(auto& c : mExtCounters){
-      c.check();
-      c.removed("datasets");
-    }
-  }
-
-  void projectRemoved() override {
-    for(auto& c : mExtCounters){
-      c.check();
-      c.removed("projects");
-    }
-  }
-
-  std::string getMetrics() override {
-    std::stringstream out;
-    out << MovingCountersBulkSet::getMetrics();
-    for(auto& c : mExtCounters){
-      out << c.getMetrics(mStartTime);
-    }
-    return out.str();
-  }
-
-  std::string getMetrics(Uint32 currentqueue, bool failure,
-                         ptime failedtime) override {
-    return MovingCountersBulkSet::getMetrics(currentqueue, failure, failedtime);
-  }
-
-private:
-  std::vector<MovingCountersExtraImpl> mExtCounters;
-protected:
-  void check() override {
-    MovingCountersBulkSet::check();
-    for(auto& c : mExtCounters){
-      c.check();
-    }
   }
 };
 #endif //EPIPE_METRICSMOVINGCOUNTERS_H

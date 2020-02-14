@@ -36,7 +36,8 @@ enum LogType{
   FSLOG,
   METALOG,
   PROVAPPLOG,
-  PROVFILELOG
+  PROVFILELOG,
+  HOPSWORKSLOG
 };
 
 struct LogHandler{

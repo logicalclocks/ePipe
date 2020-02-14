@@ -32,7 +32,44 @@ struct ProjectRow {
   std::string mUserName;
   std::string mDescription;
 
-  std::string to_create_json() {
+  static std::string to_delete_json(Int64 inodeId) {
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    opWriter.String("delete");
+    opWriter.StartObject();
+
+    opWriter.String("_id");
+    opWriter.Int64(inodeId);
+
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+
+    return sbOp.GetString();
+  }
+
+  std::string to_upsert_json(Int64 inodeId) {
+    std::stringstream out;
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    opWriter.String("update");
+    opWriter.StartObject();
+
+    opWriter.String("_id");
+    opWriter.Int64(inodeId);
+
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+
+    out << sbOp.GetString() << std::endl;
+
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -46,15 +83,6 @@ struct ProjectRow {
     docWriter.String("project_id");
     docWriter.Int(mId);
 
-    docWriter.String("parent_id");
-    docWriter.Int64(mInodeParentId);
-
-    docWriter.String("partition_id");
-    docWriter.Int64(mInodePartitionId);
-    
-    docWriter.String("name");
-    docWriter.String(mInodeName.c_str());
-
     docWriter.String("user");
     docWriter.String(mUserName.c_str());
 
@@ -66,7 +94,8 @@ struct ProjectRow {
     docWriter.Bool(true);
     docWriter.EndObject();
 
-    return std::string(sbDoc.GetString());
+    out << sbDoc.GetString() << std::endl;
+    return out.str();
   }
 
 };

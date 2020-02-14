@@ -36,9 +36,6 @@ public:
   std::string getMetrics() final override;
 
 protected:
-  std::string getElasticSearchUrlonIndex(std::string index);
-  std::string getElasticSearchUrlOnDoc(std::string index, Int64 doc);
-  std::string getElasticSearchUpdateDocUrl(std::string index, Int64 doc);
   std::string getElasticSearchBulkUrl(std::string index);
   std::string getElasticSearchBulkUrl();
   virtual ParsingResponse parseResponse(std::string response);
