@@ -14,6 +14,12 @@ recovery = false
 
 # log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5
 log_level = 1
+# log rotation size in bytes
+log_rotation_size=67108864
+log_dir=.
+# maximum number of log files to keep
+log_max_files=10
+
 # Table tailer barrier type. EPOCH=0, GCI=1
 barrier = 0
 

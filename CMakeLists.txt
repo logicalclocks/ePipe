@@ -11,7 +11,7 @@ set (CMAKE_CXX_STANDARD 14)
 
 set(Boost_USE_STATIC_LIBS ON)
 
-find_package(Boost 1.70 REQUIRED COMPONENTS system date_time program_options thread)
+find_package(Boost 1.70 REQUIRED COMPONENTS system date_time program_options thread log)
 find_package(RapidJSON 1.1.0)
 find_package(OpenSSL REQUIRED)
 
