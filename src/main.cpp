@@ -25,7 +25,7 @@
 namespace po = boost::program_options;
 
 int main(int argc, char** argv) {
-
+  
   try {
     std::string connection_string;
     std::string database_name = "hops";
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 
     int poll_maxTimeToWait = 2000;
     std::string elastic_addr = "localhost:9200";
-    int log_level = 2;
+    LogSeverityLevel log_level = LogSeverityLevel::info;
 
     TableUnitConf mutations_tu = TableUnitConf();
     TableUnitConf schamebased_tu = TableUnitConf();
@@ -63,6 +63,10 @@ int main(int argc, char** argv) {
     std::string caPath = "";
     std::string username = "";
     std::string password = "";
+
+    int log_rotation_size = 64 * 1024 * 1024;
+    std::string log_dir = "/tmp/epipe/logs";
+    int log_max_files = 10;
 
     po::options_description generalOptions("General");
     generalOptions.add_options()
@@ -119,8 +123,6 @@ int main(int argc, char** argv) {
          "time to wait in miliseconds before issuing a bulk request to Elasticsearch if the batch size wasn't reached")
         ("lru_cap", po::value<int>(&lru_cap)->default_value(lru_cap),
          "LRU Cache max capacity")
-        ("log_level", po::value<int>(&log_level)->default_value(log_level),
-         "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
         ("recovery", po::value<bool>(&recovery)->default_value(recovery),
          "enable or disable startup recovery")
         ("stats", po::value<bool>(&stats)->default_value(stats),
@@ -138,7 +140,15 @@ int main(int argc, char** argv) {
         ("username", po::value<std::string>(&username)->default_value(username),
          "username to access the elastic server")
         ("password", po::value<std::string>(&password)->default_value(password),
-         "password to access the elastic server");
+         "password to access the elastic server")
+        ("log_level", po::value<int>()->default_value(log_level),
+         "log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5")
+        ("log_rotation_size", po::value<int>(&log_rotation_size)->default_value(log_rotation_size),
+         "log rotation size in bytes.")
+        ("log_dir", po::value<std::string>(&log_dir)->default_value(log_dir),
+         "log directory.")
+        ("log_max_files", po::value<int>(&log_max_files)->default_value(log_max_files),
+         "max number of log files to keep.");
 
 
     po::variables_map vm;
@@ -185,7 +195,12 @@ int main(int argc, char** argv) {
       barrier = static_cast<Barrier> (vm["barrier"].as<int>());
     }
 
-    Logger::setLoggerLevel(log_level);
+    if (vm.count("log_level")) {
+      log_level = static_cast<LogSeverityLevel> (vm["log_level"].as<int>());
+    }
+
+    std::string log_prefix = reindex ? "epipe_reindex" : "epipe"; 
+    Logger::initLogging(log_prefix,log_dir, log_rotation_size, log_max_files, log_level);
 
     if (connection_string.empty() || database_name.empty() ||
         meta_database_name.empty()) {

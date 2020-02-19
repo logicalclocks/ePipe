@@ -24,12 +24,15 @@
 #include <boost/date_time.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#define LOG_LEVEL_TRACE 0
-#define LOG_LEVEL_DEBUG 1
-#define LOG_LEVEL_INFO 2
-#define LOG_LEVEL_WARN 3
-#define LOG_LEVEL_ERROR 4
-#define LOG_LEVEL_FATAL 5
+enum LogSeverityLevel
+{
+    trace,
+    debug,
+    info,
+    warn,
+    error,
+    fatal
+};
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
@@ -48,7 +51,7 @@
 
 class Logger {
 public:
-  static void setLoggerLevel(int level);
+  static void initLogging(const std::string logPrefix, const std::string logDir, int rotationSize, int maxFiles, LogSeverityLevel logLevel);
   static void trace(const char* msg);
   static void debug(const char* msg);
   static void info(const char* msg);
@@ -58,10 +61,8 @@ public:
 
   static bool isTrace();
 private:
-  static Logger* mInstance;
-  static int mLoggerLevel;
-  static void log(const char* level, const char* msg);
-  static std::string getTimestamp();
+  static LogSeverityLevel mLoggerLevel;
+  static void log(LogSeverityLevel level, const char* msg);
 };
 
 #endif /* LOGGER_H */
