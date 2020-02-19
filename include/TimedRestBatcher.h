@@ -28,9 +28,28 @@
 #include "tables/DBWatchTable.h"
 
 struct eEvent{
+  enum EventType{
+    EventNA = 0,
+    AddEvent = 1,
+    UpdateEvent = 2,
+    DeleteEvent = 3
+  };
+  enum AssetType{
+    AssetNA = 0,
+    INode = 1,
+    Dataset = 2,
+    Project = 3
+  };
+
   eEvent(const LogHandler* ptr, const ptime arrivalTime, const
-  std::string json) : mLogHandler(ptr), mArrivalTime(arrivalTime){
+  std::string json, const EventType eventType, const AssetType assetType) 
+  : mLogHandler(ptr), mArrivalTime(arrivalTime), mEventType(eventType), mAssetType(assetType){
     mJSON = json + "\n";
+  }
+
+ eEvent(const LogHandler* ptr, const ptime arrivalTime, const
+  std::string json) : eEvent(ptr, arrivalTime, json, EventType::EventNA, AssetType::AssetNA){
+ 
   }
 
   const LogHandler* getLogHandler(){
@@ -45,10 +64,32 @@ struct eEvent{
     return mJSON;
   }
 
+  EventType getEventType(){
+    return mEventType;
+  }
+
+  AssetType getAssetType(){
+    return mAssetType;
+  }
+
+  std::string getAssetTypeString(){
+    switch(mAssetType){
+      case AssetType::INode:
+        return "inodes";
+      case AssetType::Dataset:
+        return "datasets";
+      case AssetType::Project:
+        return "projects";
+    }
+    return "";
+  }
+  
 private:
   const LogHandler* mLogHandler;
   ptime mArrivalTime;
   std::string mJSON;
+  EventType mEventType;
+  AssetType mAssetType;
 };
 
 struct eBulk {
@@ -64,9 +105,13 @@ struct eBulk {
     push(nullptr, arrivaltime, json);
   }
 
+  void push(const LogHandler* lh, const ptime arrivaltime, const std::string json){
+    push(lh, arrivaltime, json, eEvent::EventType::EventNA, eEvent::AssetType::AssetNA);
+  }
+
   void push(const LogHandler* lh, const ptime arrivaltime, const
-  std::string json){
-    eEvent e(lh, arrivaltime, json);
+  std::string json, const eEvent::EventType eventType, const eEvent::AssetType assetType){
+    eEvent e(lh, arrivaltime, json, eventType, assetType);
     mEvents.push_back(e);
     mJSONLength += e.getJSON().length();
     mArrivalTimes.push_back(e.getArrivalTime());
@@ -131,6 +176,20 @@ struct eBulk {
 
   int getTotalTimeMS(ptime done) const{
     return Utils::getTimeDiffInMilliseconds(getFirstArrivalTime(), done);
+  }
+
+  std::string toString() const{
+    std::stringstream out;
+    out << "Bulk[" << mProcessingIndex << "] " << std::endl 
+        << mEvents.size() << " events" << std::endl;
+    for(auto event : mEvents){
+      std::string _logdesc = "N/A";
+      if(event.getLogHandler() != nullptr){
+        _logdesc = event.getLogHandler()->getDescription();
+      }
+      out << "LogHandler: " <<  _logdesc << std::endl << "EventJSON: " << event.getJSON();
+    }
+    return out.str();
   }
 
 private:

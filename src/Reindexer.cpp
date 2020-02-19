@@ -88,7 +88,9 @@ void Reindexer::run() {
             project.mInodeName, project.mInodePartitionId);
 
     if (projectInode.is_equal(project)) {
-      mElasticSearch->addDoc(projectInode.mId, project.to_create_json());
+      eBulk bulk;
+      bulk.push(Utils::getCurrentTime(), project.to_upsert_json(projectInode.mId));
+      mElasticSearch->addData(bulk);
     } else {
       LOG_WARN("Project [" << project.mId << ", " << project.mInodeName
               << "] doesn't have an inode ");
@@ -105,7 +107,9 @@ void Reindexer::run() {
   datasetsTable.getAll(metaConn);
   while (datasetsTable.next()) {
     DatasetRow dataset = datasetsTable.currRow();
-    mElasticSearch->addDoc(dataset.mInodeId, dataset.to_create_json());
+    eBulk bulk;
+    bulk.push(Utils::getCurrentTime(), dataset.to_upsert_json());
+    mElasticSearch->addData(bulk);
     dsInfoMap[dataset.mInodeId] = DatasetInfo(dataset.mProjectId, dataset.mInodeName);
     totalDatasets++;
   }

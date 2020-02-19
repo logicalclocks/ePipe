@@ -27,7 +27,25 @@ struct TemplateRow {
   int mId;
   std::string mName;
 
-  std::string to_delete_json() {
+  std::string to_delete_json(Int64 inodeId) {
+    std::stringstream out;
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    opWriter.String("update");
+    opWriter.StartObject();
+
+    opWriter.String("_id");
+    opWriter.Int64(inodeId);
+
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+
+    out << sbOp.GetString() << std::endl;
+
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -48,7 +66,8 @@ struct TemplateRow {
     
     docWriter.EndObject();
 
-    return std::string(sbDoc.GetString());
+    out << sbDoc.GetString() << std::endl;
+    return out.str();
   }
 };
 

@@ -34,7 +34,44 @@ struct DatasetRow {
   std::string mDescription;
   bool mPublicDS;
 
-  std::string to_create_json() {
+  static std::string to_delete_json(Int64 inodeId) {
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    opWriter.String("delete");
+    opWriter.StartObject();
+
+    opWriter.String("_id");
+    opWriter.Int64(inodeId);
+
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+
+    return sbOp.GetString();
+  }
+
+  std::string to_upsert_json() {
+    std::stringstream out;
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+
+    opWriter.String("update");
+    opWriter.StartObject();
+
+    opWriter.String("_id");
+    opWriter.Int64(mInodeId);
+
+    opWriter.EndObject();
+
+    opWriter.EndObject();
+
+    out << sbOp.GetString() << std::endl;
+
     rapidjson::StringBuffer sbDoc;
     rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
     docWriter.StartObject();
@@ -51,12 +88,6 @@ struct DatasetRow {
     docWriter.String("project_id");
     docWriter.Int(mProjectId);
 
-    docWriter.String("parent_id");
-    docWriter.Int64(mInodeParentId);
-
-    docWriter.String("name");
-    docWriter.String(mInodeName.c_str());
-
     docWriter.String("description");
     docWriter.String(mDescription.c_str());
 
@@ -67,7 +98,9 @@ struct DatasetRow {
     docWriter.String("doc_as_upsert");
     docWriter.Bool(true);
     docWriter.EndObject();
-    return std::string(sbDoc.GetString());
+
+    out << sbDoc.GetString() << std::endl;
+    return out.str();
   }
 
 };

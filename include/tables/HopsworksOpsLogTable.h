@@ -85,6 +85,23 @@ struct HopsworksOpRow {
 
 class HopsworksOpsLogTable : public DBWatchTable<HopsworksOpRow> {
 public:
+  struct HopsworksLogHandler : public LogHandler{
+    int mPK;
+
+    HopsworksLogHandler(int pk) : mPK(pk) {}
+    void removeLog(Ndb* connection) const override {
+      HopsworksOpsLogTable().removeLog(connection, mPK);
+    }
+    LogType getType() const override {
+      return LogType::HOPSWORKSLOG;
+    }
+
+    std::string getDescription() const override {
+      std::stringstream out;
+      out << "HopsworksLog (ops_log) Key (id=" << mPK << ")";
+      return out.str();
+    }
+  };
 
   HopsworksOpsLogTable() : DBWatchTable("ops_log") {
     addColumn("id");
@@ -111,6 +128,25 @@ public:
     return row;
   }
 
+  void removeLogs(Ndb* connection, std::vector<const LogHandler*>&
+  logrh) {
+    start(connection);
+    for (auto log : logrh) {
+      if(log == nullptr){
+        continue;
+      }
+      if(log->getType() != LogType::HOPSWORKSLOG){
+        continue;
+      }
+
+      const HopsworksLogHandler* hopsworksLogHandler = static_cast<const HopsworksLogHandler*>(log);
+
+      doDelete(hopsworksLogHandler->mPK);
+      LOG_DEBUG("Delete log row " << hopsworksLogHandler->mPK);
+    }
+    end();
+  }
+
   void removeLog(Ndb* conn, int pk) {
     start(conn);
     doDelete(pk);
@@ -122,6 +158,9 @@ public:
     return std::to_string(row.mId);
   }
 
+  LogHandler* getLogRemovalHandler(HopsworksOpRow row) override {
+    return new HopsworksLogHandler(row.mId);
+  }
 };
 
 #endif /* HOPSWORKSOPSLOGTABLE_H */
