@@ -32,3 +32,5 @@ nbproject
 build
 .idea
 .vscode
+builds
+epipe*
