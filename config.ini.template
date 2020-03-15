@@ -53,6 +53,7 @@ provenance_tu = 5
 
 elastic_addr = localhost:9200
 index = projects
+featurestore_index = featurestore
 app_provenance_index = appprovenance
 elastic_batch = 5000
 ewait_time = 5000

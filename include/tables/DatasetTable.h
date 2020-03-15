@@ -21,7 +21,7 @@
 #define DATASETTABLE_H
 
 #include "DBTable.h"
-#include "PairCache.h"
+#include "DatasetProjectCache.h"
 
 #define DOC_TYPE_DATASET "ds"
 
@@ -34,7 +34,7 @@ struct DatasetRow {
   std::string mDescription;
   bool mPublicDS;
 
-  static std::string to_delete_json(Int64 inodeId) {
+  static std::string to_delete_json(std::string index, Int64 inodeId) {
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -45,7 +45,8 @@ struct DatasetRow {
 
     opWriter.String("_id");
     opWriter.Int64(inodeId);
-
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
     opWriter.EndObject();
 
     opWriter.EndObject();
@@ -53,7 +54,7 @@ struct DatasetRow {
     return sbOp.GetString();
   }
 
-  std::string to_upsert_json() {
+  std::string to_upsert_json(std::string index) {
     std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -65,7 +66,8 @@ struct DatasetRow {
 
     opWriter.String("_id");
     opWriter.Int64(mInodeId);
-
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
     opWriter.EndObject();
 
     opWriter.EndObject();
@@ -105,14 +107,14 @@ struct DatasetRow {
 
 };
 
-class DPCache : public PairCache {
+class DPCache : public DatasetProjectCache {
 public:
 
-  DPCache(int lru_cap, const char* prefix) : PairCache(lru_cap, prefix) {
+  DPCache(int lru_cap, const char* prefix) : DatasetProjectCache(lru_cap, prefix) {
   }
 };
 
-typedef CacheSingleton<DPCache> DatasetProjectCache;
+typedef CacheSingleton<DPCache> DatasetProjectSCache;
 typedef std::vector<DatasetRow> DatasetVec;
 
 class DatasetTable : public DBTable<DatasetRow> {
@@ -126,7 +128,7 @@ public:
     addColumn("projectId");
     addColumn("description");
     addColumn("public_ds");
-    DatasetProjectCache::getInstance(lru_cap, "DatasetProject");
+    DatasetProjectSCache::getInstance(lru_cap, "DatasetProject");
   }
 
   DatasetRow getRow(NdbRecAttr* values[]) {
@@ -143,27 +145,41 @@ public:
 
   DatasetRow get(Ndb* connection, int datasetId) {
     DatasetRow ds = doRead(connection, datasetId);
-    DatasetProjectCache::getInstance().addPair(ds.mInodeId, ds.mProjectId);
+    DatasetProjectSCache::getInstance().add(ds.mInodeId, ds.mProjectId, ds.mInodeName);
     return ds;
   }
 
   void removeDatasetFromCache(Int64 datasetINodeId) {
-    DatasetProjectCache::getInstance().removeKey(datasetINodeId);
+    DatasetProjectSCache::getInstance().removeDataset(datasetINodeId);
   }
 
   void removeProjectFromCache(int projectId) {
-    DatasetProjectCache::getInstance().removeValue(projectId);
+    DatasetProjectSCache::getInstance().removeProject(projectId);
   }
 
   int getProjectIdFromCache(Int64 datasetINodeId) {
-    return DatasetProjectCache::getInstance().getValue(datasetINodeId);
+    boost::optional<int> projectId = DatasetProjectSCache::getInstance().getParentProject(datasetINodeId);
+    if(projectId) {
+      return projectId.get();
+    } else {
+      return DONT_EXIST_INT();
+    }
   }
 
-  void loadProjectIds(Ndb* connection, ULSet& datasetsINodeIds) {
+  std::string getDatasetNameFromCache(Int64 datasetINodeId) {
+    boost::optional<std::string> datasetName = DatasetProjectSCache::getInstance().getDatasetValue(datasetINodeId);
+    if(datasetName) {
+      return datasetName.get();
+    } else {
+      return DONT_EXIST_STR();
+    }
+  }
+
+  void loadProjectIds(Ndb* connection, ULSet& datasetsINodeIds, ProjectTable projectTable) {
     ULSet dataset_inode_ids;
     for (ULSet::iterator it = datasetsINodeIds.begin(); it != datasetsINodeIds.end(); ++it) {
       Int64 datasetId = *it;
-      if (!DatasetProjectCache::getInstance().containsKey(datasetId)) {
+      if (!DatasetProjectSCache::getInstance().containsDataset(datasetId)) {
         dataset_inode_ids.insert(datasetId);
       }
     }
@@ -190,7 +206,8 @@ public:
         }
         
         if (projectIds.empty()) {
-          DatasetProjectCache::getInstance().addPair(dataset_inode_id, row.mProjectId);
+          DatasetProjectSCache::getInstance().add(dataset_inode_id, row.mProjectId, row.mInodeName);
+          projectTable.loadProject(connection, row.mProjectId);
         }
         projectIds.insert(row.mProjectId);
       }

@@ -22,13 +22,13 @@
 
 using namespace Utils;
 
-ProjectsElasticSearch::ProjectsElasticSearch(const HttpClientConfig elastic_client_config, std::string index,
+ProjectsElasticSearch::ProjectsElasticSearch(const HttpClientConfig elastic_client_config,
         int time_to_wait_before_inserting,
         int bulk_size, const bool stats, MConn conn) : ElasticSearchBase
         (elastic_client_config, time_to_wait_before_inserting, bulk_size, stats,
          new MovingCountersBulkSet("fs")),
-mIndex(index), mConn(conn){
-  mElasticBulkAddr = getElasticSearchBulkUrl(mIndex);
+         mConn(conn) {
+  mElasticBulkAddr = getElasticSearchBulkUrl();
 }
 
 void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {

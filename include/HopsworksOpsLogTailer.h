@@ -29,9 +29,8 @@
 
 class HopsworksOpsLogTailer : public TableTailer<HopsworksOpRow> {
 public:
-  HopsworksOpsLogTailer(Ndb* ndb, Ndb* ndbRecovery, const int
-  poll_maxTimeToWait, const Barrier barrier,
-          ProjectsElasticSearch* elastic, const int lru_cap);
+  HopsworksOpsLogTailer(Ndb* ndb, Ndb* ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier,
+          ProjectsElasticSearch* elastic, const int lru_cap, const std::string search_index);
 
   virtual ~HopsworksOpsLogTailer();
 private:
@@ -47,6 +46,7 @@ private:
   ProjectTable mProjectTable;
   DatasetTable mDatasetTable;
   MetaTemplateTable mTemplateTable;
+  std::string mSearchIndex;
 };
 
 #endif /* HOPSWORKSOPSLOGTAILER_H */

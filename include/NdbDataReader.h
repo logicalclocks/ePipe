@@ -55,7 +55,7 @@ public:
 protected:
   boost::thread mThread;
   Conn mNdbConnection;
-  const bool mHopsworksEnalbed;
+  const bool mHopsworksEnabled;
   virtual void processAddedandDeleted(std::vector<Data>* data_batch,
       eBulk& bulk) = 0;
   
@@ -68,7 +68,7 @@ protected:
 
 template<typename Data, typename Conn>
 NdbDataReader<Data, Conn>::NdbDataReader(Conn connection, const bool hopsworks)
-: mNdbConnection(connection), mHopsworksEnalbed(hopsworks) {
+: mNdbConnection(connection), mHopsworksEnabled(hopsworks) {
   mBatchedQueue = new ConcurrentQueue<IndexedDataBatch<Data> >();
 }
 

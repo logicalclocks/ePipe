@@ -57,13 +57,12 @@ typedef boost::unordered_map<Int64, DatasetInfo> DatasetInfoMap;
 
 Reindexer::Reindexer(const char* connection_string, const char* database_name,
         const char* meta_database_name, const char* hive_meta_database_name,
-        const HttpClientConfig elastic_client_config, const std::string index, int
+        const HttpClientConfig elastic_client_config, const std::string search_index, int
         elastic_batch_size, int elastic_issue_time, int lru_cap)
-: ClusterConnectionBase(connection_string, database_name, meta_database_name,
-    hive_meta_database_name), mLRUCap(lru_cap) {
-  mElasticSearch = new ProjectsElasticSearch(elastic_client_config, index, elastic_issue_time,
+: ClusterConnectionBase(connection_string, database_name, meta_database_name, hive_meta_database_name),
+  mSearchIndex(search_index), mLRUCap(lru_cap) {
+  mElasticSearch = new ProjectsElasticSearch(elastic_client_config, elastic_issue_time,
           elastic_batch_size, false, MConn());
-  LOG_INFO("Create Elasticsearch index at " << index);
 }
 
 void Reindexer::run() {
@@ -73,7 +72,7 @@ void Reindexer::run() {
   Ndb* metaConn = create_ndb_connection(mMetaDatabaseName);
   Ndb* conn = create_ndb_connection(mDatabaseName);
 
-  ProjectTable projectsTable;
+  ProjectTable projectsTable(mLRUCap);
   INodeTable inodesTable(mLRUCap);
   DatasetTable datasetsTable(mLRUCap);
   SchemabasedMetadataTable schemaBasedTable(mLRUCap);
@@ -89,7 +88,7 @@ void Reindexer::run() {
 
     if (projectInode.is_equal(project)) {
       eBulk bulk;
-      bulk.push(Utils::getCurrentTime(), project.to_upsert_json(projectInode.mId));
+      bulk.push(Utils::getCurrentTime(), project.to_upsert_json(mSearchIndex, projectInode.mId));
       mElasticSearch->addData(bulk);
     } else {
       LOG_WARN("Project [" << project.mId << ", " << project.mInodeName
@@ -108,7 +107,7 @@ void Reindexer::run() {
   while (datasetsTable.next()) {
     DatasetRow dataset = datasetsTable.currRow();
     eBulk bulk;
-    bulk.push(Utils::getCurrentTime(), dataset.to_upsert_json());
+    bulk.push(Utils::getCurrentTime(), dataset.to_upsert_json(mSearchIndex));
     mElasticSearch->addData(bulk);
     dsInfoMap[dataset.mInodeId] = DatasetInfo(dataset.mProjectId, dataset.mInodeName);
     totalDatasets++;
@@ -148,7 +147,7 @@ void Reindexer::run() {
           inodesWithXAttrs.insert(inode.mId);
         }
 
-        bulk.push(Utils::getCurrentTime(), inode.to_create_json(datasetId, projectId));
+        bulk.push(Utils::getCurrentTime(), inode.to_create_json(mSearchIndex, datasetId, projectId));
         totalInodes++;
         datasetInodes++;
       }
@@ -180,7 +179,7 @@ void Reindexer::run() {
     for(XAttrVec::iterator xit = xattrs.begin(); xit != xattrs.end(); ++xit){
       XAttrRow xAttrRow = *xit;
       if(xAttrRow.mInodeId == inodeId){
-        bulk.push(Utils::getCurrentTime(), xAttrRow.to_upsert_json());
+        bulk.push(Utils::getCurrentTime(), xAttrRow.to_upsert_json(mSearchIndex));
       }else{
         LOG_WARN("XAttrs doesn't exists for ["
                      << inodeId << "] - " << xAttrRow.to_string());
