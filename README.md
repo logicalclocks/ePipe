@@ -28,7 +28,7 @@ An example of running a docker container with the ubuntu image (_epipe_build_ubu
 
 ```
 cd ePipe
-docker run --rm -v -it "$PWD":/usr/epipe:z -w /usr/epipe epipe_build_ubuntu
+docker run --rm -v "SPWD":/usr/epipe:z -w /usr/epipe -it epipe_build_ubuntu:0.12.0 
 epipe@24d10f5aacc3:/usr/epipe$ ./build.sh
 ```
 
