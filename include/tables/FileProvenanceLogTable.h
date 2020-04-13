@@ -34,7 +34,10 @@ struct FileProvenancePK {
   std::string mAppId;
   int mUserId;
   std::string mTieBreaker;
-  
+
+  FileProvenancePK() {
+  }
+
   FileProvenancePK(Int64 inodeId, std::string operation, int logicalTime, Int64 timestamp, std::string appId,
       int userId, std::string tieBreaker) {
     mInodeId = inodeId;
@@ -238,17 +241,63 @@ public:
   }
 
   void cleanLogs(Ndb* connection, std::vector<const LogHandler*>&logrh) {
-    start(connection);
+    std::vector<AnyMap> fileProvEntries;
+    std::vector<AnyMap> companionEntries;
     for (auto log : logrh) {
-      cleanLogInt(connection, log);
+      if (log != nullptr && log->getType() == LogType::PROVFILELOG) {
+        const FileProvLogHandler *fplog = static_cast<const FileProvLogHandler *>(log);
+        FileProvenancePK fPK = fplog->mPK;
+        LOG_DEBUG("Delete file provenance row: " << fPK.to_string());
+        fileProvEntries.push_back(getFileProvPK(fPK));
+        if (fplog->mBufferPK) {
+          FPXAttrBufferPK cPK = fplog->mBufferPK.get();
+          AnyMap companionPK = getCompanionPK(cPK);
+          if (rowsExistsOnCompanion(connection, "PRIMARY", companionPK)) {
+            LOG_DEBUG("Delete xattr buffer row: " << cPK.to_string());
+            companionEntries.push_back(companionPK);
+          } else {
+            LOG_INFO("expected a companion row - missing from table:" << cPK.to_string());
+          }
+        }
+      }
+    }
+    start(connection);
+    for(AnyMap pk : companionEntries) {
+      doDeleteOnCompanion(pk);
+    }
+    for(AnyMap pk : fileProvEntries) {
+      doDelete(pk);
     }
     end();
   }
 
   void cleanLog(Ndb* connection, const LogHandler* log) {
-    start(connection);
-    cleanLogInt(connection, log);
-    end();
+    if (log != nullptr && log->getType() == LogType::PROVFILELOG) {
+      const FileProvLogHandler *fplog = static_cast<const FileProvLogHandler *>(log);
+      AnyMap companionPK;
+      bool hasCompanion = false;
+      if (fplog->mBufferPK) {
+        FPXAttrBufferPK cPK = fplog->mBufferPK.get();
+        AnyMap companionPK = getCompanionPK(cPK);
+        if (rowsExistsOnCompanion(connection, "PRIMARY", companionPK)) {
+          hasCompanion = true;
+        } else {
+          LOG_INFO("expected a companion row - missing from table:" << cPK.to_string());
+        }
+      }
+      start(connection);
+      if(hasCompanion) {
+        FPXAttrBufferPK cPK = fplog->mBufferPK.get();
+        LOG_DEBUG("Delete xattr buffer row: " << cPK.to_string());
+        doDeleteOnCompanion(companionPK);
+      }
+
+      FileProvenancePK fPK = fplog->mPK;
+      AnyMap fileProvPK = getFileProvPK(fPK);
+      LOG_DEBUG("Delete file provenance row: " << fPK.to_string());
+      doDelete(fileProvPK);
+      end();
+    }
   }
 
   std::string getPKStr(FileProvenanceRow row) {
@@ -260,17 +309,7 @@ public:
   }
 
 private:
-  void cleanLogInt(Ndb* connection, const LogHandler* log) {
-    if (log != nullptr && log->getType() == LogType::PROVFILELOG) {
-      const FileProvLogHandler *fplog = static_cast<const FileProvLogHandler *>(log);
-      deleteLogRow(connection, fplog->mPK);
-      if (fplog->mBufferPK) {
-        deleteCompanionRow(connection, fplog->mBufferPK.get());
-      }
-    }
-  }
-
-  void deleteLogRow(Ndb* connection, FileProvenancePK pk) {
+  AnyMap getFileProvPK(FileProvenancePK pk) {
     AnyMap a;
     a[0] = pk.mInodeId;
     a[1] = pk.mOperation;
@@ -279,20 +318,16 @@ private:
     a[4] = pk.mAppId;
     a[5] = pk.mUserId;
     a[6] = pk.mTieBreaker;
-
-    doDelete(a);
-    LOG_DEBUG("Delete file provenance row: " << pk.to_string());
+    return a;
   }
 
-  void deleteCompanionRow(Ndb* connection, FPXAttrBufferPK pk) {
+  AnyMap getCompanionPK(FPXAttrBufferPK pk) {
     AnyMap a;
     a[0] = pk.mInodeId;
     a[1] = pk.mNamespace;
     a[2] = pk.mName;
     a[3] = pk.mInodeLogicalTime;
-
-    doDeleteOnCompanionTable(a);
-    LOG_DEBUG("Delete xattr buffer row: " << pk.to_string());
+    return a;
   }
 };
 #endif /* FILEPROVENANCELOGTABLE_H */

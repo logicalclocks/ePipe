@@ -29,7 +29,12 @@
 #include "FileProvenanceConstants.h"
 #include "FileProvenanceElastic.h"
 
-typedef boost::tuple<std::list<std::string>, FileProvenancePK, boost::optional<FPXAttrBufferPK> > ProcessRowResult;
+struct ProcessRowResult {
+  std::list<std::string> mElasticOps;
+  FileProvenancePK mLogPK;
+  boost::optional<FPXAttrBufferPK> mCompanionPK;
+  FileProvenanceConstants::Operation mProvOp;
+};
 
 class FileProvenanceElasticDataReader : public NdbDataReader<FileProvenanceRow, SConn> {
 public:
@@ -43,9 +48,13 @@ private:
   INodeTable inodesTable;
 
   void processAddedandDeleted(Pq* data_batch, eBulk& bulk);
+  ProcessRowResult rowResult(std::list<std::string> elasticOps, FileProvenancePK logPK,
+          boost::optional<FPXAttrBufferPK> companionPK, FileProvenanceConstants::Operation provOp);
   ProcessRowResult process_row(FileProvenanceRow row);
   FPXAttrBufferRow readBufferedXAttr(FPXAttrBufferPK xattrBufferKey);
   boost::optional<FPXAttrBufferRow> getProvCore(FPXAttrVersionsK versionsKey);
+  ULSet getViewInodes(Pq* data_batch);
+  std::string getElasticBulkOps(std::list <std::string> bulkOps);
 };
 
 class FileProvenanceElasticDataReaders :  public NdbDataReaders<FileProvenanceRow, SConn>{
