@@ -240,8 +240,78 @@ namespace FileProvenanceConstants {
     return typeHive(row) && row.mDatasetId != row.mParentId;
   }
 
+  inline std::string featurestoreName(std::string projectName) {
+    std::string auxProjectName = projectName;
+    boost::to_lower(auxProjectName);
+    return auxProjectName + "_featurestore.db";
+  }
+
+  inline bool isFeaturestore(std::string projectName, std::string datasetName) {
+    return projectName != DONT_EXIST_STR() && datasetName != DONT_EXIST_STR()
+    && datasetName == featurestoreName(projectName);
+  }
+
+  inline bool isFeaturegroup(Int64 parentIId, Int64 datasetIId, std::string projectName, std::string datasetName) {
+    return parentIId == datasetIId && isFeaturestore(projectName, datasetName);
+  }
+
+  inline boost::optional<std::pair <std::string, int>> splitNameVersion(std::string val) {
+    std::vector<std::string> strs;
+    boost::split(strs, val, boost::is_any_of("_"));
+    std::string name = "";
+    int version;
+    for(std::vector<std::string>::iterator it = strs.begin(); it != strs.end(); it++) {
+      std::string part = *it;
+      if(std::next(it) == strs.end()) {
+        try {
+          version = std::stoi(part);
+          return std::make_pair(name, version);
+        } catch(std::invalid_argument const &e) {
+          LOG_WARN("problem with name_version:" << val << " name:" << name << " version:" << part);
+          return boost::none;
+        } catch(std::out_of_range const &e) {
+          LOG_WARN("problem with name_version:" << val << " name:" << name << " version:" << part);
+          return boost::none;
+        }
+      } else {
+        if(name == "") {
+          name = name + part;
+        } else {
+          name = name + std::string("_") + part;
+        }
+      }
+    }
+    //should not get here - removes warning
+    return boost::none;
+  }
+
+  inline std::string trainingdatasetDirName(std::string projectName) {
+    std::string auxProjectName = projectName;
+    //boost::to_lower(auxProjectName);
+    return auxProjectName + "_Training_Datasets";
+  }
+
+  inline bool isTrainingDataset(std::string projectName, std::string datasetName) {
+    return projectName != DONT_EXIST_STR() && datasetName != DONT_EXIST_STR()
+           && datasetName == trainingdatasetDirName(projectName);
+  }
+
+  inline bool isTrainingDataset(Int64 parentIId, Int64 datasetIId, std::string projectName, std::string datasetName) {
+    return parentIId == datasetIId && isTrainingDataset(projectName, datasetName);
+  }
+
+  inline std::string isPartOfFeaturestore(Int64 parentIId, Int64 datasetIId, std::string projectName, std::string datasetName) {
+    if(isFeaturegroup(parentIId, datasetIId, projectName, datasetName)) {
+      return "featuregroup";
+    } else if(isTrainingDataset(parentIId, datasetIId, projectName, datasetName)) {
+      return "trainingdataset";
+    } else {
+      return DONT_EXIST_STR();
+    }
+  }
+
   inline bool typeMLFeature(FileProvenanceRow row) {
-    return row.mProjectId == -1 && row.mDatasetName == row.mProjectName + "_featurestore.db";
+    return row.mProjectId == -1 && row.mDatasetName == featurestoreName(row.mProjectName);
   }
 
   inline bool isMLFeature(FileProvenanceRow row) {

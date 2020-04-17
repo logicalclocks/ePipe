@@ -21,6 +21,7 @@
 #define PROJECTTABLE_H
 
 #include "DBTable.h"
+#include "Cache.h"
 
 #define DOC_TYPE_PROJECT "proj"
 
@@ -32,7 +33,7 @@ struct ProjectRow {
   std::string mUserName;
   std::string mDescription;
 
-  static std::string to_delete_json(Int64 inodeId) {
+  static std::string to_delete_json(std::string index, Int64 inodeId) {
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -43,7 +44,8 @@ struct ProjectRow {
 
     opWriter.String("_id");
     opWriter.Int64(inodeId);
-
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
     opWriter.EndObject();
 
     opWriter.EndObject();
@@ -51,7 +53,7 @@ struct ProjectRow {
     return sbOp.GetString();
   }
 
-  std::string to_upsert_json(Int64 inodeId) {
+  std::string to_upsert_json(std::string index, Int64 inodeId) {
     std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -63,6 +65,8 @@ struct ProjectRow {
 
     opWriter.String("_id");
     opWriter.Int64(inodeId);
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
 
     opWriter.EndObject();
 
@@ -100,20 +104,26 @@ struct ProjectRow {
 
 };
 
+typedef CacheSingleton<Cache<int, std::string>> ProjectCache;
+typedef std::vector<ProjectRow> ProjectVec;
+
 class ProjectTable : public DBTable<ProjectRow> {
 public:
 
-  ProjectTable() : DBTable("project") {
+  ProjectTable(int lru_cap) : DBTable("project") {
     addColumn("id");
     addColumn("inode_pid");
     addColumn("partition_id");
     addColumn("inode_name");
     addColumn("username");
     addColumn("description");
+    ProjectCache::getInstance(lru_cap, "Project");
   }
 
   ProjectRow get(Ndb* connection, int projectId) {
-    return doRead(connection, projectId);
+    ProjectRow row = doRead(connection, projectId);
+    ProjectCache::getInstance().put(row.mId, row.mInodeName);
+    return row;
   }
 
   ProjectRow getRow(NdbRecAttr* values[]) {
@@ -125,6 +135,24 @@ public:
     row.mUserName = get_string(values[4]);
     row.mDescription = get_string(values[5]);
     return row;
+  }
+
+  void loadProject(Ndb* connection, int projectId) {
+    if (ProjectCache::getInstance().contains(projectId)) {
+      return;
+    }
+
+    ProjectRow row = get(connection, projectId);
+    ProjectCache::getInstance().put(projectId, row.mInodeName);
+  }
+
+  std::string getProjectNameFromCache(int projectId) {
+    boost::optional<std::string> projectName = ProjectCache::getInstance().get(projectId);
+    if(projectName) {
+      return projectName.get();
+    } else {
+      return DONT_EXIST_STR();
+    }
   }
 };
 

@@ -31,27 +31,27 @@ struct XAttrRow {
   std::string mValue;
 
 
-  std::string to_upsert_json(FsOpType operation){
+  std::string to_upsert_json(std::string index, FsOpType operation){
     std::stringstream out;
     if(operation == XAttrUpdate){
-      out << getDocUpdatePrefix(mInodeId) << std::endl;
+      out << getDocUpdatePrefix(index, mInodeId) << std::endl;
       out << removeXAttrScript(mName) << std::endl;
     }
-    out << getDocUpdatePrefix(mInodeId) << std::endl;
+    out << getDocUpdatePrefix(index, mInodeId) << std::endl;
     out << upsert() << std::endl;
     return out.str();
   }
 
-  std::string to_upsert_json(){
+  std::string to_upsert_json(std::string index){
     std::stringstream out;
-    out << getDocUpdatePrefix(mInodeId) << std::endl;
+    out << getDocUpdatePrefix(index, mInodeId) << std::endl;
     out << upsert() << std::endl;
     return out.str();
   }
 
-  static std::string to_delete_json(FsMutationRow row){
+  static std::string to_delete_json(std::string index, FsMutationRow row){
     std::stringstream out;
-    out << getDocUpdatePrefix(row.mInodeId) << std::endl;
+    out << getDocUpdatePrefix(index, row.mInodeId) << std::endl;
     if(row.mOperation == XAttrAddAll){
       out << removeAllXAttrsScript() << std::endl;
     }else {
@@ -88,7 +88,7 @@ private:
     return getXAttrDoc(false);
   }
 
-  static std::string getDocUpdatePrefix(Int64 inodeId){
+  static std::string getDocUpdatePrefix(std::string index, Int64 inodeId){
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -99,6 +99,8 @@ private:
 
     opWriter.String("_id");
     opWriter.Int64(inodeId);
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
 
     opWriter.EndObject();
     opWriter.EndObject();
@@ -182,7 +184,6 @@ private:
     opWriter.EndObject();
     opWriter.String("doc_as_upsert");
     opWriter.Bool(true);
-
     opWriter.EndObject();
 
     return std::string(sbOp.GetString());

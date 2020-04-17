@@ -26,13 +26,11 @@
 
 class ProjectsElasticSearch : public ElasticSearchBase{
 public:
-  ProjectsElasticSearch(const HttpClientConfig elastic_client_config,
-      std::string index, int time_to_wait_before_inserting, int bulk_size,
-          const bool stats, MConn conn);
+  ProjectsElasticSearch(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting,
+          int bulk_size, const bool stats, MConn conn);
           
   virtual ~ProjectsElasticSearch();
 private:
-  const std::string mIndex;
   std::string mElasticBulkAddr;
   MConn mConn;
 

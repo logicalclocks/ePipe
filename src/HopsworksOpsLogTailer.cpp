@@ -19,9 +19,9 @@
 
 #include "HopsworksOpsLogTailer.h"
 
-HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb *ndb, Ndb *ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier, ProjectsElasticSearch *elastic, const int lru_cap)
+HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb *ndb, Ndb *ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier, ProjectsElasticSearch *elastic, const int lru_cap, const std::string search_index)
     : TableTailer(ndb, ndbRecovery, new HopsworksOpsLogTable(), poll_maxTimeToWait, barrier),
-      mElasticSearch(elastic), mDatasetTable(lru_cap), mTemplateTable(lru_cap){
+      mElasticSearch(elastic), mProjectTable(lru_cap), mDatasetTable(lru_cap), mTemplateTable(lru_cap), mSearchIndex(search_index){
 }
 
 void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, HopsworksOpRow pre, HopsworksOpRow row){
@@ -49,12 +49,12 @@ void HopsworksOpsLogTailer::handleDataset(ptime arrivalTime, eBulk &bulk, Hopswo
   std::string json;
   eEvent::EventType eventType;
   if (logEvent.mOpType == HopsworksDelete){
-    json = DatasetRow::to_delete_json(logEvent.mInodeId);
+    json = DatasetRow::to_delete_json(mSearchIndex, logEvent.mInodeId);
     eventType = eEvent::EventType::DeleteEvent;
     mDatasetTable.removeDatasetFromCache(logEvent.mInodeId);
   } else {
     DatasetRow dataset = mDatasetTable.get(mNdbConnection, logEvent.mOpId);
-    json = dataset.to_upsert_json();
+    json = dataset.to_upsert_json(mSearchIndex);
     eventType = logEvent.mOpType == HopsworksAdd ? eEvent::EventType::AddEvent : eEvent::EventType::UpdateEvent;
   }
   bulk.push(mHopsworksLogTable.getLogRemovalHandler(logEvent), arrivalTime, json, eventType, eEvent::AssetType::Dataset);
@@ -64,12 +64,12 @@ void HopsworksOpsLogTailer::handleProject(ptime arrivalTime, eBulk &bulk, Hopswo
   std::string json;
   eEvent::EventType eventType;
   if (logEvent.mOpType == HopsworksDelete){
-    json = ProjectRow::to_delete_json(logEvent.mInodeId);
+    json = ProjectRow::to_delete_json(mSearchIndex, logEvent.mInodeId);
     eventType = eEvent::EventType::DeleteEvent;
     mDatasetTable.removeProjectFromCache(logEvent.mInodeId);
   } else {
     ProjectRow project = mProjectTable.get(mNdbConnection, logEvent.mOpId);
-    json = project.to_upsert_json(logEvent.mInodeId);
+    json = project.to_upsert_json(mSearchIndex, logEvent.mInodeId);
     eventType = logEvent.mOpType == HopsworksAdd ? eEvent::EventType::AddEvent : eEvent::EventType::UpdateEvent;
   }
   bulk.push(mHopsworksLogTable.getLogRemovalHandler(logEvent), arrivalTime, json, eventType, eEvent::AssetType::Project);
@@ -80,7 +80,7 @@ void HopsworksOpsLogTailer::handleSchema(ptime arrivalTime, eBulk &bulk, Hopswor
     boost::optional<TemplateRow> tmplate_ptr = mTemplateTable.get(mNdbConnection, logEvent.mOpId);
     if (tmplate_ptr){
       TemplateRow tmplate = tmplate_ptr.get();
-      std::string json = tmplate.to_delete_json(logEvent.mInodeId);
+      std::string json = tmplate.to_delete_json(mSearchIndex, logEvent.mInodeId);
       bulk.push(mHopsworksLogTable.getLogRemovalHandler(logEvent), arrivalTime, json, eEvent::EventType::DeleteEvent, eEvent::AssetType::INode);
     } else {
       LOG_WARN("Schema/Template [" << logEvent.mOpId << "] does not exist");

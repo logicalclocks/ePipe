@@ -26,29 +26,36 @@
 #include "tables/DatasetTable.h"
 #include "NdbDataReaders.h"
 #include "tables/XAttrTable.h"
+#include "FileProvenanceConstants.h"
 
 class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn> {
 public:
-  FsMutationsDataReader(MConn connection, const bool hopsworks, const int lru_cap);
+  FsMutationsDataReader(MConn connection, const bool hopsworks, const int lru_cap,
+          const std::string search_index, const std::string featurestore_index);
   virtual ~FsMutationsDataReader();
 private:
   INodeTable mInodesTable;
   DatasetTable mDatasetTable;
+  ProjectTable mProjectTable;
   XAttrTable mXAttrTable;
   FsMutationsLogTable mFSLogTable;
+  std::string mSearchIndex;
+  std::string mFeaturestoreIndex;
 
   virtual void processAddedandDeleted(Fmq* data_batch, eBulk& bulk);
 
-  void createJSON(Fmq* pending, INodeMap& inodes, XAttrMap& xattrs, eBulk&
-  bulk);
+  void createJSON(Fmq* pending, INodeMap& inodes, XAttrMap& xattrs, eBulk& bulk);
+  std::string docHeader(std::string index, Int64 id);
+  std::string featurestoreDoc(std::string docType, Int64 inodeId, std::string name, int version, int projectId, std::string projectName, Int64 datasetIId);
 };
 
 class FsMutationsDataReaders : public NdbDataReaders<FsMutationRow, MConn>{
 public:
   FsMutationsDataReaders(MConn* connections, int num_readers, const bool hopsworks,
-          ProjectsElasticSearch* elastic, const int lru_cap) : NdbDataReaders(elastic){
+          ProjectsElasticSearch* elastic, const int lru_cap, const std::string search_index,
+          const std::string featurestore_index) : NdbDataReaders(elastic){
     for(int i=0; i< num_readers; i++){
-      FsMutationsDataReader* dr = new FsMutationsDataReader(connections[i], hopsworks, lru_cap);
+      FsMutationsDataReader* dr = new FsMutationsDataReader(connections[i], hopsworks, lru_cap, search_index, featurestore_index);
       dr->start(i, this);
       mDataReaders.push_back(dr);
     }

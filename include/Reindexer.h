@@ -26,14 +26,15 @@ class Reindexer : public ClusterConnectionBase {
 public:
   Reindexer(const char* connection_string, const char* database_name,
           const char* meta_database_name, const char* hive_meta_database_name,
-          const HttpClientConfig elastic_client_config, const std::string index, int
+          const HttpClientConfig elastic_client_config, const std::string search_index, int
           elastic_batch_size, int elastic_issue_time, int lru_cap);
   virtual ~Reindexer();
 
   void run();
 private:
   ProjectsElasticSearch* mElasticSearch;
-  const int mLRUCap;
+  std::string mSearchIndex;
+  int mLRUCap;
 };
 
 #endif /* REINDEXER_H */

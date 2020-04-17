@@ -27,7 +27,7 @@ struct TemplateRow {
   int mId;
   std::string mName;
 
-  std::string to_delete_json(Int64 inodeId) {
+  std::string to_delete_json(std::string index, Int64 inodeId) {
     std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -39,6 +39,8 @@ struct TemplateRow {
 
     opWriter.String("_id");
     opWriter.Int64(inodeId);
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
 
     opWriter.EndObject();
 
@@ -62,6 +64,8 @@ struct TemplateRow {
 
     docWriter.String("upsert");
     docWriter.StartObject();
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
     docWriter.EndObject();
     
     docWriter.EndObject();

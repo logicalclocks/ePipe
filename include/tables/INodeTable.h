@@ -55,7 +55,7 @@ struct INodeRow {
             && proj.mInodePartitionId == mPartitionId;
   }
   
-  static std::string to_delete_json(Int64 inodeId) {
+  static std::string to_delete_json(std::string index, Int64 inodeId) {
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
 
@@ -67,6 +67,8 @@ struct INodeRow {
 
     opWriter.String("_id");
     opWriter.Int64(inodeId);
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
 
     opWriter.EndObject();
 
@@ -75,7 +77,7 @@ struct INodeRow {
     return sbOp.GetString();
   }
 
-  std::string to_create_json(Int64 datasetId, int projectId) {
+  std::string to_create_json(std::string index, Int64 datasetId, int projectId) {
     std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -87,6 +89,8 @@ struct INodeRow {
 
     opWriter.String("_id");
     opWriter.Int64(mId);
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
 
     opWriter.EndObject();
 
@@ -151,7 +155,7 @@ struct INodeRow {
     return out.str();
   }
 
-  static std::string to_change_dataset_json(FsMutationRow row){
+  static std::string to_change_dataset_json(std::string index, FsMutationRow row){
     std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -163,6 +167,8 @@ struct INodeRow {
 
     opWriter.String("_id");
     opWriter.Int64(row.mInodeId);
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
 
     opWriter.EndObject();
 
@@ -194,11 +200,11 @@ struct INodeRow {
     return out.str();
   }
   
-  static std::string to_delete_change_dataset_json(FsMutationRow row){
+  static std::string to_delete_change_dataset_json(std::string index, FsMutationRow row){
     if(row.mOperation == FsDelete){
-      return to_delete_json(row.mInodeId);
+      return to_delete_json(index, row.mInodeId);
     }else if(row.mOperation == FsChangeDataset){
-      return to_change_dataset_json(row);
+      return to_change_dataset_json(index, row);
     }
     return "";
   }
@@ -286,8 +292,12 @@ public:
   INodeMap get(Ndb* connection, Fmq* data_batch) {
     AnyVec anyVec;
     boost::unordered_map<Int64, FsMutationRow> mutationsByInode;
+    ULSet xattrInodes;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
+      if(row.isXAttrOperation()) {
+        xattrInodes.insert(row.mInodeId);
+      }
       if (!row.requiresReadingINode() || !row.isINodeOperation()) {
         continue;
       }
@@ -322,6 +332,15 @@ public:
       row.mUserName = mUsersTable.getFromCache(row.mUserId);
       row.mGroupName = mGroupsTable.getFromCache(row.mGroupId);
       result[row.mId] = row;
+    }
+    //add the xattr rows
+    for(auto it=xattrInodes.begin(); it != xattrInodes.end(); it++){
+      Int64 inodeId = *it;
+      //if we are pulling the inode for a file mutation op, better do it there where we have pk. xattr pulls on inodeId index
+      if (mutationsByInode.find(inodeId) == mutationsByInode.end()) {
+        INodeRow row = getByInodeId(connection, inodeId);
+        result[inodeId] = row;
+      }
     }
 
     return result;

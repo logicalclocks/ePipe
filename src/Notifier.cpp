@@ -24,7 +24,7 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
         const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu,
         const TableUnitConf elastic_provenance_tu, const int poll_maxTimeToWait,
         const HttpClientConfig elastic_client_config, const bool hopsworks,
-        const std::string elastic_index,
+        const std::string elastic_search_index, const std::string elastic_featurestore_index,
         const std::string elastic_app_provenance_index,
         const int elastic_batch_size, const int elastic_issue_time, const int lru_cap, const bool recovery,
         const bool stats, Barrier barrier, const bool hiveCleaner, const
@@ -33,7 +33,7 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
     mMutationsTU(mutations_tu), mSchemabasedTU(schemabased_tu),
     mFileProvenanceTU(elastic_provenance_tu), mAppProvenanceTU(elastic_provenance_tu), 
     mPollMaxTimeToWait(poll_maxTimeToWait),  mElasticClientConfig(elastic_client_config), mHopsworksEnabled(hopsworks),
-    mElasticIndex(elastic_index),
+    mElasticSearchIndex(elastic_search_index), mElasticFeaturestoreIndex(elastic_featurestore_index),
     mElasticAppProvenanceIndex(elastic_app_provenance_index),
     mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time), mLRUCap(lru_cap),
     mRecovery(recovery), mStats(stats), mBarrier(barrier), mHiveCleaner(hiveCleaner), mMetricsServer(metricsServer) {
@@ -142,7 +142,6 @@ void Notifier::setup() {
     ndb_connections_elastic.inodeConnection = create_ndb_connection(mDatabaseName);
 
     mProjectsElasticSearch = new ProjectsElasticSearch(mElasticClientConfig,
-        mElasticIndex,
             mElasticIssueTime, mElasticBatchsize, mStats, ndb_connections_elastic);
   }
 
@@ -162,7 +161,7 @@ void Notifier::setup() {
     }
 
     mFsMutationsDataReaders = new FsMutationsDataReaders(mutations_connections, mMutationsTU.mNumReaders,
-            mHopsworksEnabled, mProjectsElasticSearch, mLRUCap);
+            mHopsworksEnabled, mProjectsElasticSearch, mLRUCap, mElasticSearchIndex, mElasticFeaturestoreIndex);
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReaders,
             mMutationsTU.mWaitTime, mMutationsTU.mBatchSize);
   }
@@ -194,7 +193,7 @@ void Notifier::setup() {
         (mMetaDatabaseName) : nullptr;
     mhopsworksOpsLogTailer = new HopsworksOpsLogTailer(ops_log_tailer_connection,
         ops_log_tailer_recovery_connection, mPollMaxTimeToWait, mBarrier,
-            mProjectsElasticSearch, mLRUCap);
+            mProjectsElasticSearch, mLRUCap, mElasticSearchIndex);
   }
 
   if (mFileProvenanceTU.isEnabled()) {
