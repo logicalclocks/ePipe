@@ -34,7 +34,7 @@ template<typename TableRow>
 class DBTable : public DBTableBase {
 public:
   DBTable(const std::string table);
-  DBTable(const std::string table, const DBTableBase* companionTable);
+  DBTable(const std::string table, const DBTableBase* companionTableBase);
 
   void getAll(Ndb* connection);
   bool next();
@@ -59,10 +59,11 @@ private:
 
   void close();
   void applyConditionOnOperation(NdbOperation* operation, AnyMap& any);
-  void applyConditionOnCompanionTableOperation(NdbOperation* operation, AnyMap& any);
+  void applyConditionOnOperationOnCompanion(NdbOperation* operation, AnyMap& any);
   
 protected:
   NdbRecAttr** getColumnValues(NdbOperation* op);
+  NdbRecAttr** getColumnValuesOnCompanion(NdbOperation* op);
   void start(Ndb* connection);
   void end();
 
@@ -74,10 +75,11 @@ protected:
     
   std::vector<TableRow> doRead(Ndb* connection, std::string index, AnyMap& anys);
   bool rowsExists(Ndb* connection, std::string index, AnyMap& anys);
+  bool rowsExistsOnCompanion(Ndb* connection, std::string index, AnyMap& anys);
 
   void doDelete(Any any);
   void doDelete(AnyMap& any);
-  void doDeleteOnCompanionTable(AnyMap& any);
+  void doDeleteOnCompanion(AnyMap& any);
 
   void getAll(Ndb* connection, std::string index);
   void setReadEpoch(bool readEpoch);
@@ -97,8 +99,8 @@ DBTable<TableRow>::DBTable(const std::string table)
 }
 
 template<typename TableRow>
-DBTable<TableRow>::DBTable(const std::string table, const DBTableBase* companionTable)
-    : DBTableBase(table), mReadEpoch(false), mCompanionTableBase(companionTable) {
+DBTable<TableRow>::DBTable(const std::string table, const DBTableBase* companionTableBase)
+    : DBTableBase(table), mReadEpoch(false), mCompanionTableBase(companionTableBase) {
 }
 
 template<typename TableRow>
@@ -117,6 +119,19 @@ NdbRecAttr** DBTable<TableRow>::getColumnValues(NdbOperation* op) {
   if (mReadEpoch) {
     values[getNoColumns()] = getNdbOperationValue(op,
         NdbDictionary::Column::ROW_GCI64);
+  }
+  return values;
+}
+
+template<typename TableRow>
+NdbRecAttr** DBTable<TableRow>::getColumnValuesOnCompanion(NdbOperation* op) {
+  int numCols = mReadEpoch ? mCompanionTableBase->getNoColumns() + 1 : mCompanionTableBase->getNoColumns();
+  NdbRecAttr** values = new NdbRecAttr*[numCols];
+  for (strvec_size_type i = 0; i < mCompanionTableBase-> getNoColumns(); i++) {
+    values[i] = getNdbOperationValue(op, mCompanionTableBase->getColumn(i).c_str());
+  }
+  if (mReadEpoch) {
+    values[mCompanionTableBase->getNoColumns()] = getNdbOperationValue(op, NdbDictionary::Column::ROW_GCI64);
   }
   return values;
 }
@@ -264,6 +279,22 @@ bool DBTable<TableRow>::rowsExists(Ndb* connection, std::string index,
 }
 
 template<typename TableRow>
+bool DBTable<TableRow>::rowsExistsOnCompanion(Ndb* connection, std::string index, AnyMap& any){
+  start(connection);
+  LOG_DEBUG(mCompanionTable->getName() << " -- hasResults with index : " << index);
+  mIndex = getIndex(mDatabase, index, mCompanionTable->getName());
+  NdbIndexScanOperation* operation = getNdbIndexScanOperation(mCurrentTransaction, mIndex);
+  operation->readTuples(NdbOperation::LM_CommittedRead);
+  mCurrentOperation = operation;
+  applyConditionOnOperationOnCompanion(operation, any);
+  mCurrentRow = getColumnValuesOnCompanion(mCurrentOperation);
+  executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
+  bool hasMoreRows = operation->nextResult(true) == 0;
+  close();
+  return hasMoreRows;
+}
+
+template<typename TableRow>
 void DBTable<TableRow>::doDelete(Any any) {
   AnyMap a;
   a[0] = any;
@@ -279,11 +310,11 @@ void DBTable<TableRow>::doDelete(AnyMap& any) {
 }
 
 template<typename TableRow>
-void DBTable<TableRow>::doDeleteOnCompanionTable(AnyMap& any) {
+void DBTable<TableRow>::doDeleteOnCompanion(AnyMap& any) {
   LOG_DEBUG(getName() << " -- doDelete companion");
   mCurrentOperation = getNdbOperation(mCurrentTransaction, mCompanionTable);
   mCurrentOperation->deleteTuple();
-  applyConditionOnCompanionTableOperation(mCurrentOperation, any);
+  applyConditionOnOperationOnCompanion(mCurrentOperation, any);
 }
 
 
@@ -390,7 +421,7 @@ void DBTable<TableRow>::applyConditionOnOperation(NdbOperation* operation, AnyMa
 }
 
 template<typename TableRow>
-void DBTable<TableRow>::applyConditionOnCompanionTableOperation(NdbOperation* operation, AnyMap& any) {
+void DBTable<TableRow>::applyConditionOnOperationOnCompanion(NdbOperation* operation, AnyMap& any) {
   std::stringstream log;
   LOG_DEBUG(getName() << " -- apply condition");
   for (AnyMap::iterator it = any.begin(); it != any.end(); ++it) {

@@ -289,6 +289,11 @@ public:
     return DBTable<INodeRow>::doRead(connection, a);
   }
 
+  INodeVec get(Ndb* connection, AnyVec& pks){
+    INodeVec inodes = doRead(connection, pks);
+    return inodes;
+  }
+
   INodeMap get(Ndb* connection, Fmq* data_batch) {
     AnyVec anyVec;
     boost::unordered_map<Int64, FsMutationRow> mutationsByInode;

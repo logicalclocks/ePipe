@@ -95,7 +95,11 @@ protected:
   }
 
   const NdbDictionary::Index* getIndex(const NdbDictionary::Dictionary* database, const std::string& index_name) {
-    const NdbDictionary::Index* index = database->getIndex(index_name.c_str(), getName().c_str());
+    return getIndex(database, index_name, getName());
+  }
+  const NdbDictionary::Index* getIndex(const NdbDictionary::Dictionary* database, const std::string& index_name,
+          const std::string& table_name) {
+    const NdbDictionary::Index* index = database->getIndex(index_name.c_str(), table_name.c_str());
     if (!index) {
       LOG_ERROR("index:" << index_name << " error");
       LOG_NDB_API_ERROR(database->getNdbError());
