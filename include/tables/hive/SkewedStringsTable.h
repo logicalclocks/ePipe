@@ -39,18 +39,14 @@ public:
   }
 
   void remove(Ndb* conn, Int64 pStringListID) {
-    if(hasSkewedStringList(conn, pStringListID)) {
+    try {
       start(conn);
       doDelete(pStringListID);
       LOG_DEBUG("Remove SkewedStrings entry with PK: " << pStringListID);
       end();
+    }catch(NdbTupleDidNotExist& e){
+      LOG_DEBUG("Row was already deleted for SkewedStrings entry with PK: " << pStringListID);
     }
-  }
-
-  bool hasSkewedStringList(Ndb *conn, Int64 pStringListID){
-    AnyMap key;
-    key[0] = pStringListID;
-    return rowsExists(conn, "PRIMARY", key);
   }
 };
 

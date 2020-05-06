@@ -135,6 +135,7 @@ void Logger::error(const char* msg) {
 
 void Logger::fatal(const char* msg) {
   log(LogSeverityLevel::fatal, msg);
+  logging::core::get()->flush();
   exit(EXIT_FAILURE);
 }
 

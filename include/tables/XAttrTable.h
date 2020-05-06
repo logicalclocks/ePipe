@@ -292,7 +292,7 @@ public:
   XAttrVec getByInodeId(Ndb* connection, Int64 inodeId){
     AnyMap args;
     args[0] = inodeId;
-    return doRead(connection, PRIMARY_INDEX, args);
+    return doRead(connection, PRIMARY_INDEX, args, inodeId);
   }
 
   boost::optional<XAttrRow> get(Ndb* connection, XAttrPK key) {

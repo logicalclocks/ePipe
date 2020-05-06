@@ -48,11 +48,13 @@ public:
   }
 
   void remove(Ndb* conn, Int64 SDID) {
-    if(hasSDS(conn, SDID)) {
+    try{
       start(conn);
       doDelete(SDID);
       LOG_DEBUG("Remove SDS entry with PK: " << SDID);
       end();
+    }catch(NdbTupleDidNotExist& e){
+      LOG_DEBUG("Row was already deleted for SDS entry with PK: " << SDID);
     }
   }
 
@@ -61,12 +63,6 @@ public:
     key[1] = pCDID;
     return rowsExists(conn, "SDS_N50", key);
   }
-
-  bool hasSDS(Ndb* conn, Int64 pSDSID){
-    AnyMap key;
-    key[1] = pSDSID;
-    return rowsExists(conn, "PRIMARY", key);
-  }
-
+  
 };
 #endif //EPIPE_SDSTABLE_H

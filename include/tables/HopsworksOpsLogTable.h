@@ -128,30 +128,23 @@ public:
     return row;
   }
 
-  void removeLogs(Ndb* connection, std::vector<const LogHandler*>&
-  logrh) {
-    start(connection);
-    for (auto log : logrh) {
-      if(log == nullptr){
-        continue;
-      }
-      if(log->getType() != LogType::HOPSWORKSLOG){
-        continue;
-      }
-
-      const HopsworksLogHandler* hopsworksLogHandler = static_cast<const HopsworksLogHandler*>(log);
-
-      doDelete(hopsworksLogHandler->mPK);
-      LOG_DEBUG("Delete log row " << hopsworksLogHandler->mPK);
+  void removeLogs(Ndb* connection, std::vector<const LogHandler*>& logrh) {
+    try{
+      removeLogsOneTransaction(connection, logrh);
+    }catch(NdbTupleDidNotExist& e){
+      removeLogsMultiTransactions(connection, logrh);
     }
-    end();
   }
 
   void removeLog(Ndb* conn, int pk) {
-    start(conn);
-    doDelete(pk);
-    LOG_DEBUG("Remove log " << pk);
-    end();
+    try{
+      start(conn);
+      doDelete(pk);
+      LOG_DEBUG("Remove log " << pk);
+      end();
+    }catch(NdbTupleDidNotExist& e){
+      LOG_DEBUG("Row was already deleted for log entry with PK: " << pk);
+    }
   }
 
   std::string getPKStr(HopsworksOpRow row) override {
@@ -161,6 +154,40 @@ public:
   LogHandler* getLogRemovalHandler(HopsworksOpRow row) override {
     return new HopsworksLogHandler(row.mId);
   }
+
+private:
+  void removeLogsOneTransaction(Ndb *connection, std::vector<const LogHandler *> &logrh){
+    start(connection);
+    for (auto log : logrh){
+      if (log == nullptr){
+        continue;
+      }
+      if (log->getType() != LogType::HOPSWORKSLOG){
+        continue;
+      }
+
+      const HopsworksLogHandler *hopsworksLogHandler = static_cast<const HopsworksLogHandler *>(log);
+
+      doDelete(hopsworksLogHandler->mPK);
+      LOG_DEBUG("Delete log row " << hopsworksLogHandler->mPK);
+    }
+    end();
+  }
+
+  void removeLogsMultiTransactions(Ndb *connection, std::vector<const LogHandler *>& logrh){
+    for (auto log : logrh){
+      if (log == nullptr){
+        continue;
+      }
+      if (log->getType() != LogType::HOPSWORKSLOG){
+        continue;
+      }
+
+      const HopsworksLogHandler *hopsworksLogHandler = static_cast<const HopsworksLogHandler *>(log);
+      removeLog(connection, hopsworksLogHandler->mPK);
+    }
+  }
+
 };
 
 #endif /* HOPSWORKSOPSLOGTABLE_H */

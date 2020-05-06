@@ -24,6 +24,9 @@
 struct TupleRow {
   int mId;
   Int64 mInodeId;
+  Int64 mInodeParentId;
+  std::string mInodeName;
+  Int64 mInodePartitionId;
 };
 
 typedef boost::unordered_map<int, TupleRow> TupleMap;
@@ -34,12 +37,18 @@ public:
   MetaTupleTable() : DBTable("meta_tuple_to_file") {
     addColumn("tupleid");
     addColumn("inodeid");
+    addColumn("inode_pid");
+    addColumn("inode_name");
+    addColumn("partition_id");
   }
 
   TupleRow getRow(NdbRecAttr* values[]) {
     TupleRow row;
     row.mId = values[0]->int32_value();
     row.mInodeId = values[1]->int64_value();
+    row.mInodeParentId = values[2]->int64_value();
+    row.mInodeName = get_string(values[3]);
+    row.mInodePartitionId = values[4]->int64_value();
     return row;
   }
 

@@ -240,63 +240,26 @@ public:
     return row;
   }
 
-  void cleanLogs(Ndb* connection, std::vector<const LogHandler*>&logrh) {
-    std::vector<AnyMap> fileProvEntries;
-    std::vector<AnyMap> companionEntries;
-    for (auto log : logrh) {
-      if (log != nullptr && log->getType() == LogType::PROVFILELOG) {
-        const FileProvLogHandler *fplog = static_cast<const FileProvLogHandler *>(log);
-        FileProvenancePK fPK = fplog->mPK;
-        LOG_DEBUG("Delete file provenance row: " << fPK.to_string());
-        fileProvEntries.push_back(getFileProvPK(fPK));
-        if (fplog->mBufferPK) {
-          FPXAttrBufferPK cPK = fplog->mBufferPK.get();
-          AnyMap companionPK = getCompanionPK(cPK);
-          if (rowsExistsOnCompanion(connection, "PRIMARY", companionPK)) {
-            LOG_DEBUG("Delete xattr buffer row: " << cPK.to_string());
-            companionEntries.push_back(companionPK);
-          } else {
-            LOG_INFO("expected a companion row - missing from table:" << cPK.to_string());
-          }
-        }
-      }
+  void cleanLogs(Ndb* connection, std::vector<const LogHandler*>& logrh) {
+    try{
+      cleanLogsOneTransaction(connection, logrh);
+    } catch (NdbTupleDidNotExist &e){
+      cleanLogsMultiTransaction(connection, logrh);
     }
-    start(connection);
-    for(AnyMap pk : companionEntries) {
-      doDeleteOnCompanion(pk);
-    }
-    for(AnyMap pk : fileProvEntries) {
-      doDelete(pk);
-    }
-    end();
   }
 
   void cleanLog(Ndb* connection, const LogHandler* log) {
     if (log != nullptr && log->getType() == LogType::PROVFILELOG) {
       const FileProvLogHandler *fplog = static_cast<const FileProvLogHandler *>(log);
-      AnyMap companionPK;
-      bool hasCompanion = false;
-      if (fplog->mBufferPK) {
-        FPXAttrBufferPK cPK = fplog->mBufferPK.get();
-        AnyMap companionPK = getCompanionPK(cPK);
-        if (rowsExistsOnCompanion(connection, "PRIMARY", companionPK)) {
-          hasCompanion = true;
-        } else {
-          LOG_INFO("expected a companion row - missing from table:" << cPK.to_string());
-        }
+      try{
+        start(connection);
+        _doDeleteOnCompanion(fplog);
+        _doDelete(fplog);
+        end();
+      } catch (NdbTupleDidNotExist &e){
+        doDeleteOnCompanionTransaction(connection, fplog);
+        doDeleteTransaction(connection, fplog);
       }
-      start(connection);
-      if(hasCompanion) {
-        FPXAttrBufferPK cPK = fplog->mBufferPK.get();
-        LOG_DEBUG("Delete xattr buffer row: " << cPK.to_string());
-        doDeleteOnCompanion(companionPK);
-      }
-
-      FileProvenancePK fPK = fplog->mPK;
-      AnyMap fileProvPK = getFileProvPK(fPK);
-      LOG_DEBUG("Delete file provenance row: " << fPK.to_string());
-      doDelete(fileProvPK);
-      end();
     }
   }
 
@@ -309,6 +272,64 @@ public:
   }
 
 private:
+  void cleanLogsOneTransaction(Ndb* connection, std::vector<const LogHandler*>&logrh) {
+    start(connection);
+    for (auto log : logrh) {
+      if (log != nullptr && log->getType() == LogType::PROVFILELOG) {
+        const FileProvLogHandler *fplog = static_cast<const FileProvLogHandler *>(log);
+        _doDeleteOnCompanion(fplog);
+        _doDelete(fplog);
+      }
+    }
+    end();
+  }
+
+  void cleanLogsMultiTransaction(Ndb* connection, std::vector<const LogHandler*>&logrh) {
+    for (auto log : logrh) {
+      if (log != nullptr && log->getType() == LogType::PROVFILELOG) {
+        const FileProvLogHandler *fplog = static_cast<const FileProvLogHandler *>(log);
+        doDeleteOnCompanionTransaction(connection, fplog);
+        doDeleteTransaction(connection, fplog);
+      }
+    }
+  }
+
+  void doDeleteOnCompanionTransaction(Ndb* connection, const FileProvLogHandler *fplog){
+    try{
+      start(connection);
+      _doDeleteOnCompanion(fplog);
+      end();
+    } catch (NdbTupleDidNotExist &e){
+      LOG_DEBUG("Companion Log row was already deleted");
+    }
+  }
+
+  void doDeleteTransaction(Ndb* connection, const FileProvLogHandler *fplog){
+    try{
+      start(connection);
+      _doDelete(fplog);
+      end();
+    } catch (NdbTupleDidNotExist &e){
+      LOG_DEBUG("Log row was already deleted");
+    }
+  }
+
+  void _doDeleteOnCompanion(const FileProvLogHandler *fplog){
+    if (fplog->mBufferPK){
+      FPXAttrBufferPK cPK = fplog->mBufferPK.get();
+      AnyMap companionPK = getCompanionPK(cPK);
+      LOG_DEBUG("Delete xattr buffer row: " << cPK.to_string());
+      doDeleteOnCompanion(companionPK);
+    }
+  }
+
+  void _doDelete(const FileProvLogHandler *fplog){
+    FileProvenancePK fPK = fplog->mPK;
+    AnyMap fileProvPK = getFileProvPK(fPK);
+    LOG_DEBUG("Delete file provenance row: " << fPK.to_string());
+    doDelete(fileProvPK);
+  }
+
   AnyMap getFileProvPK(FileProvenancePK pk) {
     AnyMap a;
     a[0] = pk.mInodeId;

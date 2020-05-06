@@ -39,18 +39,14 @@ public:
   }
 
   void remove(Ndb* conn, Int64 pSERDEID) {
-    if(hasSERDES(conn, pSERDEID)) {
+    try {
       start(conn);
       doDelete(pSERDEID);
       LOG_DEBUG("Remove SERDES entry with PK: " << pSERDEID);
       end();
+    } catch(NdbTupleDidNotExist& e){
+      LOG_DEBUG("Row was already deleted for SERDES entry with PK: " << pSERDEID);
     }
-  }
-
-  bool hasSERDES(Ndb *conn, Int64 pSERDEID){
-    AnyMap key;
-    key[0] = pSERDEID;
-    return rowsExists(conn, "PRIMARY", key);
   }
 };
 #endif //EPIPE_SERDESTABLE_H

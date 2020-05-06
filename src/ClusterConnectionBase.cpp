@@ -29,8 +29,7 @@ mHiveMetaDatabaseName(hive_meta_database_name) {
 Ndb* ClusterConnectionBase::create_ndb_connection(const char* database) {
   Ndb* ndb = new Ndb(mClusterConnection, database);
   if (ndb->init() == -1) {
-
-    LOG_NDB_API_ERROR(ndb->getNdbError());
+    LOG_NDB_API_FATAL(database, ndb->getNdbError());
   }
 
   return ndb;
@@ -39,21 +38,21 @@ Ndb* ClusterConnectionBase::create_ndb_connection(const char* database) {
 Ndb_cluster_connection* ClusterConnectionBase::connect_to_cluster(const char *connection_string) {
   Ndb_cluster_connection* c;
 
-  if (ndb_init())
-    exit(EXIT_FAILURE);
+  if (ndb_init()){
+    LOG_FATAL("Failed to intialize NDB.\n\n");
+  }
 
   c = new Ndb_cluster_connection(connection_string);
 
   if (c->connect(RETRIES, DELAY_BETWEEN_RETRIES, VERBOSE)) {
-    fprintf(stderr, "Unable to connect to cluster.\n\n");
-    exit(EXIT_FAILURE);
+    LOG_FATAL("Unable to connect to cluster.\n\n");
   }
 
   if (c->wait_until_ready(WAIT_UNTIL_READY, WAIT_UNTIL_READY) < 0) {
-
-    fprintf(stderr, "Cluster was not ready.\n\n");
-    exit(EXIT_FAILURE);
+     LOG_FATAL("Cluster was not ready.\n\n");
   }
+  
+  LOG_INFO("Succefully connected to NDB cluster with NodeId " << c->node_id());
 
   return c;
 }

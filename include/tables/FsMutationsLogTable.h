@@ -239,8 +239,41 @@ public:
     return row;
   }
 
-  void removeLogs(Ndb* connection, std::vector<const LogHandler*>&
-      logrh) {
+  void removeLogs(Ndb* connection, std::vector<const LogHandler*>& logrh) {
+    try{
+      removeLogsOneTransaction(connection, logrh);
+    }catch(NdbTupleDidNotExist& e){
+      removeLogsMultiTransactions(connection, logrh);
+    }
+  }
+
+  void removeLog(Ndb* connection, FsMutationPK pk) {
+    try{
+      start(connection);
+      AnyMap a;
+      a[0] = pk.mDatasetINodeId;
+      a[1] = pk.mInodeId;
+      a[2] = pk.mLogicalTime;
+      doDelete(a);
+      LOG_DEBUG("Delete log row: Dataset[" << pk.mDatasetINodeId << "], INode["
+                                           << pk.mInodeId << "], Timestamp[" << pk.mLogicalTime << "]");
+      end();
+    } catch(NdbTupleDidNotExist& e){
+      LOG_DEBUG("Log row was already deleted for Dataset[" << pk.mDatasetINodeId << "], INode["
+                                           << pk.mInodeId << "], Timestamp[" << pk.mLogicalTime << "]");
+    }
+  }
+
+  std::string getPKStr(FsMutationRow row) override {
+    return row.getPKStr();
+  }
+
+  LogHandler* getLogRemovalHandler(FsMutationRow row) override {
+    return new FSLogHandler(row.getPK());
+  }
+private:
+
+  void removeLogsOneTransaction(Ndb* connection, std::vector<const LogHandler*>& logrh) {
     start(connection);
     for (auto log : logrh) {
       if(log == nullptr){
@@ -265,24 +298,20 @@ public:
     end();
   }
 
-  void removeLog(Ndb* connection, FsMutationPK pk) {
-    start(connection);
-    AnyMap a;
-    a[0] = pk.mDatasetINodeId;
-    a[1] = pk.mInodeId;
-    a[2] = pk.mLogicalTime;
-    doDelete(a);
-    LOG_DEBUG("Delete log row: Dataset[" << pk.mDatasetINodeId << "], INode["
-    << pk.mInodeId << "], Timestamp[" << pk.mLogicalTime << "]");
-    end();
-  }
+  void removeLogsMultiTransactions(Ndb* connection, std::vector<const LogHandler*>& logrh) {
+    for (auto log : logrh) {
+      if(log == nullptr){
+        continue;
+      }
+      if(log->getType() != LogType::FSLOG){
+        continue;
+      }
 
-  std::string getPKStr(FsMutationRow row) override {
-    return row.getPKStr();
-  }
+      const FSLogHandler* fslog = static_cast<const FSLogHandler*>
+          (log);
 
-  LogHandler* getLogRemovalHandler(FsMutationRow row) override {
-    return new FSLogHandler(row.getPK());
+      removeLog(connection, fslog->mPK);
+    }
   }
 };
 
