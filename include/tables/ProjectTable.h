@@ -90,6 +90,9 @@ struct ProjectRow {
     docWriter.String("user");
     docWriter.String(mUserName.c_str());
 
+    docWriter.String("name");
+    docWriter.String(mInodeName.c_str());
+
     docWriter.String("description");
     docWriter.String(mDescription.c_str());
 
