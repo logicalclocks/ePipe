@@ -28,6 +28,66 @@
 #include "tables/XAttrTable.h"
 #include "FileProvenanceConstants.h"
 
+class FSMutationsJSONBuilder {
+public:
+  static std::string featurestoreDoc(std::string featurestoreIndex, std::string docType, Int64 inodeId,
+          std::string name, int version, int projectId, std::string projectName, Int64 datasetIId) {
+    std::stringstream out;
+    out << FSMutationsJSONBuilder::docHeader(featurestoreIndex, inodeId) << std::endl;
+
+    rapidjson::StringBuffer sbDoc;
+    rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
+
+    docWriter.StartObject();
+    docWriter.String("doc");
+    docWriter.StartObject();
+
+    docWriter.String("doc_type");
+    docWriter.String(docType.c_str());
+    docWriter.String("name");
+    docWriter.String(name.c_str());
+    docWriter.String("version");
+    docWriter.Int(version);
+
+    docWriter.String("project_id");
+    docWriter.Int(projectId);
+    docWriter.String("project_name");
+    docWriter.String(projectName.c_str());
+    docWriter.String("dataset_iid");
+    docWriter.Int(datasetIId);
+
+    docWriter.EndObject();
+
+    docWriter.String("doc_as_upsert");
+    docWriter.Bool(true);
+
+    docWriter.EndObject();
+
+    out << sbDoc.GetString() << std::endl;
+    return out.str();
+  }
+private:
+  static std::string docHeader(std::string index, Int64 id) {
+    std::stringstream out;
+    rapidjson::StringBuffer sbOp;
+    rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
+
+    opWriter.StartObject();
+    opWriter.String("update");
+    opWriter.StartObject();
+
+    opWriter.String("_id");
+    opWriter.Int64(id);
+    opWriter.String("_index");
+    opWriter.String(index.c_str());
+
+    opWriter.EndObject();
+    opWriter.EndObject();
+
+    return sbOp.GetString();
+  }
+};
+
 class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn> {
 public:
   FsMutationsDataReader(MConn connection, const bool hopsworks, const int lru_cap,
@@ -45,8 +105,6 @@ private:
   virtual void processAddedandDeleted(Fmq* data_batch, eBulk& bulk);
 
   void createJSON(Fmq* pending, INodeMap& inodes, XAttrMap& xattrs, eBulk& bulk);
-  std::string docHeader(std::string index, Int64 id);
-  std::string featurestoreDoc(std::string docType, Int64 inodeId, std::string name, int version, int projectId, std::string projectName, Int64 datasetIId);
 };
 
 class FsMutationsDataReaders : public NdbDataReaders<FsMutationRow, MConn>{
@@ -61,7 +119,4 @@ public:
     }
   }
 };
-
-
 #endif /* FSMUTATIONSDATAREADER_H */
-

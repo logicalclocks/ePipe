@@ -1,6 +1,8 @@
 # ePipe Configurations
 
 reindex = false
+# possible values [project, featurestore, all]
+reindex_of = all
 
 # general configuration
 
