@@ -21,6 +21,7 @@
 #include <boost/program_options.hpp>
 #include "Version.h"
 #include "Reindexer.h"
+#include "FeaturestoreReindexer.h"
 
 namespace po = boost::program_options;
 
@@ -55,6 +56,7 @@ int main(int argc, char** argv) {
     Barrier barrier = EPOCH;
 
     bool reindex = false;
+    std::string reindex_of = "all";
 
     bool hiveCleaner = true;
 
@@ -133,6 +135,8 @@ int main(int argc, char** argv) {
          "Table tailer barrier type. EPOCH=0, GCI=1")
         ("reindex", po::value<bool>(&reindex)->default_value(reindex),
          "initialize an empty index with all metadata")
+        ("reindex_of", po::value<std::string>(&reindex_of)->default_value(reindex_of),
+         "define index to initialize [project, featurestore]")
         ("ssl_enabled", po::value<bool>(&sslEnabled)->default_value(sslEnabled),
          "ssl enabled or disabled for elastic communication")
         ("ca_path", po::value<std::string>(&caPath)->default_value(caPath),
@@ -212,15 +216,33 @@ int main(int argc, char** argv) {
     HttpClientConfig config = {elastic_addr, sslEnabled, caPath, username,
                                password};
     if (reindex) {
-      LOG_INFO("Create Elasticsearch index at " << elastic_index);
-      Reindexer *reindexer = new Reindexer(connection_string.c_str(),
-                                           database_name.c_str(),
-                                           meta_database_name.c_str(),
-                                           hive_meta_database_name.c_str(),
-                                           config, elastic_index, elastic_batch_size,
-                                           elastic_issue_time, lru_cap);
-
-      reindexer->run();
+      if(reindex_of == "project") {
+        LOG_INFO("Create Elasticsearch index at " << elastic_index);
+        Reindexer *reindexer = new Reindexer(connection_string.c_str(),
+                                             database_name.c_str(),
+                                             meta_database_name.c_str(),
+                                             hive_meta_database_name.c_str(),
+                                             config, elastic_index, elastic_batch_size,
+                                             elastic_issue_time, lru_cap);
+        reindexer->run();
+      } else if(reindex_of == "featurestore") {
+        LOG_INFO("Create Elasticsearch index at " << elastic_featurestore_index);
+        FeaturestoreReindexer *reindexer = new FeaturestoreReindexer(connection_string.c_str(),
+                database_name.c_str(), meta_database_name.c_str(), hive_meta_database_name.c_str(), config,
+                elastic_featurestore_index, elastic_batch_size, elastic_issue_time, lru_cap);
+        reindexer->run();
+      } else if(reindex_of == "all") {
+        LOG_INFO("Create Elasticsearch index at " << elastic_index);
+        Reindexer *projectReindexer = new Reindexer(connection_string.c_str(),
+                database_name.c_str(), meta_database_name.c_str(), hive_meta_database_name.c_str(),
+                config, elastic_index, elastic_batch_size, elastic_issue_time, lru_cap);
+        projectReindexer->run();
+        LOG_INFO("Create Elasticsearch index at " << elastic_featurestore_index);
+        FeaturestoreReindexer *featurestoreReindexer = new FeaturestoreReindexer(connection_string.c_str(),
+                database_name.c_str(), meta_database_name.c_str(), hive_meta_database_name.c_str(), config,
+                elastic_featurestore_index, elastic_batch_size, elastic_issue_time, lru_cap);
+        featurestoreReindexer->run();
+      }
     } else {
       Notifier *notifer = new Notifier(connection_string.c_str(),
                                        database_name.c_str(),

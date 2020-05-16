@@ -81,7 +81,8 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
           if(nameParts) {
             LOG_DEBUG("featurestore type:" << docType << "name:" << nameParts.get().first << " version:" << std::to_string(nameParts.get().second));
             bulk.push(nullptr, row.mEventCreationTime,
-                    featurestoreDoc(docType, inode.mId, nameParts.get().first, nameParts.get().second, projectId, projectName, datasetINodeId));
+                    FSMutationsJSONBuilder::featurestoreDoc(mFeaturestoreIndex, docType, inode.mId, nameParts.get().first,
+                            nameParts.get().second, projectId, projectName, datasetINodeId));
           }
         }
       }
@@ -163,63 +164,6 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       LOG_ERROR("Unknown fs operation " << row.to_string());
     }
   }
-}
-
-std::string FsMutationsDataReader::docHeader(std::string index, Int64 id) {
-  std::stringstream out;
-  rapidjson::StringBuffer sbOp;
-  rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
-
-  opWriter.StartObject();
-  opWriter.String("update");
-  opWriter.StartObject();
-
-  opWriter.String("_id");
-  opWriter.Int64(id);
-  opWriter.String("_index");
-  opWriter.String(index.c_str());
-
-  opWriter.EndObject();
-  opWriter.EndObject();
-
-  return sbOp.GetString();
-}
-
-std::string FsMutationsDataReader::featurestoreDoc(std::string docType, Int64 inodeId, std::string name, int version,
-        int projectId, std::string projectName, Int64 datasetIId) {
-  std::stringstream out;
-  out << docHeader(mFeaturestoreIndex, inodeId) << std::endl;
-
-  rapidjson::StringBuffer sbDoc;
-  rapidjson::Writer<rapidjson::StringBuffer> docWriter(sbDoc);
-
-  docWriter.StartObject();
-  docWriter.String("doc");
-  docWriter.StartObject();
-
-  docWriter.String("doc_type");
-  docWriter.String(docType.c_str());
-  docWriter.String("name");
-  docWriter.String(name.c_str());
-  docWriter.String("version");
-  docWriter.Int(version);
-
-  docWriter.String("project_id");
-  docWriter.Int(projectId);
-  docWriter.String("project_name");
-  docWriter.String(projectName.c_str());
-  docWriter.String("dataset_iid");
-  docWriter.Int(datasetIId);
-
-  docWriter.EndObject();
-
-  docWriter.String("doc_as_upsert");
-  docWriter.Bool(true);
-
-  docWriter.EndObject();
-
-  out << sbDoc.GetString() << std::endl;
-  return out.str();
 }
 
 FsMutationsDataReader::~FsMutationsDataReader() {
