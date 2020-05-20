@@ -3,7 +3,7 @@ project (ePipe)
 cmake_minimum_required (VERSION 3.5.0)
 
 set(EPIPE_VERSION_MAJOR 0)
-set(EPIPE_VERSION_MINOR 12)
+set(EPIPE_VERSION_MINOR 13)
 set(EPIPE_VERSION_BUILD 0)
 configure_file(Version.h.in ${CMAKE_SOURCE_DIR}/include/Version.h)
 
