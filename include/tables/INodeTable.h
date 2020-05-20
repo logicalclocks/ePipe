@@ -299,12 +299,8 @@ public:
   INodeMap get(Ndb* connection, Fmq* data_batch) {
     AnyVec anyVec;
     boost::unordered_map<Int64, FsMutationRow> mutationsByInode;
-    ULSet xattrInodes;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
-      if(row.isXAttrOperation()) {
-        xattrInodes.insert(row.mInodeId);
-      }
       if (!row.requiresReadingINode() || !row.isINodeOperation()) {
         continue;
       }
@@ -340,16 +336,6 @@ public:
       row.mGroupName = mGroupsTable.getFromCache(row.mGroupId);
       result[row.mId] = row;
     }
-    //add the xattr rows
-    for(auto it=xattrInodes.begin(); it != xattrInodes.end(); it++){
-      Int64 inodeId = *it;
-      //if we are pulling the inode for a file mutation op, better do it there where we have pk. xattr pulls on inodeId index
-      if (mutationsByInode.find(inodeId) == mutationsByInode.end()) {
-        INodeRow row = getByInodeId(connection, inodeId);
-        result[inodeId] = row;
-      }
-    }
-
     return result;
   }
 

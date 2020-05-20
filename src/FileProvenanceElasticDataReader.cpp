@@ -602,7 +602,7 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
     case FileProvenanceConstants::Operation::OP_XATTR_ADD:
     case FileProvenanceConstants::Operation::OP_XATTR_UPDATE: {
       FPXAttrBufferPK xattrBufferKey(row.mInodeId, FileProvenanceConstants::XATTRS_USER_NAMESPACE, row.mXAttrName,
-                                     row.mLogicalTime);
+                                     row.mLogicalTime, row.mXAttrNumParts);
       FPXAttrBufferRow xattr = readBufferedXAttr(xattrBufferKey);
       if (row.mXAttrName == FileProvenanceConstants::XATTR_PROV_CORE) {
         std::pair<FileProvenanceConstants::ProvOpStoreType, Int64> opProvCore = FileProvenanceConstants::provCore(xattr.mValue);
@@ -680,7 +680,7 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
     }
       break;
     case FileProvenanceConstants::Operation::OP_XATTR_DELETE: {
-      FPXAttrBufferPK xattrBufferKey(row.mInodeId, FileProvenanceConstants::XATTRS_USER_NAMESPACE, row.mXAttrName, row.mLogicalTime);
+      FPXAttrBufferPK xattrBufferKey(row.mInodeId, FileProvenanceConstants::XATTRS_USER_NAMESPACE, row.mXAttrName, row.mLogicalTime, row.mXAttrNumParts);
       std::string xattrStateVal = ElasticHelper::deleteXAttrFromState(ElasticHelper::stateId(row), projectIndex, row);
       bulkOps.push_back(xattrStateVal);
       if (datasetProvCore && datasetProvCore.get() == FileProvenanceConstants::ProvOpStoreType::STORE_ALL) {

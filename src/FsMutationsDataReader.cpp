@@ -91,7 +91,6 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime,
                 inode.to_create_json(mSearchIndex, datasetINodeId, projectId));
     } else if (row.isXAttrOperation()) {
-      INodeRow inode = inodes[row.mInodeId];
       Int64 datasetINodeId = DONT_EXIST_INT();
       int projectId = DONT_EXIST_INT();
       std::string datasetName = DONT_EXIST_STR();
@@ -105,7 +104,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
 
       if (!row.requiresReadingXAttr()) {
         //handle delete xattr
-        if(FileProvenanceConstants::isPartOfFeaturestore(inode.mParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+        if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
           bulk.push(nullptr, row.mEventCreationTime, XAttrRow::to_delete_json(mFeaturestoreIndex, row));
         }
         bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime, XAttrRow::to_delete_json(mSearchIndex, row));
@@ -118,7 +117,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
         << row.getNamespace() <<  " for inode " << row.mInodeId
         << " was not found");
-        if(FileProvenanceConstants::isPartOfFeaturestore(inode.mParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+        if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
           bulk.push(nullptr, row.mEventCreationTime, XAttrRow::to_delete_json(mFeaturestoreIndex, row));
         }
         bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime, XAttrRow::to_delete_json(mSearchIndex, row));
@@ -129,7 +128,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       if(xattr.empty()){
         LOG_DEBUG(" Data for all xattrs of inode " << row.mInodeId
                                       << " was not found");
-        if(FileProvenanceConstants::isPartOfFeaturestore(inode.mParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+        if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
           bulk.push(nullptr, row.mEventCreationTime, XAttrRow::to_delete_json(mFeaturestoreIndex, row));
         }
         bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime, XAttrRow::to_delete_json(mSearchIndex, row));
@@ -141,8 +140,8 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         const LogHandler *const logh = std::next(it) != xattr.end() ? nullptr : mFSLogTable.getLogRemovalHandler(row);
         XAttrRow xAttrRow = *it;
         if (xAttrRow.mInodeId ==  row.mInodeId) {
-          if(FileProvenanceConstants::isPartOfFeaturestore(inode.mParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
-            boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(inode.mName);
+          if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+            boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(row.mInodeName);
             if(nameParts) {
 //              LOG_INFO("featurestore name:" << nameParts.get().first << " version:" << nameParts.get().second << " xattr:" << row.getXAttrName());
               bulk.push(nullptr, row.mEventCreationTime, xAttrRow.to_upsert_json(mFeaturestoreIndex, row.mOperation));
@@ -153,7 +152,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
           LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
           << row.getNamespace() <<  " for inode " << row.mInodeId
           << " was not ""found");
-          if(FileProvenanceConstants::isPartOfFeaturestore(inode.mParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+          if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
             bulk.push(nullptr, row.mEventCreationTime, XAttrRow::to_delete_json(mFeaturestoreIndex, row));
           }
           bulk.push(logh, row.mEventCreationTime, XAttrRow::to_delete_json(mSearchIndex, row));
