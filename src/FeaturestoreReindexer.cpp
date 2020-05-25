@@ -63,7 +63,8 @@ void FeaturestoreReindexer::run() {
     if (docType != DONT_EXIST_STR()) {
       LOG_INFO("dataset:" << dataset.mInodeName << " has " << docType << "s");
       //this is a featurestore doc - featuregroup or trainingdataset
-      INodeVec inodes = inodesTable.getByParentId(conn, dataset.mInodeId);
+      //The partition id is the parent id for all files and directories under project subtree
+      INodeVec inodes = inodesTable.getByParentId(conn, dataset.mInodeId, dataset.mInodeId);
       for (INodeVec::iterator it = inodes.begin(); it != inodes.end(); ++it) {
         INodeRow inode = *it;
         boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(inode.mName);

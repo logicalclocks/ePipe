@@ -247,10 +247,11 @@ public:
     return row;
   }
 
-  INodeVec getByParentId(Ndb* connection, Int64 parentId){
+  INodeVec getByParentId(Ndb* connection, Int64 parentId, Int64 partitionId){
     AnyMap key;
     key[0] = parentId;
-    INodeVec inodes = doRead(connection, "pidex", key);
+    key[2] = partitionId;
+    INodeVec inodes = doRead(connection, "c1", key, partitionId);
     INodeVec results;
     for(INodeVec::iterator it = inodes.begin(); it!=inodes.end(); ++it){
       INodeRow row = *it;
@@ -261,6 +262,7 @@ public:
     return results;
   }
 
+  // This method should be avoid as much as possible since it triggers an index scan
   INodeRow getByInodeId(Ndb* connection, Int64 inodeId) {
     AnyMap key;
     key[3] = inodeId;

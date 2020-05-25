@@ -31,6 +31,12 @@ inline const static std::string DONT_EXIST_STR() {
 
 typedef typename std::vector<std::string>::size_type strvec_size_type;
 
+struct NdbTupleDidNotExist : public std::exception {
+  const char * what () const throw () {
+    return "Tuple did not exist";
+  }
+};
+
 class DBTableBase {
 public:
   DBTableBase(const std::string table) : mTableName(table) {
@@ -79,7 +85,7 @@ protected:
 
   const NdbDictionary::Dictionary* getDatabase(Ndb* connection) {
     const NdbDictionary::Dictionary* database = connection->getDictionary();
-    if (!database) LOG_NDB_API_ERROR(connection->getNdbError());
+    if (!database) LOG_NDB_API_FATAL(getName(), connection->getNdbError());
     return database;
   }
 
@@ -90,7 +96,7 @@ protected:
   const NdbDictionary::Table* getTable(const NdbDictionary::Dictionary*
   database, std::string name) {
     const NdbDictionary::Table* table = database->getTable(name.c_str());
-    if (!table) LOG_NDB_API_ERROR(database->getNdbError());
+    if (!table) LOG_NDB_API_FATAL(getName(), database->getNdbError());
     return table;
   }
 
@@ -101,51 +107,63 @@ protected:
           const std::string& table_name) {
     const NdbDictionary::Index* index = database->getIndex(index_name.c_str(), table_name.c_str());
     if (!index) {
-      LOG_ERROR("index:" << index_name << " error");
-      LOG_NDB_API_ERROR(database->getNdbError());
+      LOG_ERROR(getName() << " get index:" << index_name << " error");
+      LOG_NDB_API_FATAL(getName(), database->getNdbError());
     }
     return index;
   }
 
   NdbOperation* getNdbOperation(NdbTransaction* transaction, const NdbDictionary::Table* table) {
     NdbOperation* op = transaction->getNdbOperation(table);
-    if (!op) LOG_NDB_API_ERROR(transaction->getNdbError());
+    if (!op) LOG_NDB_API_FATAL(getName(), transaction->getNdbError());
     return op;
   }
 
   NdbScanOperation* getNdbScanOperation(NdbTransaction* transaction, const NdbDictionary::Table* table) {
     NdbScanOperation* op = transaction->getNdbScanOperation(table);
-    if (!op) LOG_NDB_API_ERROR(transaction->getNdbError());
+    if (!op) LOG_NDB_API_FATAL(getName(), transaction->getNdbError());
     return op;
   }
 
   NdbRecAttr* getNdbOperationValue(NdbOperation* op, const std::string& column_name) {
     NdbRecAttr* col = op->getValue(column_name.c_str());
-    if (!col) LOG_NDB_API_ERROR(op->getNdbError());
+    if (!col) LOG_NDB_API_FATAL(getName(), op->getNdbError());
     return col;
   }
 
   NdbRecAttr* getNdbOperationValue(NdbOperation* op, const NdbDictionary::Column* column) {
     NdbRecAttr* col = op->getValue(column);
-    if (!col) LOG_NDB_API_ERROR(op->getNdbError());
+    if (!col) LOG_NDB_API_FATAL(getName(), op->getNdbError());
     return col;
   }
 
   NdbIndexScanOperation* getNdbIndexScanOperation(NdbTransaction* transaction, const NdbDictionary::Index* index) {
     NdbIndexScanOperation* op = transaction->getNdbIndexScanOperation(index);
-    if (!op) LOG_NDB_API_ERROR(transaction->getNdbError());
+    if (!op) LOG_NDB_API_FATAL(getName(), transaction->getNdbError());
     return op;
   }
 
   NdbTransaction* startNdbTransaction(Ndb* connection) {
     NdbTransaction* ts = connection->startTransaction();
-    if (!ts) LOG_NDB_API_ERROR(connection->getNdbError());
+    if (!ts) LOG_NDB_API_FATAL(getName(), connection->getNdbError());
+    return ts;
+  }
+
+  NdbTransaction* startNdbTransaction(Ndb* connection, const NdbDictionary::Table* table, const Ndb::Key_part_ptr* keyData) {
+    NdbTransaction* ts = connection->startTransaction(table, keyData);
+    if (!ts) LOG_NDB_API_FATAL(getName(), connection->getNdbError());
     return ts;
   }
 
   void executeTransaction(NdbTransaction* transaction, NdbTransaction::ExecType exec_type) {
     if (transaction->execute(exec_type) == -1) {
-      LOG_NDB_API_ERROR(transaction->getNdbError());
+      const NdbError& error = transaction->getNdbError();
+      LOG_ERROR(mTableName << ": transaction got error code: " << error.code << " msg: " << error.message);
+      if(error.classification == NdbError::NoDataFound && error.code == 626){
+        throw NdbTupleDidNotExist();
+      }else{
+        LOG_NDB_API_FATAL(getName(), transaction->getNdbError());
+      }
     }
   }
 

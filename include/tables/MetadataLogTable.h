@@ -131,6 +131,35 @@ public:
   }
 
   void removeLogs(Ndb* conn, std::vector<const LogHandler*>& logrh) {
+    try{
+      removeLogsOneTransaction(conn, logrh);
+    }catch(NdbTupleDidNotExist& e){
+      removeLogsMultiTransactions(conn, logrh);
+    }
+  }
+
+  void removeLog(Ndb* conn,int pk) {
+    try{
+      start(conn);
+      doDelete(pk);
+      LOG_DEBUG("Delete log row: " << pk);
+      end();
+    }catch(NdbTupleDidNotExist& e){
+      LOG_DEBUG("Row was already deleted for log entry with PK: " << pk);
+    }
+  }
+
+  std::string getPKStr(MetadataLogEntry row) override {
+    return row.mMetaPK.getPKStr();
+  }
+
+  LogHandler* getLogRemovalHandler(MetadataLogEntry row) override {
+    return new MetaLogHandler(row.mId);
+  }
+
+private:
+
+  void removeLogsOneTransaction(Ndb* conn, std::vector<const LogHandler*>& logrh) {
     start(conn);
     for (auto log : logrh) {
       if(log == nullptr){
@@ -142,24 +171,23 @@ public:
       const MetaLogHandler* logh = static_cast<const
           MetaLogHandler*>(log);
       doDelete(logh->mPK);
-      LOG_TRACE("Delete log row: " << logh->mPK);
+      LOG_DEBUG("Delete log row: " << logh->mPK);
     }
     end();
   }
 
-  void removeLog(Ndb* conn,int pk) {
-    start(conn);
-    doDelete(pk);
-    LOG_TRACE("Delete log row: " << pk);
-    end();
-  }
-
-  std::string getPKStr(MetadataLogEntry row) override {
-    return row.mMetaPK.getPKStr();
-  }
-
-  LogHandler* getLogRemovalHandler(MetadataLogEntry row) override {
-    return new MetaLogHandler(row.mId);
+  void removeLogsMultiTransactions(Ndb* conn, std::vector<const LogHandler*>& logrh) {
+    for (auto log : logrh) {
+      if(log == nullptr){
+        continue;
+      }
+      if(log->getType() != LogType::METALOG){
+        continue;
+      }
+      const MetaLogHandler* logh = static_cast<const
+          MetaLogHandler*>(log);
+      removeLog(conn, logh->mPK);
+    }
   }
 };
 

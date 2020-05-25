@@ -210,10 +210,10 @@ void TableTailer<TableRow>::run() {
 template<typename TableRow>
 void TableTailer<TableRow>::createListenerEvent() {
   NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
-  if (!myDict) LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
+  if (!myDict) LOG_NDB_API_FATAL(mTable->getName(), mNdbConnection->getNdbError());
 
   const NdbDictionary::Table *table = myDict->getTable(mTable->getName().c_str());
-  if (!table) LOG_NDB_API_ERROR(myDict->getNdbError());
+  if (!table) LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
 
   NdbDictionary::Event myEvent(mEventName.c_str(), *table);
 
@@ -231,24 +231,24 @@ void TableTailer<TableRow>::createListenerEvent() {
              NdbError::SchemaObjectExists) {
     LOG_DEBUG("Event creation failed, event exists, dropping Event...");
     if (myDict->dropEvent(mEventName.c_str(), 1)) {
-      LOG_NDB_API_ERROR(myDict->getNdbError());
+      LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
     }
     // try again
     // Add event to database
     if (myDict->createEvent(myEvent)) {
-      LOG_NDB_API_ERROR(myDict->getNdbError());
+      LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
     }
   } else {
-    LOG_NDB_API_ERROR(myDict->getNdbError());
+    LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
   }
 }
 
 template<typename TableRow>
 void TableTailer<TableRow>::removeListenerEvent() {
   NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
-  if (!myDict) LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
+  if (!myDict) LOG_NDB_API_FATAL(mTable->getName(), mNdbConnection->getNdbError());
   // remove event from database
-  if (myDict->dropEvent(mEventName.c_str())) LOG_NDB_API_ERROR(myDict->getNdbError());
+  if (myDict->dropEvent(mEventName.c_str())) LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
 }
 
 template<typename TableRow>
@@ -256,7 +256,7 @@ void TableTailer<TableRow>::waitForEvents() {
   NdbEventOperation* op;
   LOG_INFO("create EventOperation for [" << mEventName << "]");
   if ((op = mNdbConnection->createEventOperation(mEventName.c_str())) == NULL)
-    LOG_NDB_API_ERROR(mNdbConnection->getNdbError());
+    LOG_NDB_API_FATAL(mTable->getName(), mNdbConnection->getNdbError());
 
   NdbRecAttr * recAttr[mTable->getNoColumns()];
   NdbRecAttr * recAttrPre[mTable->getNoColumns()];
@@ -270,7 +270,7 @@ void TableTailer<TableRow>::waitForEvents() {
   LOG_INFO("Execute");
   // This starts changes to "start flowing"
   if (op->execute())
-    LOG_NDB_API_ERROR(op->getNdbError());
+    LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
   while (true) {
     int r = mNdbConnection->pollEvents2(mPollMaxTimeToWait);
 

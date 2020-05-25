@@ -121,21 +121,23 @@ void Reindexer::run() {
   DatasetInodesVec datasetStats;
 
   ULSet inodesWithXAttrs;
+  ULSet datasetInodeIds;
 
   for (DatasetInfoMap::iterator mapIt = dsInfoMap.begin(); mapIt != dsInfoMap.end(); ++mapIt) {
-    Int64 datasetId = mapIt->first;
+    Int64 datasetInodeId = mapIt->first;
     int projectId = mapIt->second.mProjectId;
-    LOG_INFO("Copy Dataset " << mapIt->second.mName  << " [" << datasetId << "]");
+    LOG_INFO("Copy Dataset " << mapIt->second.mName  << " [" << datasetInodeId << "]");
 
     IQueue dirs;
-    dirs.push(datasetId);
-
+    dirs.push(datasetInodeId);
+    datasetInodeIds.insert(datasetInodeId);
     int datasetInodes = 0;
     while (!dirs.empty()) {
       Int64 dirInodeId = dirs.front();
       dirs.pop();
       LOG_DEBUG("Copy Dir " << dirInodeId << " : remaining " << dirs.size() << " dirs");
-      INodeVec inodes = inodesTable.getByParentId(conn, dirInodeId);
+      //The partition id is the parent id for all files and directories under project subtree
+      INodeVec inodes = inodesTable.getByParentId(conn, dirInodeId, dirInodeId);
       eBulk bulk;
       for (INodeVec::iterator it = inodes.begin(); it != inodes.end(); ++it) {
         INodeRow inode = *it;
@@ -147,15 +149,15 @@ void Reindexer::run() {
           inodesWithXAttrs.insert(inode.mId);
         }
 
-        bulk.push(Utils::getCurrentTime(), inode.to_create_json(mSearchIndex, datasetId, projectId));
+        bulk.push(Utils::getCurrentTime(), inode.to_create_json(mSearchIndex, datasetInodeId, projectId));
         totalInodes++;
         datasetInodes++;
       }
       mElasticSearch->addData(bulk);
     }
-    datasetStats.push_back(DatasetInodes(datasetId, datasetInodes));
+    datasetStats.push_back(DatasetInodes(datasetInodeId, datasetInodes));
     datasets++;
-    LOG_INFO("Dataset[" << datasetId << "] " << datasets << "/" << totalDatasets
+    LOG_INFO("Dataset[" << datasetInodeId << "] " << datasets << "/" << totalDatasets
             << " added with " << datasetInodes << " files/directories");
   }
 
@@ -171,6 +173,7 @@ void Reindexer::run() {
 
   int numXAttrs = 0;
   int nonExistentXAttrs = 0;
+  int nonExistentXAttrsForDatasets = 0;
   for(ULSet::iterator it = inodesWithXAttrs.begin(); it != inodesWithXAttrs
   .end(); ++it){
     Int64 inodeId = *it;
@@ -181,16 +184,20 @@ void Reindexer::run() {
       if(xAttrRow.mInodeId == inodeId){
         bulk.push(Utils::getCurrentTime(), xAttrRow.to_upsert_json(mSearchIndex));
       }else{
-        LOG_WARN("XAttrs doesn't exists for ["
-                     << inodeId << "] - " << xAttrRow.to_string());
-        nonExistentXAttrs++;
+        if(datasetInodeIds.find(inodeId) == datasetInodeIds.end()){
+          LOG_WARN("XAttrs doesn't exists for [" << inodeId << "] - " << xAttrRow.to_string());
+          nonExistentXAttrs++;
+        }else{
+          LOG_DEBUG("Dataset [" << inodeId << "] does not have Xattrs attached");
+          nonExistentXAttrsForDatasets++;
+        }
       }
       mElasticSearch->addData(bulk);
       numXAttrs++;
     }
   }
 
-  LOG_INFO((numXAttrs - nonExistentXAttrs) << " XAttrs added, "
+  LOG_INFO((numXAttrs - nonExistentXAttrs - nonExistentXAttrsForDatasets) << " XAttrs added, "
   << nonExistentXAttrs << " doesn't exists");
 
   int extMetadata = 0;
@@ -198,7 +205,7 @@ void Reindexer::run() {
   schemaBasedTable.getAll(metaConn);
   while (schemaBasedTable.next()) {
     SchemabasedMetadataEntry entry = schemaBasedTable.currRow(metaConn);
-    INodeRow inode = inodesTable.getByInodeId(conn, entry.mTuple.mInodeId);
+    INodeRow inode = inodesTable.get(conn, entry.mTuple.mInodeParentId, entry.mTuple.mInodeName, entry.mTuple.mInodePartitionId);
     if (inode.mId == entry.mTuple.mInodeId) {
       eBulk bulk;
       bulk.push(Utils::getCurrentTime(), entry.to_create_json());

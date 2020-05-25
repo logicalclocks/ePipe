@@ -40,20 +40,16 @@ public:
   }
 
   void remove(Ndb *conn, Int64 CDID) {
-    if(hasCDS(conn, CDID)) {
+    try {
       start(conn);
       doDelete(CDID);
       LOG_DEBUG("Remove CDS entry with PK: " << CDID);
       end();
+     }catch(NdbTupleDidNotExist& e){
+      LOG_DEBUG("Row was already deleted for CDS entry with PK: " << CDID);
     }
   }
-
-  bool hasCDS(Ndb *conn, Int64 pCDID){
-    AnyMap key;
-    key[0] = pCDID;
-    return rowsExists(conn, "PRIMARY", key);
-  }
-
+  
 };
 
 #endif //EPIPE_CDSTABLE_H

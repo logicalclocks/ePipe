@@ -21,6 +21,7 @@
 #define DBTABLE_H
 
 #include <boost/any.hpp>
+#include "boost/optional.hpp"
 #include "DBTableBase.h"
 
 typedef NdbRecAttr** Row;
@@ -63,8 +64,8 @@ private:
   
 protected:
   NdbRecAttr** getColumnValues(NdbOperation* op);
-  NdbRecAttr** getColumnValuesOnCompanion(NdbOperation* op);
   void start(Ndb* connection);
+  void start(Ndb* connection, boost::optional<Int64> partitionId);
   void end();
 
   TableRow doRead(Ndb* connection, Any any);
@@ -72,10 +73,10 @@ protected:
   std::vector<TableRow> doRead(Ndb* connection, AnyVec& pks);
   boost::unordered_map<int, TableRow> doRead(Ndb* connection, UISet& ids);
   boost::unordered_map<Int64, TableRow> doRead(Ndb* connection, ULSet& ids);
-    
+  
   std::vector<TableRow> doRead(Ndb* connection, std::string index, AnyMap& anys);
+  std::vector<TableRow> doRead(Ndb* connection, std::string index, AnyMap& anys, boost::optional<Int64> partitionId);
   bool rowsExists(Ndb* connection, std::string index, AnyMap& anys);
-  bool rowsExistsOnCompanion(Ndb* connection, std::string index, AnyMap& anys);
 
   void doDelete(Any any);
   void doDelete(AnyMap& any);
@@ -90,6 +91,7 @@ protected:
   virtual void applyConditionOnGetAll(NdbScanFilter& filter);
   void convert(UISet& ids, AnyVec& resultAny, IVec& resultVec);
   void convert(ULSet& ids, AnyVec& resultAny, LVec& resultVec);
+  Int64 getRandomPartitionId();
 };
 
 template<typename TableRow>
@@ -124,19 +126,6 @@ NdbRecAttr** DBTable<TableRow>::getColumnValues(NdbOperation* op) {
 }
 
 template<typename TableRow>
-NdbRecAttr** DBTable<TableRow>::getColumnValuesOnCompanion(NdbOperation* op) {
-  int numCols = mReadEpoch ? mCompanionTableBase->getNoColumns() + 1 : mCompanionTableBase->getNoColumns();
-  NdbRecAttr** values = new NdbRecAttr*[numCols];
-  for (strvec_size_type i = 0; i < mCompanionTableBase-> getNoColumns(); i++) {
-    values[i] = getNdbOperationValue(op, mCompanionTableBase->getColumn(i).c_str());
-  }
-  if (mReadEpoch) {
-    values[mCompanionTableBase->getNoColumns()] = getNdbOperationValue(op, NdbDictionary::Column::ROW_GCI64);
-  }
-  return values;
-}
-
-template<typename TableRow>
 void DBTable<TableRow>::getAll(Ndb* connection) {
   start(connection);
   LOG_DEBUG(getName() << " -- GetAll");
@@ -163,19 +152,42 @@ void DBTable<TableRow>::getAll(Ndb* connection, std::string index) {
 
 template<typename TableRow>
 void DBTable<TableRow>::start(Ndb* connection) {
+  start(connection, boost::none);
+}
+
+template<typename TableRow>
+void DBTable<TableRow>::start(Ndb* connection, boost::optional<Int64> partitionId) {
   mDatabase = getDatabase(connection);
   mTable = getTable(mDatabase);
   if(mCompanionTableBase != nullptr){
     mCompanionTable = getTable(mDatabase, mCompanionTableBase->getName());
   }
-  mCurrentTransaction = startNdbTransaction(connection);
-  LOG_DEBUG(getName() << " -- Start Transaction");
+  if(partitionId){
+    Int64 partId = partitionId.get();
+    Ndb::Key_part_ptr distkey[2];
+    distkey[0].ptr= (const void*) &partId;
+    distkey[0].len= sizeof(partId);
+    distkey[1].ptr= NULL;
+    distkey[1].len= 0;
+
+    LOG_DEBUG(getName() << " -- Starting Transaction with partitionId " << partId << " of size " << distkey[0].len);
+    mCurrentTransaction = startNdbTransaction(connection, mTable, distkey);
+    LOG_DEBUG(getName() << " -- Start Transaction with partitionId " << partId);
+  }else{
+    mCurrentTransaction = startNdbTransaction(connection);
+    LOG_DEBUG(getName() << " -- Start Transaction ");
+  }
 }
 
 template<typename TableRow>
 void DBTable<TableRow>::end() {
-  executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
-  close();
+  try{
+    executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
+    close();
+  }catch(NdbTupleDidNotExist& e){
+    close();
+    throw e;
+  }
 }
 
 template<typename TableRow>
@@ -243,7 +255,12 @@ TableRow DBTable<TableRow>::doRead(Ndb* connection, AnyMap& any) {
 
 template<typename TableRow>
 std::vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, std::string index, AnyMap& any){
-  start(connection);
+  return doRead(connection, index, any, boost::none);
+}
+
+template<typename TableRow>
+std::vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, std::string index, AnyMap& any, boost::optional<Int64> partitionId){
+  start(connection, partitionId);
   LOG_DEBUG(getName() << " -- doRead with index : " << index);
   mIndex = getIndex(mDatabase, index);
   NdbIndexScanOperation* operation = getNdbIndexScanOperation(mCurrentTransaction, mIndex);
@@ -272,22 +289,6 @@ bool DBTable<TableRow>::rowsExists(Ndb* connection, std::string index,
   mCurrentOperation = operation;
   applyConditionOnOperation(operation, any);
   mCurrentRow = getColumnValues(mCurrentOperation);
-  executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
-  bool hasMoreRows = operation->nextResult(true) == 0;
-  close();
-  return hasMoreRows;
-}
-
-template<typename TableRow>
-bool DBTable<TableRow>::rowsExistsOnCompanion(Ndb* connection, std::string index, AnyMap& any){
-  start(connection);
-  LOG_DEBUG(mCompanionTable->getName() << " -- hasResults with index : " << index);
-  mIndex = getIndex(mDatabase, index, mCompanionTable->getName());
-  NdbIndexScanOperation* operation = getNdbIndexScanOperation(mCurrentTransaction, mIndex);
-  operation->readTuples(NdbOperation::LM_CommittedRead);
-  mCurrentOperation = operation;
-  applyConditionOnOperationOnCompanion(operation, any);
-  mCurrentRow = getColumnValuesOnCompanion(mCurrentOperation);
   executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
   bool hasMoreRows = operation->nextResult(true) == 0;
   close();
@@ -417,13 +418,13 @@ void DBTable<TableRow>::applyConditionOnOperation(NdbOperation* operation, AnyMa
       LOG_ERROR(getName() << " -- apply where unknown type" << a.type().name());
     }
   }
-  LOG_DEBUG(getName() << " apply conditions on operation " << std::endl << log.str());
+  LOG_DEBUG(getName() << " -- apply conditions on operation " << std::endl << log.str());
 }
 
 template<typename TableRow>
 void DBTable<TableRow>::applyConditionOnOperationOnCompanion(NdbOperation* operation, AnyMap& any) {
   std::stringstream log;
-  LOG_DEBUG(getName() << " -- apply condition");
+  LOG_DEBUG(getName() << " : " << mCompanionTableBase->getName() << " -- apply condition");
   for (AnyMap::iterator it = any.begin(); it != any.end(); ++it) {
     int i = it->first;
     Any a = it->second;
@@ -446,10 +447,10 @@ void DBTable<TableRow>::applyConditionOnOperationOnCompanion(NdbOperation* opera
       operation->equal(colName.c_str(), get_ndb_varchar(pk,
           mCompanionTable->getColumn(colName.c_str())->getArrayType()).c_str());
     }else{
-      LOG_ERROR(getName() << " -- apply where unknown type" << a.type().name());
+      LOG_ERROR(getName() << " : " << mCompanionTableBase->getName() << " -- apply where unknown type" << a.type().name());
     }
   }
-  LOG_DEBUG(getName() << " apply conditions on operation " << std::endl << log.str());
+  LOG_DEBUG(getName()  << " : " << mCompanionTableBase->getName() << " -- apply conditions on operation " << std::endl << log.str());
 }
 
 template<typename TableRow>
@@ -472,6 +473,13 @@ void DBTable<TableRow>::convert(ULSet& ids, AnyVec& resultAny, LVec& resultVec){
     resultAny.push_back(a);
     resultVec.push_back(id);
   }
+}
+
+template<typename TableRow>
+Int64 DBTable<TableRow>:: getRandomPartitionId(){
+  std::srand(std::time(nullptr));
+  Int64 partitionId = 1 + std::rand()/((RAND_MAX + 1u)/6);
+  return partitionId;
 }
 
 template<typename TableRow>

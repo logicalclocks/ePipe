@@ -175,7 +175,7 @@ public:
     }
   }
 
-  void loadProjectIds(Ndb* connection, ULSet& datasetsINodeIds, ProjectTable projectTable) {
+  void loadProjectIds(Ndb* connection, ULSet& datasetsINodeIds, ProjectTable& projectTable) {
     ULSet dataset_inode_ids;
     for (ULSet::iterator it = datasetsINodeIds.begin(); it != datasetsINodeIds.end(); ++it) {
       Int64 datasetId = *it;

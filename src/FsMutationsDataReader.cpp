@@ -91,7 +91,6 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime,
                 inode.to_create_json(mSearchIndex, datasetINodeId, projectId));
     } else if (row.isXAttrOperation()) {
-      inodes.find(row.mInodeId);
       INodeRow inode = inodes[row.mInodeId];
       Int64 datasetINodeId = DONT_EXIST_INT();
       int projectId = DONT_EXIST_INT();

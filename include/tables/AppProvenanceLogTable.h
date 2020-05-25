@@ -158,6 +158,38 @@ public:
   }
 
   void removeLogs(Ndb* connection, std::vector<const LogHandler*>&logrh) {
+    try{
+      removeLogsOneTransaction(connection, logrh);
+    }catch(NdbTupleDidNotExist& e){
+      removeLogsMultiTransactions(connection, logrh);
+    }
+  }
+
+  void removeLog(Ndb* connection, AppProvenancePK pk) {
+    try{
+      start(connection);
+      AnyMap a;
+      a[0] = pk.mId;
+      a[1] = pk.mState;
+      a[2] = pk.mTimestamp;
+      doDelete(a);
+      LOG_DEBUG("Delete log row: " + pk.to_string());
+      end();
+    } catch(NdbTupleDidNotExist& e){
+      LOG_DEBUG("Log row was already deleted: " << pk.to_string());
+    }
+  }
+
+  std::string getPKStr(AppProvenanceRow row) {
+    return row.getPK().to_string();
+  }
+
+  LogHandler* getLogRemovalHandler(AppProvenanceRow row) override {
+    return new AppProvLogHandler(row.getPK());
+  }
+
+private:
+  void removeLogsOneTransaction(Ndb* connection, std::vector<const LogHandler*>&logrh) {
     start(connection);
     for (auto log : logrh) {
       if (log == nullptr) {
@@ -180,23 +212,18 @@ public:
     end();
   }
 
-  void removeLog(Ndb* connection, AppProvenancePK pk) {
-    start(connection);
-    AnyMap a;
-    a[0] = pk.mId;
-    a[1] = pk.mState;
-    a[2] = pk.mTimestamp;
-    doDelete(a);
-    LOG_DEBUG("Delete log row: " + pk.to_string());
-    end();
-  }
+  void removeLogsMultiTransactions(Ndb* connection, std::vector<const LogHandler*>&logrh) {
+    for (auto log : logrh) {
+      if (log == nullptr) {
+        continue;
+      }
+      if (log->getType() != LogType::PROVAPPLOG) {
+        continue;
+      }
 
-  std::string getPKStr(AppProvenanceRow row) {
-    return row.getPK().to_string();
-  }
-
-  LogHandler* getLogRemovalHandler(AppProvenanceRow row) override {
-    return new AppProvLogHandler(row.getPK());
+      const AppProvLogHandler *applog = static_cast<const AppProvLogHandler *>(log);
+      removeLog(connection, applog->mPK);
+    }
   }
 };
 

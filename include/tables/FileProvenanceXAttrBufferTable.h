@@ -129,7 +129,7 @@ public:
     a[0] = key.mInodeId;
     a[1] = key.mNamespace;
     a[2] = key.mName;
-    return DBTable<FPXAttrBufferRow>::doRead(connection, "xattr_versions", a);
+    return DBTable<FPXAttrBufferRow>::doRead(connection, "xattr_versions", a, key.mInodeId);
   }
 
   private:
