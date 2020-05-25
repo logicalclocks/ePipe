@@ -50,7 +50,7 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
   }
 
   ptime start_time = Utils::getCurrentTime();
-  if (httpPostRequest(mElasticBulkAddr, batch)) {
+  if (httpPostRequest(mElasticBulkAddr, batch).mSuccess) {
     if (metalogs > 0) {
       MetadataLogTable().removeLogs(mConn.metadataConnection, logRHandlers);
     }
@@ -84,7 +84,7 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
 
 
 bool ProjectsElasticSearch::bulkRequest(eEvent& event) {
-  if (httpPostRequest(mElasticBulkAddr, event.getJSON())){
+  if (httpPostRequest(mElasticBulkAddr, event.getJSON()).mSuccess){
     if(event.getLogHandler()->getType() == LogType::FSLOG){
       event.getLogHandler()->removeLog(mConn.inodeConnection);
     }else if(event.getLogHandler()->getType() == LogType::METALOG || event.getLogHandler()->getType() == LogType::HOPSWORKSLOG){

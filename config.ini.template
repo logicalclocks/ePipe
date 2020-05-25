@@ -12,6 +12,8 @@ meta_database = hopsworks
 hive_meta_database = metastore
 poll_maxTimeToWait = 2000
 lru_cap = 10000
+prov_file_lru_cap = 10000
+prov_core_lru_cap = 100
 recovery = false
 
 # log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5

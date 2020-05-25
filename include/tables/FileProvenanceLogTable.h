@@ -25,6 +25,7 @@
 #include "ConcurrentQueue.h"
 #include "XAttrTable.h"
 #include "FileProvenanceXAttrBufferTable.h"
+#include "FileProvenanceConstantsRaw.h"
 
 struct FileProvenancePK {
   Int64 mInodeId;
@@ -54,6 +55,18 @@ struct FileProvenancePK {
     out << mInodeId << "-" << mOperation << "-" << mLogicalTime << "-" << mTimestamp << "-" << mAppId << "-" << mUserId
     <<"-"<<mTieBreaker;
     return out.str();
+  }
+
+  AnyMap getMap() {
+    AnyMap a;
+    a[0] = mInodeId;
+    a[1] = mOperation;
+    a[2] = mLogicalTime;
+    a[3] = mTimestamp;
+    a[4] = mAppId;
+    a[5] = mUserId;
+    a[6] = mTieBreaker;
+    return a;
   }
 };
 
@@ -87,6 +100,10 @@ struct FileProvenanceRow {
 
   FileProvenancePK getPK() {
     return FileProvenancePK(mInodeId, mOperation, mLogicalTime, mTimestamp, mAppId, mUserId, mTieBreaker);
+  }
+
+  FPXAttrBufferPK getXAttrBufferPK() {
+    return FPXAttrBufferPK(mInodeId, FileProvenanceConstantsRaw::XATTRS_USER_NAMESPACE, mXAttrName, mLogicalTime, mXAttrNumParts);
   }
 
   std::string to_string() {
@@ -151,9 +168,40 @@ struct FileProvenanceRowComparator {
   bool operator()(const FileProvenanceRow &r1, const FileProvenanceRow &r2) const {
     if (r1.mInodeId == r2.mInodeId) {
       return r1.mLogicalTime > r2.mLogicalTime;
-    } else {
-      return r1.mInodeId > r2.mInodeId;
     }
+    if(r1.mDatasetId == r2.mDatasetId) {
+      if(r1.mDatasetLogicalTime == r2.mDatasetLogicalTime) {
+        //if both operations work on a dataset and have the same logical time
+        //delete dataset should be last operation processed in epoch for this dataset logical time
+        if(isDeleteDataset(r1)) {
+          return true;
+        }
+        if(isDeleteDataset(r2)) {
+          return false;
+        }
+        //dataset xattr attach should be first operation processed in epoch for this dataset logical time
+        if(isDatasetProvCore(r1)) {
+          return false;
+        }
+        if(isDatasetProvCore(r2)) {
+          return true;
+        }
+      } else {
+        return r1.mDatasetLogicalTime > r2.mDatasetLogicalTime;
+      }
+    }
+    return r1.mInodeId > r2.mInodeId;
+  }
+
+  bool isDeleteDataset(const FileProvenanceRow &r) const {
+    return r.mInodeId == r.mDatasetId
+     && FileProvenanceConstantsRaw::findOp(r.mOperation) == FileProvenanceConstantsRaw::Operation::OP_DELETE;
+  }
+  bool isDatasetProvCore(const FileProvenanceRow &r) const {
+    return r.mInodeId == r.mDatasetId
+    && (FileProvenanceConstantsRaw::findOp(r.mOperation) == FileProvenanceConstantsRaw::Operation::OP_XATTR_ADD
+    || FileProvenanceConstantsRaw::findOp(r.mOperation) == FileProvenanceConstantsRaw::Operation::OP_XATTR_UPDATE)
+    && r.mXAttrName == FileProvenanceConstantsRaw::XATTR_PROV_CORE;
   }
 };
 
@@ -161,6 +209,41 @@ typedef ConcurrentQueue<FileProvenanceRow> CPRq;
 typedef boost::heap::priority_queue<FileProvenanceRow, boost::heap::compare<FileProvenanceRowComparator> > PRpq;
 typedef std::vector <boost::optional<FileProvenancePK> > PKeys;
 typedef std::vector <FileProvenanceRow> Pq;
+
+class FProvCache {
+public:
+  /* we use a max timestamp shift of 1h
+   * we cache the existance of a project for 1 hour before checking again if the project is still there
+   */
+  FProvCache(int lru_cap, const char* prefix) : maxTimestampShift(1000*3600), mProjects(lru_cap, prefix) {}
+
+  bool projectExists(Int64 projectIId, Int64 timestamp) {
+    /* yes we use operation timestamp - in case of recovery we might be doing pointless checks as the timestamps are obsolete
+     * but they won't be that many and it simplifies logic
+     */
+    boost::optional<Int64> old_timestamp = mProjects.get(projectIId);
+    if(old_timestamp) {
+      if (timestamp <= old_timestamp.get() + maxTimestampShift) {
+        return true;
+      } else {
+        LOG_DEBUG("project exists - cached entry too old:" << old_timestamp.get() << " op timestamp:" << timestamp);
+        mProjects.remove(projectIId);
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  void addProjectExists(Int64 projectIId, Int64 timestamp) {
+    mProjects.put(projectIId, timestamp);
+  }
+private:
+  int maxTimestampShift;
+  Cache<Int64, Int64> mProjects;
+};
+
+typedef CacheSingleton<FProvCache> FileProvCache;
 
 class FileProvenanceLogTable : public DBWatchTable<FileProvenanceRow> {
 public:
@@ -188,7 +271,7 @@ public:
     }
   };
 
-  FileProvenanceLogTable() : DBWatchTable("hdfs_file_provenance_log", new FileProvenanceXAttrBufferTable()) {
+  FileProvenanceLogTable(int file_lru_cap, int xattr_lru_cap) : DBWatchTable("hdfs_file_provenance_log", new FileProvenanceXAttrBufferTable(xattr_lru_cap)) {
     addColumn("inode_id");
     addColumn("inode_operation");
     addColumn("io_logical_time");
@@ -213,6 +296,7 @@ public:
     addColumn("ds_logical_time");
     addColumn("i_xattr_num_parts");
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
+    FileProvCache::getInstance(file_lru_cap, "FileProv");
   }
 
   FileProvenanceRow getRow(NdbRecAttr* value[]) {
@@ -275,6 +359,16 @@ public:
     return new FileProvLogHandler(pk, bufferPK);
   }
 
+  boost::optional<FPXAttrBufferRow> getCompanionRow(Ndb* connection, FPXAttrBufferPK key) {
+    FileProvenanceXAttrBufferTable* mXAttrBuffer = static_cast<FileProvenanceXAttrBufferTable*>(mCompanionTableBase);
+    return mXAttrBuffer->get(connection, key);
+  }
+
+  std::map<int, boost::optional<FPXAttrBufferRow>> getProvCore(Ndb* connection, Int64 inodeId, int fromLogicalTime, int toLogicalTime) {
+    FileProvenanceXAttrBufferTable* mXAttrBuffer = static_cast<FileProvenanceXAttrBufferTable*>(mCompanionTableBase);
+    return mXAttrBuffer->getProvCore(connection, inodeId, fromLogicalTime, toLogicalTime);
+  }
+
 private:
   void cleanLogsOneTransaction(Ndb* connection, std::vector<const LogHandler*>&logrh) {
     start(connection);
@@ -321,7 +415,7 @@ private:
   void _doDeleteOnCompanion(const FileProvLogHandler *fplog){
     if (fplog->mBufferPK){
       FPXAttrBufferPK cPK = fplog->mBufferPK.get();
-      AnyVec companionPKs = getCompanionPKS(cPK);
+      AnyVec companionPKs = cPK.getKeysVec();
       LOG_DEBUG("Delete xattr buffer row: " << cPK.to_string());
       for(auto& pk : companionPKs){
         doDeleteOnCompanion(pk);
@@ -331,35 +425,9 @@ private:
 
   void _doDelete(const FileProvLogHandler *fplog){
     FileProvenancePK fPK = fplog->mPK;
-    AnyMap fileProvPK = getFileProvPK(fPK);
+    AnyMap fileProvPK = fPK.getMap();
     LOG_DEBUG("Delete file provenance row: " << fPK.to_string());
     doDelete(fileProvPK);
-  }
-
-  AnyMap getFileProvPK(FileProvenancePK pk) {
-    AnyMap a;
-    a[0] = pk.mInodeId;
-    a[1] = pk.mOperation;
-    a[2] = pk.mLogicalTime;
-    a[3] = pk.mTimestamp;
-    a[4] = pk.mAppId;
-    a[5] = pk.mUserId;
-    a[6] = pk.mTieBreaker;
-    return a;
-  }
-
-  AnyVec getCompanionPKS(FPXAttrBufferPK pk) {
-    AnyVec vec;
-    for(Int16 index=0; index < pk.mNumParts; index++){
-      AnyMap a;
-      a[0] = pk.mInodeId;
-      a[1] = pk.mNamespace;
-      a[2] = pk.mName;
-      a[3] = pk.mInodeLogicalTime;
-      a[4] = index;
-      vec.push_back(a);
-    }
-    return vec;
   }
 };
 #endif /* FILEPROVENANCELOGTABLE_H */

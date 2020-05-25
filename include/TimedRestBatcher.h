@@ -198,6 +198,12 @@ private:
 
 };
 
+struct ParsingResponse{
+  bool mSuccess;
+  bool mRetryable;
+  std::string errorMsg;
+};
+
 class TimedRestBatcher : public Batcher {
 public:
   TimedRestBatcher(const HttpClientConfig elastic_client_config, int time_to_wait_before_inserting, int bulk_size);
@@ -213,15 +219,10 @@ protected:
   ptime mTimeElasticConnectionFailed;
   Uint32 mCurrentQueueSize;
 
-  bool httpPostRequest(std::string requestUrl, std::string json);
-  bool httpDeleteRequest(std::string requestUrl);
+  ParsingResponse httpPostRequest(std::string requestUrl, std::string json);
+  ParsingResponse httpDeleteRequest(std::string requestUrl);
 
   virtual void process(std::vector<eBulk>* data) = 0;
-
-  struct ParsingResponse{
-    bool mSuccess;
-    bool mRetryable;
-  };
 
   virtual ParsingResponse parseResponse(std::string response) = 0;
 
@@ -242,8 +243,7 @@ private:
     DELETE
   };
 
-  bool handleHttpRequestWithRetry(HttpVerb verb,std::string
-  requestUrl, std::string json);
+  ParsingResponse handleHttpRequestWithRetry(HttpVerb verb, std::string requestUrl, std::string json);
 
 };
 #endif //TIMEDRESTBATCHER_H

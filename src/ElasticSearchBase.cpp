@@ -37,8 +37,8 @@ std::string ElasticSearchBase::getElasticSearchBulkUrl() {
   return str;
 }
 
-TimedRestBatcher::ParsingResponse ElasticSearchBase::parseResponse(std::string response) {
-  ParsingResponse pr = {false, false};
+ParsingResponse ElasticSearchBase::parseResponse(std::string response) {
+  ParsingResponse pr = {false, false, ""};
   try {
     LOG_DEBUG("ES Response: \n" << response);
     if(response == "Open Distro Security not initialized."){
@@ -71,7 +71,8 @@ TimedRestBatcher::ParsingResponse ElasticSearchBase::parseResponse(std::string r
             }
           }
           std::string errorsStr = errors.str();
-          LOG_ERROR(" ES got errors: " << errorsStr);
+          LOG_ERROR("ES got errors: " << errorsStr);
+          pr.errorMsg = errorsStr;
           return pr;
         }
       } else if (d.HasMember("error")) {
@@ -80,8 +81,12 @@ TimedRestBatcher::ParsingResponse ElasticSearchBase::parseResponse(std::string r
           const rapidjson::Value & errorType = error["type"];
           const rapidjson::Value & errorReason = error["reason"];
           LOG_ERROR(" ES got error: " << errorType.GetString() << ":" << errorReason.GetString());
+          std::stringstream errorS;
+          errorS << errorType.GetString() << ":" << errorReason.GetString();
+          pr.errorMsg = errorS.str();
         } else if (error.IsString()) {
           LOG_ERROR(" ES got error: " << error.GetString());
+          pr.errorMsg = error.GetString();
         }
         return pr;
       }

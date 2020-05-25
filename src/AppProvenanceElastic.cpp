@@ -37,7 +37,7 @@ void AppProvenanceElastic::process(std::vector<eBulk>* bulks) {
   }
 
   ptime start_time = Utils::getCurrentTime();
-  if (httpPostRequest(mElasticBulkAddr, batch)) {
+  if (httpPostRequest(mElasticBulkAddr, batch).mSuccess) {
     AppProvenanceLogTable().removeLogs(mConn, logRHandlers);
     if (mStats) {
       mCounters->bulksProcessed(start_time, bulks);
@@ -47,7 +47,7 @@ void AppProvenanceElastic::process(std::vector<eBulk>* bulks) {
       eBulk bulk = *it;
       for(eEvent event : bulk.mEvents){
         if(!bulkRequest(event)){
-          LOG_FATAL("Failure while processing log : "
+          LOG_FATAL("app prov - elastic failure while processing log : "
           << event.getLogHandler()->getDescription() << std::endl << event.getJSON());
         }
       }
@@ -59,7 +59,7 @@ void AppProvenanceElastic::process(std::vector<eBulk>* bulks) {
 }
 
 bool AppProvenanceElastic::bulkRequest(eEvent& event) {
-  if (httpPostRequest(mElasticBulkAddr, event.getJSON())){
+  if (httpPostRequest(mElasticBulkAddr, event.getJSON()).mSuccess){
     event.getLogHandler()->removeLog(mConn);
     return true;
   }
