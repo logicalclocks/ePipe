@@ -409,6 +409,10 @@ void DBTable<TableRow>::applyConditionOnOperation(NdbOperation* operation, AnyMa
       Int8 pk = boost::any_cast<Int8>(a);
       log << colName << " = " << (int) pk << std::endl;
       operation->equal(colName.c_str(), pk);
+    } else if(a.type() == typeid(Int16)){
+      Int16 pk = boost::any_cast<Int16>(a);
+      log << colName << " = " << pk << std::endl;
+      operation->equal(colName.c_str(), pk);
     } else if (a.type() == typeid (std::string)) {
       std::string pk = boost::any_cast<std::string>(a);
       log << colName << " = " << pk << std::endl;
@@ -440,6 +444,10 @@ void DBTable<TableRow>::applyConditionOnOperationOnCompanion(NdbOperation* opera
     } else if(a.type() == typeid(Int8)){
       Int8 pk = boost::any_cast<Int8>(a);
       log << colName << " = " << (int) pk << std::endl;
+      operation->equal(colName.c_str(), pk);
+    } else if(a.type() == typeid(Int16)){
+      Int16 pk = boost::any_cast<Int16>(a);
+      log << colName << " = " << pk << std::endl;
       operation->equal(colName.c_str(), pk);
     } else if (a.type() == typeid (std::string)) {
       std::string pk = boost::any_cast<std::string>(a);

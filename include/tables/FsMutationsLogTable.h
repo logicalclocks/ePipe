@@ -83,6 +83,9 @@ struct FsMutationRow {
   Int64 mPk2;
   std::string mPk3;
   FsOpType mOperation;
+  Int64 mInodePartitionId;
+  Int64 mInodeParentId;
+  std::string mInodeName;
 
   ptime mEventCreationTime;
 
@@ -101,6 +104,9 @@ struct FsMutationRow {
     stream << "-------------------------" << std::endl;
     stream << "DatasetId = " << mDatasetINodeId << std::endl;
     stream << "InodeId = " << mInodeId << std::endl;
+    stream << "InodePartionId = " << mInodePartitionId << std::endl;
+    stream << "InodeParentId = " << mInodeParentId << std::endl;
+    stream << "InodeName = " << mInodeName << std::endl;
     stream << "Pk1 = " << mPk1 << std::endl;
     stream << "Pk2 = " << mPk2 << std::endl;
     stream << "Pk3 = " << mPk3 << std::endl;
@@ -110,6 +116,7 @@ struct FsMutationRow {
     return stream.str();
   }
 
+  // inode operations
   bool isINodeOperation(){
     return mOperation == FsAdd || mOperation == FsDelete || mOperation ==
     FsUpdate || mOperation == FsRename || mOperation == FsChangeDataset;
@@ -120,17 +127,18 @@ struct FsMutationRow {
   }
 
   Int64 getPartitionId(){
-    return mPk1;
+    return mInodePartitionId;
   }
 
   Int64 getParentId(){
-    return mPk2;
+    return mInodeParentId;
   }
 
   std::string getINodeName(){
-    return mPk3;
+    return mInodeName;
   }
 
+  // XAttrs operations
   bool isXAttrOperation(){
     return mOperation == XAttrAdd || mOperation == XAttrAddAll || mOperation
     == XAttrUpdate || mOperation == XAttrDelete;
@@ -139,6 +147,10 @@ struct FsMutationRow {
   bool requiresReadingXAttr(){
     return mOperation == XAttrAdd || mOperation == XAttrUpdate || mOperation
     == XAttrAddAll ;
+  }
+
+  Int16 getNumParts(){
+     return static_cast<Int16>(mPk1);
   }
 
   Int8 getNamespace(){
@@ -223,6 +235,9 @@ public:
     addColumn("pk2");
     addColumn("pk3");
     addColumn("operation");
+    addColumn("inode_partition_id");
+    addColumn("inode_parent_id");
+    addColumn("inode_name");
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
   }
 
@@ -236,6 +251,9 @@ public:
     row.mPk2 = value[4]->int64_value();
     row.mPk3 = get_string(value[5]);
     row.mOperation = static_cast<FsOpType> (value[6]->int8_value());
+    row.mInodePartitionId = value[7]->int64_value();
+    row.mInodeParentId = value[8]->int64_value();
+    row.mInodeName = get_string(value[9]);
     return row;
   }
 

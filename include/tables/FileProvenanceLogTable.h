@@ -81,7 +81,8 @@ struct FileProvenanceRow {
   int mLogicalTimeBatch;
   Int64 mTimestampBatch;
   int mDatasetLogicalTime;
-  
+  Int16 mXAttrNumParts;
+
   ptime mEventCreationTime;
 
   FileProvenancePK getPK() {
@@ -114,6 +115,7 @@ struct FileProvenanceRow {
     stream << "LogicalTimeBatch = " << mLogicalTimeBatch << std::endl;
     stream << "TimestampBatch = " << mTimestampBatch << std::endl;
     stream << "DatasetLogicalTime = " << mDatasetLogicalTime << std::endl;
+    stream << "XAttrNumParts = " << mXAttrNumParts << std::endl;
     stream << "-------------------------" << std::endl;
     return stream.str();
   }
@@ -209,6 +211,7 @@ public:
     addColumn("io_logical_time_batch");
     addColumn("io_timestamp_batch");
     addColumn("ds_logical_time");
+    addColumn("i_xattr_num_parts");
     addWatchEvent(NdbDictionary::Event::TE_INSERT);
   }
 
@@ -237,6 +240,7 @@ public:
     row.mLogicalTimeBatch = value[19]->int32_value();
     row.mTimestampBatch = value[20]->int64_value();
     row.mDatasetLogicalTime = value[21]->int32_value();
+    row.mXAttrNumParts = value[22]->short_value();
     return row;
   }
 
@@ -317,9 +321,11 @@ private:
   void _doDeleteOnCompanion(const FileProvLogHandler *fplog){
     if (fplog->mBufferPK){
       FPXAttrBufferPK cPK = fplog->mBufferPK.get();
-      AnyMap companionPK = getCompanionPK(cPK);
+      AnyVec companionPKs = getCompanionPKS(cPK);
       LOG_DEBUG("Delete xattr buffer row: " << cPK.to_string());
-      doDeleteOnCompanion(companionPK);
+      for(auto& pk : companionPKs){
+        doDeleteOnCompanion(pk);
+      }
     }
   }
 
@@ -342,13 +348,18 @@ private:
     return a;
   }
 
-  AnyMap getCompanionPK(FPXAttrBufferPK pk) {
-    AnyMap a;
-    a[0] = pk.mInodeId;
-    a[1] = pk.mNamespace;
-    a[2] = pk.mName;
-    a[3] = pk.mInodeLogicalTime;
-    return a;
+  AnyVec getCompanionPKS(FPXAttrBufferPK pk) {
+    AnyVec vec;
+    for(Int16 index=0; index < pk.mNumParts; index++){
+      AnyMap a;
+      a[0] = pk.mInodeId;
+      a[1] = pk.mNamespace;
+      a[2] = pk.mName;
+      a[3] = pk.mInodeLogicalTime;
+      a[4] = index;
+      vec.push_back(a);
+    }
+    return vec;
   }
 };
 #endif /* FILEPROVENANCELOGTABLE_H */

@@ -24,17 +24,19 @@ struct FPXAttrBufferPK {
   Int8 mNamespace;
   std::string mName;
   int mInodeLogicalTime;
+  Int16 mNumParts;
 
-  FPXAttrBufferPK(Int64 inodeId, Int8 ns, std::string name, int inodeLogicalTime) {
+  FPXAttrBufferPK(Int64 inodeId, Int8 ns, std::string name, int inodeLogicalTime, Int16 numParts) {
     mInodeId = inodeId;
     mNamespace = ns;
     mName = name;
     mInodeLogicalTime = inodeLogicalTime;
+    mNumParts = numParts;
   }
 
   std::string to_string() {
     std::stringstream out;
-    out << mInodeId << "-" << std::to_string(mNamespace) << "-" << mName << "-" << mInodeLogicalTime;
+    out << mInodeId << "-" << std::to_string(mNamespace) << "-" << mName << "-" << mInodeLogicalTime << "-" << mNumParts;
     return out.str();
   }
 };
@@ -57,12 +59,14 @@ struct FPXAttrVersionsK {
   }
 };
 
-struct FPXAttrBufferRow {
+struct FPXAttrBufferRowPart {
   Int64 mInodeId;
   Int8 mNamespace;
   std::string mName;
   int mInodeLogicalTime;
   std::string mValue;
+  Int16 mIndex;
+  Int16 mNumParts;
 
   std::string to_string(){
     std::stringstream stream;
@@ -71,19 +75,81 @@ struct FPXAttrBufferRow {
     stream << "Namespace = " << (int)mNamespace << std::endl;
     stream << "Name = " << mName << std::endl;
     stream << "InodeLogicalTime = " << mInodeLogicalTime << std::endl;
+    stream << "Index = " << mIndex << std::endl;
     stream << "Value = " << mValue << std::endl;
+    stream << "NumParts = " << mNumParts << std::endl;
+    stream << "-------------------------" << std::endl;
+    return stream.str();
+  }
+
+  std::string getUniqueXAttrId(){
+    std::stringstream out;
+    out << mInodeId << "-" << std::to_string(mNamespace) << "-" << mName << "-" << mInodeLogicalTime;
+    return out.str();
+  }
+};
+
+typedef std::vector<FPXAttrBufferRowPart> FPXAttrBufferRowPartVec;
+
+struct FPXAttrBufferRow {
+  Int64 mInodeId;
+  Int8 mNamespace;
+  std::string mName;
+  int mInodeLogicalTime;
+  std::string mValue;
+  Int16 mNumParts;
+
+  FPXAttrBufferRow(FPXAttrBufferRowPartVec& vec){
+    if(!vec.empty()){
+      mInodeId = vec[0].mInodeId;
+      mNamespace = vec[0].mNamespace;
+      mName = vec[0].mName;
+      mInodeLogicalTime = vec[0].mInodeLogicalTime;
+      mNumParts = vec[0].mNumParts;
+      mValue = combineValues(vec);
+    }
+  }
+
+  FPXAttrBufferRow(Int64 inodeId, Int8 ns, std::string name, int logicalTime, Int16 numParts, std::string value){
+    mInodeId = inodeId;
+    mNamespace = ns;
+    mName = name;
+    mInodeLogicalTime = logicalTime;
+    mNumParts = numParts;
+    mValue = value;
+  }
+
+  std::string to_string(){
+    std::stringstream stream;
+    stream << "-------------------------" << std::endl;
+    stream << "InodeId = " << mInodeId << std::endl;
+    stream << "Namespace = " << (int)mNamespace << std::endl;
+    stream << "Name = " << mName << std::endl;
+    stream << "InodeLogicalTime = " << mInodeLogicalTime << std::endl;
+    stream << "NumParts = " << mNumParts << std::endl;
+    stream << "Value = " << mValue << std::endl;
+    stream << "ValueSize = " << mValue.length() << std::endl;
     stream << "-------------------------" << std::endl;
     return stream.str();
   }
 
   FPXAttrBufferPK getPK() {
-    return FPXAttrBufferPK(mInodeId, mNamespace, mName, mInodeLogicalTime);
+    return FPXAttrBufferPK(mInodeId, mNamespace, mName, mInodeLogicalTime, mNumParts);
+  }
+
+private:
+  std::string combineValues(FPXAttrBufferRowPartVec& partVec){
+    std::string value;
+    for(auto & part : partVec){
+       value = value + part.mValue;
+    }
+    return value;
   }
 };
 
 typedef std::vector <boost::optional<FPXAttrBufferPK> > FPXAttrBKeys;
 
-class FileProvenanceXAttrBufferTable : public DBTable<FPXAttrBufferRow> {
+class FileProvenanceXAttrBufferTable : public DBTable<FPXAttrBufferRowPart> {
 
 public:
   public:
@@ -93,30 +159,25 @@ public:
     addColumn("namespace");
     addColumn("name");
     addColumn("inode_logical_time");
+    addColumn("index");
     addColumn("value");
+    addColumn("num_parts");
   }
 
-  FPXAttrBufferRow getRow(NdbRecAttr* values[]) {
-    FPXAttrBufferRow row;
+  FPXAttrBufferRowPart getRow(NdbRecAttr* values[]) {
+    FPXAttrBufferRowPart row;
     row.mInodeId = values[0]->int64_value();
     row.mNamespace = values[1]->int8_value();
     row.mName = get_string(values[2]);
     row.mInodeLogicalTime = values[3]->int32_value();
-    row.mValue = get_string(values[4]);
+    row.mIndex = values[4]->short_value();
+    row.mValue = get_string(values[5]);
+    row.mNumParts = values[6]->short_value();
     return row;
   }
 
-  FPXAttrBufferRow get(Ndb* connection, Int64 inodeId, Int8 ns, std::string name, int inodeLogicalTime) {
-    AnyMap a;
-    a[0] = inodeId;
-    a[1] = ns;
-    a[2] = name;
-    a[3] = inodeLogicalTime;
-    return DBTable<FPXAttrBufferRow>::doRead(connection, a);
-  }
-
   boost::optional<FPXAttrBufferRow> get(Ndb* connection, FPXAttrBufferPK key) {
-    FPXAttrBufferRow row = get(connection, key.mInodeId, key.mNamespace, key.mName, key.mInodeLogicalTime);
+    FPXAttrBufferRow row = get(connection, key.mInodeId, key.mNamespace, key.mName, key.mInodeLogicalTime, key.mNumParts);
     if (readCheckExists(key, row)) {
       return row;
     } else {
@@ -129,7 +190,8 @@ public:
     a[0] = key.mInodeId;
     a[1] = key.mNamespace;
     a[2] = key.mName;
-    return DBTable<FPXAttrBufferRow>::doRead(connection, "xattr_versions", a, key.mInodeId);
+    FPXAttrBufferRowPartVec partsVec = doRead(connection, "xattr_versions", a, key.mInodeId);
+    return combine(partsVec);
   }
 
   private:
@@ -137,5 +199,47 @@ public:
     return key.mInodeId == row.mInodeId && key.mNamespace == row.mNamespace 
     && key.mName == row.mName && key.mInodeLogicalTime == row.mInodeLogicalTime;
   }
+
+  FPXAttrBufferRow get(Ndb* connection, Int64 inodeId, Int8 ns, std::string name, int inodeLogicalTime, int numParts) {
+    LOG_DEBUG("FileProvXAttr get by parts " << numParts);
+    AnyVec anyVec;
+    for(Int16 index=0; index < numParts; index++){
+       AnyMap a;
+       a[0] = inodeId;
+       a[1] = ns;
+       a[2] = name;
+       a[3] = inodeLogicalTime;
+       a[4] = index;
+       anyVec.push_back(a);
+    }
+    FPXAttrBufferRowPartVec parts = doRead(connection,anyVec);
+    LOG_DEBUG("FileProvXAttr batch read parts " << parts.size());
+    return FPXAttrBufferRow(parts);
+  }
+
+  typedef boost::unordered_map<std::string, FPXAttrBufferRowPartVec> FPXAttrBufferRowPartMap;
+
+  std::vector<FPXAttrBufferRow> combine(FPXAttrBufferRowPartVec& partsVec){ 
+    LOG_DEBUG("FileProvXAttr combine parts " << partsVec.size());   
+    FPXAttrBufferRowPartMap xattrsMap;
+    for(auto& part: partsVec){
+      std::string id = part.getUniqueXAttrId();
+      if(xattrsMap.find(id) == xattrsMap.end()){
+        xattrsMap[id] = FPXAttrBufferRowPartVec();
+      }
+       xattrsMap[id].push_back(part);
+    }
+
+    std::vector<FPXAttrBufferRow> results;
+    for(auto& e: xattrsMap){
+      auto& vec = e.second;
+      std::sort(vec.begin(), vec.end(), [](FPXAttrBufferRowPart a, FPXAttrBufferRowPart b){
+        return a.mIndex < b.mIndex;
+      });
+      results.push_back(FPXAttrBufferRow(vec));
+    }
+    return results;
+  }
+
 };
 #endif /* FILEPROVENANCEXATTRBUFFERTABLE_H */

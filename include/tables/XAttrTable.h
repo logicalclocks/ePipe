@@ -23,6 +23,41 @@
 #include "FsMutationsLogTable.h"
 #include "MetadataLogTable.h"
 
+struct XAttrRowPart{
+  Int64 mInodeId;
+  Int8 mNamespace;
+  std::string mName;
+  Int16 mIndex;
+  Int16 mNumParts;
+  std::string mValue;
+
+  std::string to_string(){
+    std::stringstream stream;
+    stream << "-------------------------" << std::endl;
+    stream << "InodeId = " << mInodeId << std::endl;
+    stream << "Namespace = " << std::to_string(mNamespace) << std::endl;
+    stream << "Name = " << mName << std::endl;
+    stream << "Index = " << mIndex << std::endl;
+    stream << "NumParts = " << mNumParts << std::endl;
+    stream << "Value = " << mValue << std::endl;
+    stream << "-------------------------" << std::endl;
+    return stream.str();
+  }
+
+  std::string getXAttrUniqueId(){
+    std::stringstream out;
+    out << mInodeId << "-" << std::to_string(mNamespace) << "-" << mName;
+    return out.str();
+  }
+
+  static std::string getXAttrUniqueId(FsMutationRow& row){
+    std::stringstream out;
+    out << row.mInodeId << "-" << std::to_string(row.getNamespace()) << "-" << row.getXAttrName();
+    return out.str();
+  }
+};
+
+typedef std::vector<XAttrRowPart> XAttrPartVec;
 
 struct XAttrRow {
   Int64 mInodeId;
@@ -30,6 +65,28 @@ struct XAttrRow {
   std::string mName;
   std::string mValue;
 
+  XAttrRow(XAttrPartVec& vec){
+    if(!vec.empty()){
+      mInodeId = vec[0].mInodeId;
+      mNamespace = vec[0].mNamespace;
+      mName = vec[0].mName;
+      mValue = combineValues(vec);
+    }
+  }
+
+  XAttrRow(XAttrRowPart& firstPart, XAttrPartVec& restOfParts) 
+  : XAttrRow(firstPart.mInodeId, firstPart.mNamespace, firstPart.mName, combineValues(firstPart, restOfParts)){
+  }
+
+  XAttrRow(XAttrRowPart& row) : XAttrRow(row.mInodeId, row.mNamespace, row.mName, row.mValue){
+  }
+
+  XAttrRow(Int64 inodeId, Int8 ns, std::string name, std::string value){
+    mInodeId = inodeId;
+    mNamespace = ns;
+    mName = name;
+    mValue = value;
+  }
 
   std::string to_upsert_json(std::string index, FsOpType operation){
     std::stringstream out;
@@ -67,6 +124,7 @@ struct XAttrRow {
     stream << "Namespace = " << (int)mNamespace << std::endl;
     stream << "Name = " << mName << std::endl;
     stream << "Value = " << mValue << std::endl;
+    stream << "ValueSize = " << mValue.length() << std::endl;
     stream << "-------------------------" << std::endl;
     return stream.str();
   }
@@ -189,6 +247,18 @@ private:
     return std::string(sbOp.GetString());
   }
 
+  std::string combineValues(XAttrRowPart& firstPart, XAttrPartVec& restOfParts){
+    std::string value = firstPart.mValue + combineValues(restOfParts);
+    return value;
+  }
+
+  std::string combineValues(XAttrPartVec& partVec){
+    std::string value;
+    for(auto & part : partVec){
+       value = value + part.mValue;
+    }
+    return value;
+  }
 };
 
 struct XAttrPK {
@@ -204,15 +274,16 @@ struct XAttrPK {
 
   std::string to_string() {
     std::stringstream out;
-    out << mInodeId << "-" << mNamespace << "-" << mName;
+    out << mInodeId << "-" << std::to_string(mNamespace) << "-" << mName;
     return out.str();
   }
 };
 
 typedef std::vector<XAttrRow> XAttrVec;
 typedef boost::unordered_map<std::string, XAttrVec> XAttrMap;
+typedef boost::unordered_map<std::string, XAttrPartVec> XAttrPartMap;
 
-class XAttrTable : public DBTable<XAttrRow> {
+class XAttrTable : public DBTable<XAttrRowPart> {
 
 public:
 
@@ -220,15 +291,19 @@ public:
     addColumn("inode_id");
     addColumn("namespace");
     addColumn("name");
+    addColumn("index");
     addColumn("value");
+    addColumn("num_parts");
   }
 
-  XAttrRow getRow(NdbRecAttr* values[]) {
-    XAttrRow row;
+  XAttrRowPart getRow(NdbRecAttr* values[]) {
+    XAttrRowPart row;
     row.mInodeId = values[0]->int64_value();
     row.mNamespace = values[1]->int8_value();
     row.mName = get_string(values[2]);
-    row.mValue = get_string(values[3]);
+    row.mIndex = values[3]->short_value();
+    row.mValue = get_string(values[4]);
+    row.mNumParts = values[5]->short_value();
     return row;
   }
 
@@ -237,13 +312,32 @@ public:
     a[0] = inodeId;
     a[1] = ns;
     a[2] = name;
-    return DBTable<XAttrRow>::doRead(connection, a);
+    a[3] = static_cast<Int16>(0);
+
+    XAttrRowPart firstPart = DBTable<XAttrRowPart>::doRead(connection, a);
+    LOG_DEBUG("XAttr get by parts " << firstPart.mNumParts);
+    if(firstPart.mNumParts == 1){
+      return XAttrRow(firstPart);
+    }
+
+    AnyVec anyVec;
+    for(Int16 index=1; index < firstPart.mNumParts; index++){
+        AnyMap pk;
+        pk[0] = inodeId;
+        pk[1] = ns;
+        pk[2] = name;
+        pk[3] = index;
+        anyVec.push_back(pk);
+    }
+    
+    XAttrPartVec restOfParts = doRead(connection, anyVec);
+    LOG_DEBUG("XAttr batch read the rest of parts " << restOfParts.size());
+    return XAttrRow(firstPart, restOfParts);
   }
 
   XAttrMap get(Ndb* connection, Fmq* data_batch) {
     AnyVec anyVec;
     Fmq batchedMutations;
-
     Fmq addAllXattrs;
 
     for (Fmq::iterator it = data_batch->begin();
@@ -258,27 +352,20 @@ public:
         continue;
       }
 
-      AnyMap pk;
-      pk[0] = row.mInodeId;
-      pk[1] = row.getNamespace();
-      pk[2] = row.getXAttrName();
-      anyVec.push_back(pk);
+      LOG_DEBUG("doRead batch for XAttr [ " + row.getXAttrName() + " ] to get its " << row.getNumParts() << " parts ");
+      for(Int16 index=0; index < row.getNumParts(); index++){
+        AnyMap pk;
+        pk[0] = row.mInodeId;
+        pk[1] = row.getNamespace();
+        pk[2] = row.getXAttrName();
+        pk[3] = index;
+        anyVec.push_back(pk);
+      }
       batchedMutations.push_back(row);
     }
 
-    XAttrVec xattrs = doRead(connection, anyVec);
-
-    XAttrMap results;
-
-    int i=0;
-    for(XAttrVec::iterator it = xattrs.begin(); it != xattrs.end(); ++it, i++){
-      XAttrRow xattr = *it;
-      FsMutationRow mr = batchedMutations[i];
-
-      XAttrVec xvec;
-      xvec.push_back(xattr);
-      results[mr.getPKStr()] = xvec;
-    }
+    XAttrPartVec xattrsParts = doRead(connection, anyVec);
+    XAttrMap results = combine(xattrsParts, batchedMutations);
 
     for(Fmq::iterator it = addAllXattrs.begin(); it != addAllXattrs.end();
     ++it){
@@ -292,7 +379,8 @@ public:
   XAttrVec getByInodeId(Ndb* connection, Int64 inodeId){
     AnyMap args;
     args[0] = inodeId;
-    return doRead(connection, PRIMARY_INDEX, args, inodeId);
+    XAttrPartVec xattrsParts = doRead(connection, PRIMARY_INDEX, args, inodeId);
+    return combine(xattrsParts);
   }
 
   boost::optional<XAttrRow> get(Ndb* connection, XAttrPK key) {
@@ -308,5 +396,48 @@ private:
   inline static bool readCheckExists(XAttrPK key, XAttrRow row) {
     return key.mInodeId == row.mInodeId && key.mNamespace == row.mNamespace && key.mName == row.mName;
   }
+
+  XAttrVec combine(XAttrPartVec& partVec){
+     XAttrPartMap xAttrsByName;
+     convert(partVec, xAttrsByName);
+     XAttrVec results;
+     for(auto& e : xAttrsByName){
+       results.push_back(XAttrRow(e.second));
+     }
+     return results;
+  }
+
+  XAttrMap combine(XAttrPartVec& partVec, Fmq& xAttrMutations){
+    XAttrPartMap xAttrsByName;
+    convert(partVec, xAttrsByName);
+    XAttrMap results;
+    for(auto& m : xAttrMutations){
+      std::string id = XAttrRowPart::getXAttrUniqueId(m);
+      auto& vec = xAttrsByName[id];
+      XAttrVec xvec;
+      xvec.push_back(XAttrRow(vec));
+      results[m.getPKStr()] = xvec;
+    }
+
+    return results;
+  }
+  
+  void convert(XAttrPartVec& partVec, XAttrPartMap& xAttrsByName){
+    for(auto& part : partVec){
+      std::string id = part.getXAttrUniqueId();
+      if(xAttrsByName.find(id) == xAttrsByName.end()){
+        xAttrsByName[id] = XAttrPartVec();
+      }
+      xAttrsByName[id].push_back(part);
+    }
+
+    for(auto& e :xAttrsByName){
+      auto& vec = e.second;
+      std::sort(vec.begin(), vec.end(), [](XAttrRowPart a, XAttrRowPart b){
+        return a.mIndex < b.mIndex;
+      });
+    }
+  }
+
 };
 #endif //EPIPE_XATTRTABLE_H
