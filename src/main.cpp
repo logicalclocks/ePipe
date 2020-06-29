@@ -50,6 +50,8 @@ int main(int argc, char** argv) {
     std::string elastic_app_provenance_index = "appprovenance";
 
     int lru_cap = DEFAULT_MAX_CAPACITY;
+    int prov_file_lru_cap = DEFAULT_MAX_CAPACITY;
+    int prov_core_lru_cap = 100;
     bool recovery = true;
     bool stats = true;
 
@@ -123,8 +125,9 @@ int main(int argc, char** argv) {
         ("ewait_time",
          po::value<int>(&elastic_issue_time)->default_value(elastic_issue_time),
          "time to wait in miliseconds before issuing a bulk request to Elasticsearch if the batch size wasn't reached")
-        ("lru_cap", po::value<int>(&lru_cap)->default_value(lru_cap),
-         "LRU Cache max capacity")
+        ("lru_cap", po::value<int>(&lru_cap)->default_value(lru_cap), "LRU Cache max capacity")
+        ("prov_file_lru_cap", po::value<int>(&prov_file_lru_cap)->default_value(prov_file_lru_cap), "Prov File LRU Cache max capacity")
+        ("prov_core_lru_cap", po::value<int>(&prov_core_lru_cap)->default_value(prov_core_lru_cap), "Prov Core LRU Cache max capacity")
         ("recovery", po::value<bool>(&recovery)->default_value(recovery),
          "enable or disable startup recovery")
         ("stats", po::value<bool>(&stats)->default_value(stats),
@@ -254,9 +257,9 @@ int main(int argc, char** argv) {
                                        hopsworks, elastic_index, elastic_featurestore_index,
                                        elastic_app_provenance_index,
                                        elastic_batch_size, elastic_issue_time,
-                                       lru_cap, recovery, stats, barrier,
-                                       hiveCleaner,
-                                       metricsServer);
+                                       lru_cap, prov_file_lru_cap, prov_core_lru_cap,
+                                       recovery, stats, barrier,
+                                       hiveCleaner, metricsServer);
       notifer->start();
     }
     return EXIT_SUCCESS;

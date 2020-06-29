@@ -29,7 +29,7 @@ void AppProvenanceTableTailer::handleEvent(NdbDictionary::Event::TableEvent even
   int size = mCurrentPriorityQueue->size();
   mLock.unlock();
 
-  LOG_TRACE("push provenance log for [" << row.mId << "] to queue[" << size << "]");
+  LOG_TRACE("app prov - push provenance log for [" << row.mId << "] to queue[" << size << "]");
 
 }
 
@@ -43,7 +43,7 @@ void AppProvenanceTableTailer::barrierChanged() {
   mLock.unlock();
 
   if (pq != NULL) {
-    LOG_TRACE("--------------------------------------NEW BARRIER (" << pq->size() << " events )------------------- ");
+    LOG_TRACE("app prov --------------------------------------NEW BARRIER (" << pq->size() << " events )------------------- ");
     pushToQueue(pq);
   }
 }
@@ -51,7 +51,7 @@ void AppProvenanceTableTailer::barrierChanged() {
 AppProvenanceRow AppProvenanceTableTailer::consume() {
   AppProvenanceRow row;
   mQueue->wait_and_pop(row);
-  LOG_TRACE(" pop appid [" << row.mId << "] from queue \n" << row.to_string());
+  LOG_TRACE("app prov - pop appid [" << row.mId << "] from queue \n" << row.to_string());
   return row;
 }
 

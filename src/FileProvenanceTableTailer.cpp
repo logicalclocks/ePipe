@@ -19,8 +19,9 @@
 
 #include "FileProvenanceTableTailer.h"
 
-FileProvenanceTableTailer::FileProvenanceTableTailer(Ndb *ndb, Ndb* ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier)
-: RCTableTailer(ndb, ndbRecovery, new FileProvenanceLogTable(), poll_maxTimeToWait, barrier) {
+FileProvenanceTableTailer::FileProvenanceTableTailer(Ndb *ndb, Ndb* ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier,
+        int prov_file_lru_cap, int prov_core_lru_cap)
+: RCTableTailer(ndb, ndbRecovery, new FileProvenanceLogTable(prov_file_lru_cap, prov_core_lru_cap), poll_maxTimeToWait, barrier) {
   mQueue = new CPRq();
   mCurrentPriorityQueue = new PRpq();
 }
@@ -32,7 +33,7 @@ void FileProvenanceTableTailer::handleEvent(NdbDictionary::Event::TableEvent eve
   int size = mCurrentPriorityQueue->size();
   mLock.unlock();
 
-  LOG_TRACE("push provenance log for [" << row.mInodeName << "] to queue[" << size << "], Op [" << row.mOperation << "]");
+  LOG_TRACE("file prov - push provenance log for [" << row.mInodeName << "] to queue[" << size << "], Op [" << row.mOperation << "]");
 
 }
 
@@ -46,7 +47,7 @@ void FileProvenanceTableTailer::barrierChanged() {
   mLock.unlock();
 
   if (pq != NULL) {
-    LOG_TRACE("--------------------------------------NEW BARRIER (" << pq->size() << " events )------------------- ");
+    LOG_TRACE("file prov --------------------------------------NEW BARRIER (" << pq->size() << " events )------------------- ");
     pushToQueue(pq);
   }
 }
@@ -54,7 +55,7 @@ void FileProvenanceTableTailer::barrierChanged() {
 FileProvenanceRow FileProvenanceTableTailer::consume() {
   FileProvenanceRow row;
   mQueue->wait_and_pop(row);
-  LOG_TRACE(" pop inode [" << row.mInodeId << "] from queue \n" << row.to_string());
+  LOG_TRACE("file prov - pop inode [" << row.mInodeId << "] from queue \n" << row.to_string());
   return row;
 }
 

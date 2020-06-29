@@ -35,7 +35,7 @@ template<typename TableRow>
 class DBTable : public DBTableBase {
 public:
   DBTable(const std::string table);
-  DBTable(const std::string table, const DBTableBase* companionTableBase);
+  DBTable(const std::string table, DBTableBase* companionTableBase);
 
   void getAll(Ndb* connection);
   bool next();
@@ -55,7 +55,7 @@ private:
   NdbTransaction* mCurrentTransaction;
   NdbOperation* mCurrentOperation;
   NdbRecAttr** mCurrentRow;
-  const DBTableBase* mCompanionTableBase;
+
   const NdbDictionary::Table* mCompanionTable;
 
   void close();
@@ -63,6 +63,8 @@ private:
   void applyConditionOnOperationOnCompanion(NdbOperation* operation, AnyMap& any);
   
 protected:
+  DBTableBase* mCompanionTableBase;
+
   NdbRecAttr** getColumnValues(NdbOperation* op);
   void start(Ndb* connection);
   void start(Ndb* connection, boost::optional<Int64> partitionId);
@@ -101,7 +103,7 @@ DBTable<TableRow>::DBTable(const std::string table)
 }
 
 template<typename TableRow>
-DBTable<TableRow>::DBTable(const std::string table, const DBTableBase* companionTableBase)
+DBTable<TableRow>::DBTable(const std::string table, DBTableBase* companionTableBase)
     : DBTableBase(table), mReadEpoch(false), mCompanionTableBase(companionTableBase) {
 }
 
@@ -110,7 +112,6 @@ void DBTable<TableRow>::setReadEpoch(bool readEpoch) {
   mReadEpoch = readEpoch;
   LOG_DEBUG(getName() << " -- ReadEpoch : " << mReadEpoch);
 }
-
 template<typename TableRow>
 NdbRecAttr** DBTable<TableRow>::getColumnValues(NdbOperation* op) {
   int numCols = mReadEpoch ? getNoColumns() + 1 : getNoColumns();

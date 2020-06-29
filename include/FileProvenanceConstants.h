@@ -20,12 +20,11 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/assign.hpp>
 #include "tables/FileProvenanceLogTable.h"
+#include "FileProvenanceConstantsRaw.h"
 
 namespace FileProvenanceConstants {
 
-  const Int8 XATTRS_USER_NAMESPACE = 5;
   const std::string README_FILE = "README.md";
   
   const std::string TYPE_NONE = "NONE";
@@ -44,7 +43,6 @@ namespace FileProvenanceConstants {
 
   const std::string XATTR = "xattr_prov";
 
-  const std::string XATTR_PROV_CORE = "core";
   const std::string XATTR_PROJECT_IID = "project_iid"; //part of project core
 
   const std::string PROV_TYPE_STORE_NONE = "NONE";
@@ -104,51 +102,10 @@ namespace FileProvenanceConstants {
     }
   };
 
-  const std::string H_OP_CREATE = "CREATE";
-  const std::string H_OP_DELETE = "DELETE";
-  const std::string H_OP_ACCESS_DATA = "ACCESS_DATA";
-  const std::string H_OP_MODIFY_DATA = "MODIFY_DATA";
-  const std::string H_OP_METADATA = "METADATA";
-  const std::string H_OP_XATTR_ADD = "XATTR_ADD";
-  const std::string H_OP_XATTR_UPDATE = "XATTR_UPDATE";
-  const std::string H_OP_XATTR_DELETE = "XATTR_DELETE";
-  const std::string H_OP_OTHER = "OTHER";
-
   const std::string ELASTIC_NOP = "\n";
   const std::string ELASTIC_NOP2 = "\n\n";
 
-  enum Operation {
-    OP_CREATE,
-    OP_DELETE,
-    OP_ACCESS_DATA,
-    OP_MODIFY_DATA,
-    OP_XATTR_ADD,
-    OP_XATTR_UPDATE,
-    OP_XATTR_DELETE,
-    OP_METADATA,
-    OP_OTHER
-  };
 
-  const boost::unordered_map<std::string, Operation> ops = boost::assign::map_list_of
-      (H_OP_CREATE, OP_CREATE)
-      (H_OP_DELETE, OP_DELETE)
-      (H_OP_ACCESS_DATA, OP_ACCESS_DATA)
-      (H_OP_MODIFY_DATA, OP_MODIFY_DATA)
-      (H_OP_XATTR_ADD, OP_XATTR_ADD)
-      (H_OP_XATTR_UPDATE, OP_XATTR_UPDATE)
-      (H_OP_XATTR_DELETE, OP_XATTR_DELETE)
-      (H_OP_METADATA, OP_METADATA)
-      (H_OP_OTHER, OP_OTHER);
-
-  inline Operation findOp(const FileProvenanceRow row) {
-    if(ops.find(row.mOperation) == ops.end()) {
-      LOG_WARN("no such operation:" << row.mOperation);
-      std::stringstream cause;
-      cause << "no such operation:" << row.mOperation;
-      throw std::logic_error(cause.str());
-    }
-    return ops.at(row.mOperation);
-  }
   const std::string APP_SUBMITTED_STATE = "SUBMITTED";
   const std::string APP_RUNNING_STATE = "RUNNING";
 

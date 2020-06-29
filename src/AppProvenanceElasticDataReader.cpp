@@ -23,7 +23,7 @@ AppProvenanceElasticDataReader::AppProvenanceElasticDataReader(SConn connection,
 class Helper {
 public:
   static std::list<std::string> process_row(AppProvenanceRow row) {
-    LOG_INFO("app provenance:" << row.to_string());
+    LOG_DEBUG("app prov - processing:" << row.getPK().to_string());
     std::list<std::string> bulkOps;
 
     if(row.mFinishTime != 0) {
@@ -79,6 +79,7 @@ public:
     
     std::stringstream out;
     out << opBuffer.GetString() << std::endl << dataBuffer.GetString();
+    LOG_TRACE("app prov - elastic - add:" << out.str());
     return out.str();
   }
 

@@ -91,28 +91,29 @@ void TimedRestBatcher::processBatch() {
   }
 }
 
-bool TimedRestBatcher::httpPostRequest(std::string requestUrl, std::string json) {
+ParsingResponse TimedRestBatcher::httpPostRequest(std::string requestUrl, std::string json) {
   LOG_DEBUG("POST " << requestUrl << "\n" << json);
   ptime t1 = Utils::getCurrentTime();
-  bool success = handleHttpRequestWithRetry(HttpVerb::POST,requestUrl, json);
+  ParsingResponse resp = handleHttpRequestWithRetry(HttpVerb::POST,requestUrl, json);
   ptime t2 = Utils::getCurrentTime();
   LOG_INFO("POST " << requestUrl << " [" << json.length() << "]  took " <<
                    Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
-  return success;
+  return resp;
 }
 
-bool TimedRestBatcher::httpDeleteRequest(std::string requestUrl) {
+ParsingResponse TimedRestBatcher::httpDeleteRequest(std::string requestUrl) {
   ptime t1 = Utils::getCurrentTime();
-  bool success = handleHttpRequestWithRetry(HttpVerb::DELETE,requestUrl, "");
+  ParsingResponse resp = handleHttpRequestWithRetry(HttpVerb::DELETE,requestUrl, "");
   ptime t2 = Utils::getCurrentTime();
   LOG_INFO("DELETE " << requestUrl << " took " <<
                      Utils::getTimeDiffInMilliseconds(t1, t2) << " msec");
-  return success;
+  return resp;
 }
 
 
-bool TimedRestBatcher::handleHttpRequestWithRetry(HttpVerb verb,
+ParsingResponse TimedRestBatcher::handleHttpRequestWithRetry(HttpVerb verb,
     std::string requestUrl, std::string json){
+  ParsingResponse pr = {false, false, ""};
   do {
     HttpResponse res;
     if(verb == HttpVerb::POST) {
@@ -121,10 +122,10 @@ bool TimedRestBatcher::handleHttpRequestWithRetry(HttpVerb verb,
       res = mHttpClient.delete_(requestUrl);
     }
     if(res.mSuccess){
-      ParsingResponse pr = parseResponse(res.mResponse);
+      pr = parseResponse(res.mResponse);
       mElasticConnetionFailed = pr.mRetryable;
       if(!pr.mRetryable){
-        return pr.mSuccess;
+        return pr;
       }
     }
 
@@ -138,7 +139,7 @@ bool TimedRestBatcher::handleHttpRequestWithRetry(HttpVerb verb,
     boost::this_thread::sleep(boost::posix_time::milliseconds(mTimeToWait));
 
   } while(mElasticConnetionFailed);
-  return "";
+  return pr;
 }
 
 TimedRestBatcher::~TimedRestBatcher() {
