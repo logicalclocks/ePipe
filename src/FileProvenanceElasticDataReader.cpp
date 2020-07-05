@@ -550,6 +550,10 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
   switch (fileOp) {
     case FileProvenanceConstantsRaw::Operation::OP_CREATE: {
       if(!skipElasticOp) {
+        if(mlAux.first == FileProvenanceConstants::MLType::HIVE || mlAux.first == FileProvenanceConstants::MLType::FEATURE) {
+          //fix project name - in hive&hops, project name is deduced from dataset name and there the project name is lowercased
+          row.mProjectName = FileProvCache::getInstance().getProjectName(row.mProjectId);
+        }
         switch (mlAux.first) {
           case FileProvenanceConstants::MLType::DATASET:
           case FileProvenanceConstants::MLType::HIVE:
@@ -785,7 +789,7 @@ bool FileProvenanceElasticDataReader::projectExists(Int64 projectIId, Int64 time
     INodeRow inode = inodesTable.getByInodeId(mNdbConnection, projectIId);
     if(inode.mId == projectIId) {
       LOG_DEBUG("file prov - project exists - refresh cache");
-      FileProvCache::getInstance().addProjectExists(projectIId, timestamp);
+      FileProvCache::getInstance().addProjectExists(projectIId, inode.mName, timestamp);
       return true;
     } else {
       LOG_DEBUG("file prov - project exists - deleted");
