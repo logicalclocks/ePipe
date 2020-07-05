@@ -550,6 +550,10 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
   switch (fileOp) {
     case FileProvenanceConstantsRaw::Operation::OP_CREATE: {
       if(!skipElasticOp) {
+        if(mlAux.first == FileProvenanceConstants::MLType::HIVE || mlAux.first == FileProvenanceConstants::MLType::FEATURE) {
+          //fix project name - in hive&hops, project name is deduced from dataset name and there the project name is lowercased
+          row.mProjectName = FileProvCache::getInstance().getProjectName(row.mProjectId);
+        }
         switch (mlAux.first) {
           case FileProvenanceConstants::MLType::DATASET:
           case FileProvenanceConstants::MLType::HIVE:
@@ -572,6 +576,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               default: {
                 LOG_WARN("file prov - unhandled prov state:" << datasetProvCore.get() << " - skipping it");
               }
+            }
+          } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
             }
           } break;
           default: {
@@ -607,6 +621,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               }
             }
           } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
+            }
+          } break;
           default: {
             LOG_WARN("file prov - unhandled artifact type:" << mlAux.first << " - skipping it");
           }
@@ -638,6 +662,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               default: {
                 LOG_WARN("file prov - unhandled prov state:" << datasetProvCore.get() << " - skipping it");
               }
+            }
+          } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
             }
           } break;
           default: {
@@ -717,6 +751,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               }
             }
           } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
+            }
+          } break;
           default: {
             LOG_WARN("file prov - unhandled artifact type:" << mlAux.first << " - skipping it");
           }
@@ -762,6 +806,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               }
             }
           } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
+            }
+          } break;
           default: {
             LOG_WARN("file prov - unhandled artifact type:" << mlAux.first << " - skipping it");
           }
@@ -785,7 +839,7 @@ bool FileProvenanceElasticDataReader::projectExists(Int64 projectIId, Int64 time
     INodeRow inode = inodesTable.getByInodeId(mNdbConnection, projectIId);
     if(inode.mId == projectIId) {
       LOG_DEBUG("file prov - project exists - refresh cache");
-      FileProvCache::getInstance().addProjectExists(projectIId, timestamp);
+      FileProvCache::getInstance().addProjectExists(projectIId, inode.mName, timestamp);
       return true;
     } else {
       LOG_DEBUG("file prov - project exists - deleted");

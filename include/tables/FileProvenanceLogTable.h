@@ -221,12 +221,12 @@ public:
     /* yes we use operation timestamp - in case of recovery we might be doing pointless checks as the timestamps are obsolete
      * but they won't be that many and it simplifies logic
      */
-    boost::optional<Int64> old_timestamp = mProjects.get(projectIId);
-    if(old_timestamp) {
-      if (timestamp <= old_timestamp.get() + maxTimestampShift) {
+    boost::optional<std::pair<std::string, Int64>> old_entry = mProjects.get(projectIId);
+    if(old_entry) {
+      if (timestamp <= old_entry.get().second + maxTimestampShift) {
         return true;
       } else {
-        LOG_DEBUG("project exists - cached entry too old:" << old_timestamp.get() << " op timestamp:" << timestamp);
+        LOG_DEBUG("project exists - cached entry too old:" << old_entry.get().second << " op timestamp:" << timestamp);
         mProjects.remove(projectIId);
         return false;
       }
@@ -235,12 +235,17 @@ public:
     }
   }
 
-  void addProjectExists(Int64 projectIId, Int64 timestamp) {
-    mProjects.put(projectIId, timestamp);
+  void addProjectExists(Int64 projectIId, std::string projectName, Int64 timestamp) {
+    mProjects.put(projectIId, std::make_pair(projectName, timestamp));
   }
+
+  std::string getProjectName(Int64 projectIId) {
+    return mProjects.get(projectIId).get().first;
+  }
+
 private:
   int maxTimestampShift;
-  Cache<Int64, Int64> mProjects;
+  Cache<Int64, std::pair<std::string, Int64>> mProjects;
 };
 
 typedef CacheSingleton<FProvCache> FileProvCache;
