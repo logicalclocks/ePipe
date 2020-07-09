@@ -578,6 +578,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               }
             }
           } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
+            }
+          } break;
           default: {
             LOG_WARN("file prov - unhandled artifact type:" << mlAux.first << " - skipping it");
           }
@@ -611,6 +621,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               }
             }
           } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
+            }
+          } break;
           default: {
             LOG_WARN("file prov - unhandled artifact type:" << mlAux.first << " - skipping it");
           }
@@ -642,6 +662,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               default: {
                 LOG_WARN("file prov - unhandled prov state:" << datasetProvCore.get() << " - skipping it");
               }
+            }
+          } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
             }
           } break;
           default: {
@@ -721,6 +751,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               }
             }
           } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
+            }
+          } break;
           default: {
             LOG_WARN("file prov - unhandled artifact type:" << mlAux.first << " - skipping it");
           }
@@ -764,6 +804,16 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
               default: {
                 LOG_WARN("file prov - unhandled prov state:" << datasetProvCore.get() << " - skipping it");
               }
+            }
+          } break;
+          case FileProvenanceConstants::MLType::HIVE_PART:
+          case FileProvenanceConstants::MLType::FEATURE_PART:
+          case FileProvenanceConstants::MLType::TRAINING_DATASET_PART:
+          case FileProvenanceConstants::MLType::EXPERIMENT_PART:
+          case FileProvenanceConstants::MLType::MODEL_PART: {
+            if (datasetProvCore.get() == FileProvenanceConstants::STORE_ALL) {
+              std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
+              bulkOps.push_back(op);
             }
           } break;
           default: {
