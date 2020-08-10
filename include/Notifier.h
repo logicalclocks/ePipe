@@ -28,6 +28,10 @@
 #include "ClusterConnectionBase.h"
 #include "hive/TBLSTailer.h"
 #include "hive/SDSTailer.h"
+#include "hive/ISCHEMATailer.h"
+#include "hive/SERDESTailer.h"
+#include "hive/CDSTailer.h"
+#include "hive/DBSTailer.h"
 #include "hive/PARTTailer.h"
 #include "hive/IDXSTailer.h"
 #include "hive/SkewedLocTailer.h"
@@ -102,6 +106,10 @@ private:
 
   TBLSTailer* mTblsTailer;
   SDSTailer* mSDSTailer;
+  ISCHEMATailer* mISCHEMATailer;
+  SERDESTailer* mSERDESTailer;
+  CDSTailer* mCDSTailer;
+  DBSTailer* mDBSTailer;
   PARTTailer* mPARTTailer;
   IDXSTailer* mIDXSTailer;
   SkewedLocTailer* mSkewedLocTailer;

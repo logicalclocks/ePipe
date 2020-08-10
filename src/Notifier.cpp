@@ -83,6 +83,10 @@ void Notifier::start() {
   if(mHiveCleaner) {
     mTblsTailer->start();
     mSDSTailer->start();
+    mISCHEMATailer->start();
+    mDBSTailer->start();
+    mSERDESTailer->start();
+    mCDSTailer->start();
     mPARTTailer->start();
     mIDXSTailer->start();
     mSkewedLocTailer->start();
@@ -129,6 +133,10 @@ void Notifier::start() {
   if(mHiveCleaner) {
     mTblsTailer->waitToFinish();
     mSDSTailer->waitToFinish();
+    mISCHEMATailer->waitToFinish();
+    mDBSTailer->waitToFinish();
+    mSERDESTailer->waitToFinish();
+    mCDSTailer->waitToFinish();
     mPARTTailer->waitToFinish();
     mIDXSTailer->waitToFinish();
     mSkewedLocTailer->waitToFinish();
@@ -251,6 +259,22 @@ void Notifier::setup() {
 
     Ndb *sds_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
     mSDSTailer = new SDSTailer(sds_tailer_connection, mPollMaxTimeToWait,
+        mBarrier);
+
+    Ndb *ischema_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mISCHEMATailer = new ISCHEMATailer(ischema_tailer_connection, mPollMaxTimeToWait,
+        mBarrier);
+
+    Ndb *dbs_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mDBSTailer = new DBSTailer(dbs_tailer_connection, mPollMaxTimeToWait,
+        mBarrier);
+
+    Ndb *serdes_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mSERDESTailer = new SERDESTailer(serdes_tailer_connection, mPollMaxTimeToWait,
+        mBarrier);
+
+    Ndb *cds_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);
+    mCDSTailer = new CDSTailer(cds_tailer_connection, mPollMaxTimeToWait,
         mBarrier);
 
     Ndb *part_tailer_connection = create_ndb_connection(mHiveMetaDatabaseName);

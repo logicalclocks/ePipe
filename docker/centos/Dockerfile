@@ -2,8 +2,9 @@ FROM centos:7.7.1908
 
 ARG cmake_version=3.16.4
 ARG boost_version=1.70.0
-ARG ndb_version_family=7.6
-ARG ndb_version=7.6.9
+ARG ndb_version_family=8.0
+ARG ndb_version=8.0.21
+ARG lib_ssl_version=1.1.1g
 ARG userid=1000
 ARG groupid=1000
 
@@ -11,17 +12,31 @@ RUN yum -y update; \
 echo Installing GCC 8; \
 yum -y install centos-release-scl; \
 yum -y install devtoolset-8-gcc devtoolset-8-gcc-c++; \
-yum -y install openssl-devel wget make git which; \
+yum -y install wget make git which perl-core libtemplate-perl zlib-devel
+
+RUN cd; \
+source scl_source enable devtoolset-8; \
+wget --progress=bar:force https://www.openssl.org/source/openssl-${lib_ssl_version}.tar.gz; \
+tar xf openssl-${lib_ssl_version}.tar.gz; \
+cd openssl-${lib_ssl_version}; \
+./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared zlib; \
+make -j$(nproc); \
+make install; \
+echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/openssl-${lib_ssl_version}.conf; \
+ldconfig -v; \
+cd ..; \
+rm -rf openssl-${lib_ssl_version} 
 
 RUN echo Installing cmake; \
 source scl_source enable devtoolset-8; \
 wget --progress=bar:force https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}.tar.gz; \
 tar xzf cmake-${cmake_version}.tar.gz; \
 cd cmake-${cmake_version}; \
+export OPENSSL_ROOT_DIR=/usr/local/ssl/; \
 ./bootstrap --prefix=/usr/local; \
 make -j$(nproc); \
 make install; \
-cd ..; \
+cd ..; \ 
 rm -r cmake-${cmake_version}*
 
 RUN echo Installing Boost; \
@@ -49,12 +64,12 @@ make install
 
 RUN echo Installing MySQL Cluster; \
 cd /usr/local; \
-wget --progress=bar:force https://dev.mysql.com/get/Downloads/MySQL-Cluster-${ndb_version_family}/mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
-tar xzf mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
+wget --progress=bar:force https://cdn.mysql.com//Downloads/MySQL-Cluster-${ndb_version_family}/mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
+tar xzf mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
 mkdir -p mysql/lib; \
-cp -r mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64/include mysql/; \
-cp -r mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64/lib/libndbclient* mysql/lib/; \
-rm -r mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64*
+cp -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64/include mysql/; \
+cp -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64/lib/libndbclient* mysql/lib/; \
+rm -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64*
 
 RUN groupadd epipe --gid ${groupid}; \
 useradd -ms /bin/bash epipe --uid ${userid} --gid ${groupid}; \

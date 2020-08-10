@@ -2,8 +2,8 @@ FROM ubuntu:bionic
 
 ARG cmake_version=3.16.4
 ARG boost_version=1.70.0
-ARG ndb_version_family=7.6
-ARG ndb_version=7.6.9
+ARG ndb_version_family=8.0
+ARG ndb_version=8.0.21
 ARG userid=1000
 ARG groupid=1000
 
@@ -49,12 +49,12 @@ make install
 
 RUN echo Installing MySQL Cluster; \
 cd /usr/local; \
-wget --progress=bar:force https://dev.mysql.com/get/Downloads/MySQL-Cluster-${ndb_version_family}/mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
-tar xzf mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
+wget --progress=bar:force https://cdn.mysql.com//Downloads/MySQL-Cluster-${ndb_version_family}/mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
+tar xzf mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
 mkdir -p mysql/lib; \
-cp -r mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64/include mysql/; \
-cp -r mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64/lib/libndbclient* mysql/lib/; \
-rm -r mysql-cluster-gpl-${ndb_version}-linux-glibc2.12-x86_64*
+cp -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64/include mysql/; \
+cp -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64/lib/libndbclient* mysql/lib/; \
+rm -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64*
 
 RUN groupadd epipe --gid ${groupid}; \
 useradd -ms /bin/bash epipe --uid ${userid} --gid ${groupid}

@@ -22,6 +22,7 @@
 
 #include "TableTailer.h"
 #include "tables/hive/PartitionsTable.h"
+#include "tables/hive/PARTCOLSTATSTable.h"
 #include "tables/hive/SDSTable.h"
 
 class PARTTailer : public TableTailer<PartitionsRow> {
@@ -33,10 +34,13 @@ public:
 
 private:
   SDSTable mSDSTable;
+  PARTCOLSTATSTable mPARTCOLSTATSTable;
 
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType,
                            PartitionsRow pre, PartitionsRow row) {
     LOG_INFO("Delete PART event received. Primary Key value: " << pre.mPARTID);
+    mPARTCOLSTATSTable.remove(mNdbConnection, pre.mPARTID);
+
     mSDSTable.remove(mNdbConnection, pre.mSDID);
   }
 };

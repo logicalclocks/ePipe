@@ -83,6 +83,8 @@ protected:
   void doDelete(Any any);
   void doDelete(AnyMap& any);
   void doDeleteOnCompanion(AnyMap& any);
+  int deleteByIndex(Ndb* connection, std::string index, AnyMap& anys);
+  int deleteByIndex(Ndb* connection, std::string index, AnyMap& anys, boost::optional<Int64> partitionId);
 
   void getAll(Ndb* connection, std::string index);
   void setReadEpoch(bool readEpoch);
@@ -277,6 +279,39 @@ std::vector<TableRow> DBTable<TableRow>::doRead(Ndb* connection, std::string ind
   }
   close();
   return results;
+}
+
+template<typename TableRow>
+int DBTable<TableRow>::deleteByIndex(Ndb* connection, std::string index, AnyMap& any) {
+  return deleteByIndex(connection, index, any, boost::none);
+}
+
+template<typename TableRow>
+int DBTable<TableRow>::deleteByIndex(Ndb* connection, std::string index, AnyMap& any, boost::optional<Int64> partitionId) {
+  start(connection, partitionId);
+  LOG_INFO(getName() << " -- deleteByIndex with index : " << index);
+  mIndex = getIndex(mDatabase, index);
+  NdbIndexScanOperation* operation = getNdbIndexScanOperation(mCurrentTransaction, mIndex);
+  operation->readTuples(NdbOperation::LM_Exclusive);
+  mCurrentOperation = operation;
+  applyConditionOnOperation(operation, any);
+  executeTransaction(mCurrentTransaction, NdbTransaction::NoCommit);
+
+  int count = 0;
+  int check;
+  while((check = operation->nextResult(true)) == 0) // Outer loop for each batch of rows
+  {
+    do
+    {
+      operation->deleteCurrentTuple(); // Inner loop for each row within batch
+      count++;
+    } while((check = operation->nextResult(false)) == 0); 
+    mCurrentTransaction->execute(NoCommit); // When no more rows in batch, exeute all defined deletes       
+  }
+
+  executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
+  close();
+  return count;
 }
 
 template<typename TableRow>
