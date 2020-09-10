@@ -370,7 +370,7 @@ public:
     int retry = 0;
     while(!xAttrKeys.first.empty()) {
       if(retry > 5) {
-        LOG_ERROR("cannot read xattrs");
+        LOG_ERROR("xattr are changing to fast - epipe cannot get a consistent read");
       }
       XAttrPartVec xattrsParts = doRead(connection, xAttrKeys.first);
       xAttrKeys = combineBatch(xattrsParts, xattrs, batchedMutations, xAttrKeys);
