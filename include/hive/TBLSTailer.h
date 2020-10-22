@@ -23,6 +23,8 @@
 #include "TableTailer.h"
 #include "tables/hive/TBLSTable.h"
 #include "tables/hive/SDSTable.h"
+#include "tables/hive/TABCOLSTATSTable.h"
+#include "tables/hive/TABLEPARAMSTable.h"
 
 class TBLSTailer : public TableTailer<TBLSRow> {
 public:
@@ -33,10 +35,14 @@ public:
 
 private:
   SDSTable mSDSTable;
+  TABLEPARAMSTable mTABLEPARAMSTable;
+  TABCOLSTATSTable mTABCOLSTATSTable;
 
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, TBLSRow
   pre, TBLSRow row) {
     LOG_INFO("Delete TBLS event received. Primary Key value: " << pre.mTBLID);
+    mTABLEPARAMSTable.remove(mNdbConnection, pre.mTBLID);
+    mTABCOLSTATSTable.remove(mNdbConnection, pre.mTBLID);
     mSDSTable.remove(mNdbConnection, pre.mSDID);
   }
 };

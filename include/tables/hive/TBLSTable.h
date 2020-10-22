@@ -25,6 +25,7 @@
 struct TBLSRow {
   Int64 mTBLID;
   Int64 mSDID;
+  Int64 mDBID;
 };
 
 class TBLSTable : public DBWatchTable<TBLSRow> {
@@ -35,6 +36,7 @@ public:
     addColumn("SD_ID");
     addColumn("VIEW_EXPANDED_TEXT");
     addColumn("VIEW_ORIGINAL_TEXT");
+    addColumn("DB_ID");
     addWatchEvent(NdbDictionary::Event::TE_DELETE);
   }
 
@@ -42,7 +44,24 @@ public:
     TBLSRow row;
     row.mTBLID = value[0]->int64_value();
     row.mSDID = value[1]->int64_value();
+    row.mDBID = value[4]->int64_value();
     return row;
+  }
+
+  void removeByDBID(Ndb *conn, Int64 DBID)
+  {
+    AnyMap key;
+    key[4] = DBID;
+    int count = deleteByIndex(conn, "TBLS_N49", key);
+    LOG_INFO("Removed " << count << " entries of TBLS for DB_ID: " << DBID);
+  }
+
+  void removeBySDID(Ndb *conn, Int64 SDID)
+  {
+    AnyMap key;
+    key[1] = SDID;
+    int count = deleteByIndex(conn, "TBLS_N50", key);
+    LOG_INFO("Removed " << count << " entries of TBLS for SD_ID: " << SDID);
   }
 };
 

@@ -24,6 +24,8 @@
 #include "tables/hive/SDSTable.h"
 #include "tables/hive/CDSTable.h"
 #include "tables/hive/SERDESTable.h"
+#include "tables/hive/SDPARAMSTable.h"
+#include "tables/hive/TBLSTable.h"
 
 class SDSTailer : public TableTailer<SDSRow> {
 public:
@@ -36,6 +38,8 @@ private:
   SDSTable mSDSTable;
   CDSTable mCDSTable;
   SERDESTable mSERDESTable;
+  TBLSTable mTBLSTable;
+  SDPARAMSTable mSDPARAMSTable;
 
   virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, SDSRow
   pre, SDSRow row) {
@@ -49,6 +53,9 @@ private:
     // This means that when the SD is deleted, also the SERDE entry goes away.
     // There is no possibility of duplicates.
     mSERDESTable.remove(mNdbConnection, pre.mSERDEID);
+
+    mTBLSTable.removeBySDID(mNdbConnection, pre.mSDID);
+    mSDPARAMSTable.remove(mNdbConnection, pre.mSDID);
   }
 };
 

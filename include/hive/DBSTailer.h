@@ -1,6 +1,6 @@
 /*
  * This file is part of ePipe
- * Copyright (C) 2019, Logical Clocks AB. All rights reserved
+ * Copyright (C) 2020, Logical Clocks AB. All rights reserved
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,40 +17,28 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef EPIPE_CDSTABLE_H
-#define EPIPE_CDSTABLE_H
+#ifndef DBSTAILER_H
+#define DBSTAILER_H
 
-#include "tables/DBWatchTable.h"
+#include "TableTailer.h"
+#include "tables/hive/DBSTable.h"
+#include "tables/hive/TBLSTable.h"
 
-struct CDSRow {
-  Int64 mCDID;
-};
-
-class CDSTable : public DBWatchTable<CDSRow> {
-
+class DBSTailer : public TableTailer<DBSRow> {
 public:
-  CDSTable() : DBWatchTable("CDS") {
-    addColumn("CD_ID");
-    addWatchEvent(NdbDictionary::Event::TE_DELETE);
-  }
+  DBSTailer(Ndb *ndb, const int poll_maxTimeToWait, const Barrier barrier)
+      : TableTailer(ndb, new DBSTable(), poll_maxTimeToWait, barrier) {}
 
-  CDSRow getRow(NdbRecAttr *value[]) {
-    CDSRow row;
-    row.mCDID = value[0]->int64_value();
-    return row;
-  }
+  virtual ~DBSTailer() {}
 
-  void remove(Ndb *conn, Int64 CDID) {
-    try {
-      start(conn);
-      doDelete(CDID);
-      LOG_DEBUG("Remove CDS entry with PK: " << CDID);
-      end();
-     }catch(NdbTupleDidNotExist& e){
-      LOG_DEBUG("Row was already deleted for CDS entry with PK: " << CDID);
-    }
+private:
+  TBLSTable mTBLSTable;
+
+  virtual void handleEvent(NdbDictionary::Event::TableEvent eventType, DBSRow pre,
+    DBSRow row) {
+    LOG_INFO("Delete DBS event received. Primary Key value: " << pre.mDBID);
+    mTBLSTable.removeByDBID(mNdbConnection, pre.mDBID);
   }
-  
 };
 
-#endif //EPIPE_CDSTABLE_H
+#endif /* DBSTAILER_H */

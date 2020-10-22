@@ -1,6 +1,6 @@
 /*
  * This file is part of ePipe
- * Copyright (C) 2019, Logical Clocks AB. All rights reserved
+ * Copyright (C) 2020, Logical Clocks AB. All rights reserved
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,38 +17,35 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef EPIPE_SERDESTABLE_H
-#define EPIPE_SERDESTABLE_H
+#ifndef EPIPE_SERDEPARAMSTABLE_H
+#define EPIPE_SERDEPARAMSTABLE_H
 
-#include "tables/DBWatchTable.h"
+#include "tables/DBTable.h"
 
-struct SERDESRow{
+struct SERDEPARAMSRow {
   Int64 mSERDEID;
 };
 
-class SERDESTable : public DBWatchTable<SERDESRow>{
+class SERDEPARAMSTable : public DBTable<SERDEPARAMSRow> {
 
 public:
-  SERDESTable() : DBWatchTable("SERDES"){
+  SERDEPARAMSTable() : DBTable("SERDE_PARAMS") {
     addColumn("SERDE_ID");
-    addWatchEvent(NdbDictionary::Event::TE_DELETE);
   }
 
-  SERDESRow getRow(NdbRecAttr* value[]){
-    SERDESRow row;
+  SERDEPARAMSRow getRow(NdbRecAttr *value[]) {
+    SERDEPARAMSRow row;
     row.mSERDEID = value[0]->int64_value();
     return row;
   }
 
-  void remove(Ndb* conn, Int64 pSERDEID) {
-    try {
-      start(conn);
-      doDelete(pSERDEID);
-      LOG_DEBUG("Remove SERDES entry with PK: " << pSERDEID);
-      end();
-    } catch(NdbTupleDidNotExist& e){
-      LOG_DEBUG("Row was already deleted for SERDES entry with PK: " << pSERDEID);
-    }
+  void remove(Ndb *conn, Int64 SERDEID)
+  {
+    AnyMap key;
+    key[0] = SERDEID;
+    int count = deleteByIndex(conn, "SERDE_PARAMS_N49", key);
+    LOG_INFO("Removed " << count << " entries of SERDE_PARAMS for SERDE_ID: " << SERDEID);
   }
 };
-#endif //EPIPE_SERDESTABLE_H
+
+#endif //EPIPE_SERDEPARAMSTABLE_H

@@ -1,6 +1,6 @@
 /*
  * This file is part of ePipe
- * Copyright (C) 2019, Logical Clocks AB. All rights reserved
+ * Copyright (C) 2020, Logical Clocks AB. All rights reserved
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,38 +17,28 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef EPIPE_SERDESTABLE_H
-#define EPIPE_SERDESTABLE_H
+#ifndef EPIPE_ISCHEMATABLE_H
+#define EPIPE_ISCHEMATABLE_H
 
 #include "tables/DBWatchTable.h"
 
-struct SERDESRow{
-  Int64 mSERDEID;
+struct ISCHEMARow {
+  Int64 mSCHEMAID;
 };
 
-class SERDESTable : public DBWatchTable<SERDESRow>{
+typedef std::vector<ISCHEMARow> ISCHEMAVec;
+class ISCHEMATable  : public DBWatchTable<ISCHEMARow>{
 
 public:
-  SERDESTable() : DBWatchTable("SERDES"){
-    addColumn("SERDE_ID");
+  ISCHEMATable() : DBWatchTable("I_SCHEMA"){
+    addColumn("SCHEMA_ID");
     addWatchEvent(NdbDictionary::Event::TE_DELETE);
   }
 
-  SERDESRow getRow(NdbRecAttr* value[]){
-    SERDESRow row;
-    row.mSERDEID = value[0]->int64_value();
+  ISCHEMARow getRow(NdbRecAttr* value[]){
+    ISCHEMARow row;
+    row.mSCHEMAID = value[0]->int64_value();
     return row;
   }
-
-  void remove(Ndb* conn, Int64 pSERDEID) {
-    try {
-      start(conn);
-      doDelete(pSERDEID);
-      LOG_DEBUG("Remove SERDES entry with PK: " << pSERDEID);
-      end();
-    } catch(NdbTupleDidNotExist& e){
-      LOG_DEBUG("Row was already deleted for SERDES entry with PK: " << pSERDEID);
-    }
-  }
 };
-#endif //EPIPE_SERDESTABLE_H
+#endif //EPIPE_ISCHEMATABLE_H
