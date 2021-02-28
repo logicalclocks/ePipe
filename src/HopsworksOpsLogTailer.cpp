@@ -21,7 +21,7 @@
 
 HopsworksOpsLogTailer::HopsworksOpsLogTailer(Ndb *ndb, Ndb *ndbRecovery, const int poll_maxTimeToWait, const Barrier barrier, ProjectsElasticSearch *elastic, const int lru_cap, const std::string search_index)
     : TableTailer(ndb, ndbRecovery, new HopsworksOpsLogTable(), poll_maxTimeToWait, barrier),
-      mElasticSearch(elastic), mProjectTable(lru_cap), mDatasetTable(lru_cap), mTemplateTable(lru_cap), mSearchIndex(search_index){
+      mElasticSearch(elastic), mProjectTable(lru_cap), mDatasetTable(lru_cap), mSearchIndex(search_index){
 }
 
 void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventType, HopsworksOpRow pre, HopsworksOpRow row){
@@ -36,9 +36,6 @@ void HopsworksOpsLogTailer::handleEvent(NdbDictionary::Event::TableEvent eventTy
     break;
   case Project:
     handleProject(arrivalTime, bulk, row);
-    break;
-  case Schema:
-    handleSchema(arrivalTime, bulk, row);
     break;
   }
   bulk.mEndProcessing = Utils::getCurrentTime();
@@ -73,22 +70,6 @@ void HopsworksOpsLogTailer::handleProject(ptime arrivalTime, eBulk &bulk, Hopswo
     eventType = logEvent.mOpType == HopsworksAdd ? eEvent::EventType::AddEvent : eEvent::EventType::UpdateEvent;
   }
   bulk.push(mHopsworksLogTable.getLogRemovalHandler(logEvent), arrivalTime, json, eventType, eEvent::AssetType::Project);
-}
-
-void HopsworksOpsLogTailer::handleSchema(ptime arrivalTime, eBulk &bulk, HopsworksOpRow logEvent){
-  if (logEvent.mOpType == HopsworksDelete){
-    boost::optional<TemplateRow> tmplate_ptr = mTemplateTable.get(mNdbConnection, logEvent.mOpId);
-    if (tmplate_ptr){
-      TemplateRow tmplate = tmplate_ptr.get();
-      std::string json = tmplate.to_delete_json(mSearchIndex, logEvent.mInodeId);
-      bulk.push(mHopsworksLogTable.getLogRemovalHandler(logEvent), arrivalTime, json, eEvent::EventType::DeleteEvent, eEvent::AssetType::INode);
-    } else {
-      LOG_WARN("Schema/Template [" << logEvent.mOpId << "] does not exist");
-    }
-  }else{
-    LOG_ERROR("Unsupported Schema Operation [" << HopsworksOpTypeToStr(logEvent.mOpType)
-                                               << "]. Only Delete is supported.");
-  }
 }
 
 HopsworksOpsLogTailer::~HopsworksOpsLogTailer(){

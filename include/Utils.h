@@ -30,8 +30,8 @@ typedef boost::posix_time::ptime ptime;
 typedef Ndb* SConn;
 
 struct MConn {
-  SConn inodeConnection;
-  SConn metadataConnection;
+  SConn hopsConnection;
+  SConn hopsworksConnection;
 };
 
 namespace Utils {

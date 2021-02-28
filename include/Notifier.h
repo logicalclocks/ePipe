@@ -21,10 +21,8 @@
 #define NOTIFIER_H
 
 #include "FsMutationsBatcher.h"
-#include "SchemabasedMetadataBatcher.h"
 #include "ProjectsElasticSearch.h"
 #include "HopsworksOpsLogTailer.h"
-#include "MetadataLogTailer.h"
 #include "ClusterConnectionBase.h"
 #include "hive/TBLSTailer.h"
 #include "hive/SDSTailer.h"
@@ -46,7 +44,7 @@ class Notifier : public ClusterConnectionBase {
 public:
   Notifier(const char* connection_string, const char* database_name,
           const char* meta_database_name, const char* hive_meta_database_name,
-          const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu,const TableUnitConf provenance_tu,
+          const TableUnitConf mutations_tu,const TableUnitConf provenance_tu,
           const int poll_maxTimeToWait, const HttpClientConfig elastic_client_config, const bool hopsworks,
           const std::string elastic_search_index, const std::string elastic_featurestore_index,
           const std::string elastic_app_provenance_index,
@@ -60,7 +58,6 @@ public:
 private:
 
   const TableUnitConf mMutationsTU;
-  const TableUnitConf mSchemabasedTU;
   const TableUnitConf mFileProvenanceTU;
   const TableUnitConf mAppProvenanceTU;
 
@@ -86,11 +83,6 @@ private:
   FsMutationsTableTailer* mFsMutationsTableTailer;
   FsMutationsDataReaders* mFsMutationsDataReaders;
   FsMutationsBatcher* mFsMutationsBatcher;
-
-  MetadataLogTailer* mMetadataLogTailer;
-
-  SchemabasedMetadataReaders* mSchemabasedMetadataReaders;
-  SchemabasedMetadataBatcher* mSchemabasedMetadataBatcher;
 
   HopsworksOpsLogTailer* mhopsworksOpsLogTailer;
 

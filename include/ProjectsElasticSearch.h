@@ -23,6 +23,7 @@
 #include "ElasticSearchBase.h"
 #include "FsMutationsTableTailer.h"
 #include "MetricsMovingCounters.h"
+#include "tables/HopsworksOpsLogTable.h"
 
 class ProjectsElasticSearch : public ElasticSearchBase{
 public:

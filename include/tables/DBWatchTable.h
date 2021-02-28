@@ -34,7 +34,6 @@ struct EpochsRowsMap{
 
 enum LogType{
   FSLOG,
-  METALOG,
   PROVAPPLOG,
   PROVFILELOG,
   HOPSWORKSLOG

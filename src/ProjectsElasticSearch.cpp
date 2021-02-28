@@ -18,7 +18,6 @@
  */
 
 #include "ProjectsElasticSearch.h"
-#include "MetadataLogTailer.h"
 
 using namespace Utils;
 
@@ -34,7 +33,7 @@ ProjectsElasticSearch::ProjectsElasticSearch(const HttpClientConfig elastic_clie
 void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
   std::vector<const LogHandler*> logRHandlers;
   std::string batch;
-  int fslogs=0, metalogs=0, hopsworkslogs=0;
+  int fslogs=0, hopsworkslogs=0;
   for (auto it = bulks->begin(); it != bulks->end();++it) {
     eBulk bulk = *it;
     LOG_DEBUG(bulk.toString());
@@ -42,7 +41,6 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
     logRHandlers.insert(logRHandlers.end(), bulk.mLogHandlers.begin(),
         bulk.mLogHandlers.end());
     fslogs += bulk.getCount(LogType::FSLOG);
-    metalogs += bulk.getCount(LogType::METALOG);
     hopsworkslogs += bulk.getCount(LogType::HOPSWORKSLOG);
     if(mStats){
       mCounters->bulkReceived(bulk);
@@ -51,16 +49,12 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
 
   ptime start_time = Utils::getCurrentTime();
   if (httpPostRequest(mElasticBulkAddr, batch).mSuccess) {
-    if (metalogs > 0) {
-      MetadataLogTable().removeLogs(mConn.metadataConnection, logRHandlers);
-    }
-
     if (fslogs > 0) {
-      FsMutationsLogTable().removeLogs(mConn.inodeConnection, logRHandlers);
+      FsMutationsLogTable().removeLogs(mConn.hopsConnection, logRHandlers);
     }
 
     if(hopsworkslogs > 0){
-      HopsworksOpsLogTable().removeLogs(mConn.metadataConnection, logRHandlers);
+      HopsworksOpsLogTable().removeLogs(mConn.hopsworksConnection, logRHandlers);
     }
 
     if (mStats) {
@@ -86,9 +80,9 @@ void ProjectsElasticSearch::process(std::vector<eBulk>* bulks) {
 bool ProjectsElasticSearch::bulkRequest(eEvent& event) {
   if (httpPostRequest(mElasticBulkAddr, event.getJSON()).mSuccess){
     if(event.getLogHandler()->getType() == LogType::FSLOG){
-      event.getLogHandler()->removeLog(mConn.inodeConnection);
-    }else if(event.getLogHandler()->getType() == LogType::METALOG || event.getLogHandler()->getType() == LogType::HOPSWORKSLOG){
-      event.getLogHandler()->removeLog(mConn.metadataConnection);
+      event.getLogHandler()->removeLog(mConn.hopsConnection);
+    }else if(event.getLogHandler()->getType() == LogType::HOPSWORKSLOG){
+      event.getLogHandler()->removeLog(mConn.hopsworksConnection);
     }
     return true;
   }
