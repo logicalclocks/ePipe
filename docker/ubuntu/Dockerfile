@@ -49,7 +49,7 @@ make install
 
 RUN echo Installing MySQL Cluster; \
 cd /usr/local; \
-wget --progress=bar:force https://cdn.mysql.com//Downloads/MySQL-Cluster-${ndb_version_family}/mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
+wget --progress=bar:force https://repo.hops.works/master/mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
 tar xzf mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
 mkdir -p mysql/lib; \
 cp -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64/include mysql/; \

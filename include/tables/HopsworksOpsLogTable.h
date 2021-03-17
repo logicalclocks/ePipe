@@ -30,8 +30,7 @@ enum HopsworksOpType {
 
 enum OpsLogOn {
   Dataset = 0,
-  Project = 1,
-  Schema = 2
+  Project = 1
 };
 
 inline static const char* OpsLogOnToStr(OpsLogOn op) {
@@ -40,8 +39,6 @@ inline static const char* OpsLogOnToStr(OpsLogOn op) {
       return "Dataset";
     case Project:
       return "Project";
-    case Schema:
-      return "Schema";
     default:
       return "Unkown";
   }
@@ -118,7 +115,7 @@ public:
   HopsworksOpRow getRow(NdbRecAttr* value[]) {
     HopsworksOpRow row;
     row.mId = value[0]->int32_value();
-    //op_id is the dataset_id or project_id or schema_id depending on the operation type
+    //op_id is the dataset_id or project_id depending on the operation type
     row.mOpId = value[1]->int32_value();
     row.mOpOn = static_cast<OpsLogOn> (value[2]->int8_value());
     row.mOpType = static_cast<HopsworksOpType> (value[3]->int8_value());

@@ -27,15 +27,15 @@ FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopswo
 void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, eBulk&
 bulk) {
 
-  INodeMap inodes = mInodesTable.get(mNdbConnection.inodeConnection, data_batch);
-  XAttrMap xattrs = mXAttrTable.get(mNdbConnection.inodeConnection, data_batch);
+  INodeMap inodes = mInodesTable.get(mNdbConnection.hopsConnection, data_batch);
+  XAttrMap xattrs = mXAttrTable.get(mNdbConnection.hopsConnection, data_batch);
   if (mHopsworksEnabled) {
     ULSet dataset_inode_ids;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
       dataset_inode_ids.insert(row.mDatasetINodeId);
     }
-    mDatasetTable.loadProjectIds(mNdbConnection.metadataConnection, dataset_inode_ids, mProjectTable);
+    mDatasetTable.loadProjectIds(mNdbConnection.hopsworksConnection, dataset_inode_ids, mProjectTable);
   }
   createJSON(data_batch, inodes, xattrs, bulk);
 }

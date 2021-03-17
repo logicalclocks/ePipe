@@ -25,7 +25,6 @@
 #include "tables/HopsworksOpsLogTable.h"
 #include "tables/ProjectTable.h"
 #include "tables/DatasetTable.h"
-#include "tables/MetaTemplateTable.h"
 
 class HopsworksOpsLogTailer : public TableTailer<HopsworksOpRow> {
 public:
@@ -39,13 +38,11 @@ private:
 
   void handleDataset(ptime arrivalTime, eBulk &bulk, HopsworksOpRow logEvent);
   void handleProject(ptime arrivalTime, eBulk &bulk, HopsworksOpRow logEvent);
-  void handleSchema(ptime arrivalTime, eBulk &bulk, HopsworksOpRow logEvent);
-  
+
   ProjectsElasticSearch* mElasticSearch;
 
   ProjectTable mProjectTable;
   DatasetTable mDatasetTable;
-  MetaTemplateTable mTemplateTable;
   std::string mSearchIndex;
 };
 

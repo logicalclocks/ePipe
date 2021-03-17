@@ -21,7 +21,8 @@
 #define EPIPE_XATTRTABLE_H
 #include "DBTable.h"
 #include "FsMutationsLogTable.h"
-#include "MetadataLogTable.h"
+
+#define XATTR_FIELD_NAME "xattr"
 
 struct XAttrPartKey {
   Int64 mInodeId;

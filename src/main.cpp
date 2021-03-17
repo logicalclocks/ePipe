@@ -38,7 +38,6 @@ int main(int argc, char** argv) {
     LogSeverityLevel log_level = LogSeverityLevel::info;
 
     TableUnitConf mutations_tu = TableUnitConf();
-    TableUnitConf schamebased_tu = TableUnitConf();
     TableUnitConf provenance_tu = TableUnitConf();
 
     bool hopsworks = true;
@@ -99,10 +98,6 @@ int main(int argc, char** argv) {
         ("fs_mutations_tu",
          po::value<std::vector<int> >()->default_value(mutations_tu.getVector(),
                                                   mutations_tu.getString())->multitoken(),
-         "WAIT_TIME BATCH_SIZE NUM_READERS")
-        ("schamebased_tu",
-         po::value<std::vector<int> >()->default_value(schamebased_tu.getVector(),
-                                                  schamebased_tu.getString())->multitoken(),
          "WAIT_TIME BATCH_SIZE NUM_READERS")
         ("provenance_tu",
          po::value<std::vector<int> >()->default_value(provenance_tu.getVector(),
@@ -190,10 +185,6 @@ int main(int argc, char** argv) {
       mutations_tu.update(vm["fs_mutations_tu"].as<std::vector<int> >());
     }
 
-    if (vm.count("schamebased_tu")) {
-      schamebased_tu.update(vm["schamebased_tu"].as<std::vector<int> >());
-    }
-
     if (vm.count("provenance_tu")) {
       provenance_tu.update(vm["provenance_tu"].as<std::vector<int> >());
     }
@@ -251,8 +242,7 @@ int main(int argc, char** argv) {
                                        database_name.c_str(),
                                        meta_database_name.c_str(),
                                        hive_meta_database_name.c_str(),
-                                       mutations_tu, schamebased_tu,
-                                       provenance_tu,
+                                       mutations_tu, provenance_tu,
                                        poll_maxTimeToWait, config,
                                        hopsworks, elastic_index, elastic_featurestore_index,
                                        elastic_app_provenance_index,
