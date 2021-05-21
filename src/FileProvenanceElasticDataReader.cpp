@@ -529,6 +529,11 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
   if(datasetProvCoreRow) {
     std::pair<FileProvenanceConstants::ProvOpStoreType, Int64> pc = FileProvenanceConstants::provCore(datasetProvCoreRow.get().mValue);
     datasetProvCore = pc.first;
+    if(row.mProjectId == -1 && projectExists(pc.second, row.mTimestamp)) {
+      //row.mProjectId == -1 means this op comes from hive - thus we couldn't detect the project from path
+      //fix project name - project name is deduced from dataset name and there the project name is lowercased
+      row.mProjectName = FileProvCache::getInstance().getProjectName(pc.second);
+    }
     row.mProjectId = pc.second;
   } else {
     //if no dataset prov core - probably dataset was deleted and processed already - we default to logging the operation
@@ -550,10 +555,6 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
   switch (fileOp) {
     case FileProvenanceConstantsRaw::Operation::OP_CREATE: {
       if(!skipElasticOp) {
-        if(mlAux.first == FileProvenanceConstants::MLType::HIVE || mlAux.first == FileProvenanceConstants::MLType::FEATURE) {
-          //fix project name - in hive&hops, project name is deduced from dataset name and there the project name is lowercased
-          row.mProjectName = FileProvCache::getInstance().getProjectName(row.mProjectId);
-        }
         switch (mlAux.first) {
           case FileProvenanceConstants::MLType::DATASET:
           case FileProvenanceConstants::MLType::HIVE:
