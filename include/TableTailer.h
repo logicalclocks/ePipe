@@ -346,7 +346,7 @@ void TableTailer<TableRow>::waitForEvents() {
       ptime curr = Utils::getCurrentTime(); 
       if(Utils::getTimeDiffInMilliseconds(lastConnectionCheckTime, curr) > (mPollMaxTimeToWait * 5)){
         NdbDictionary::Dictionary::List myList;
-        if(myDict->listIndexes(myList, mTable->getName())){
+        if(myDict->listIndexes(myList, mTable->getName().c_str())){
           LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
         }
         LOG_INFO("XXX -- got list of indexes -  " << myList.count << " for " << mTable->getName());
