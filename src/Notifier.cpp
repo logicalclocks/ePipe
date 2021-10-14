@@ -282,11 +282,11 @@ void Notifier::setup() {
 void Notifier::connectionCheck(){
   NdbDictionary::Dictionary *myDict = mTestConnection->getDictionary();
   NdbDictionary::Dictionary::List myList;
-  const char* mutation_log_table = FsMutationsLogTable().getName().c_str();
   while (true) {
-    LOG_TRACE("monitor database connection " << mutation_log_table);
-    if(myDict->listIndexes(myList, mutation_log_table)){
-      LOG_NDB_API_FATAL(mutation_log_table, myDict->getNdbError());
+    const char* table_name = FsMutationsLogTable().getName().c_str();
+    LOG_TRACE("monitor database connection " << table_name);
+    if(myDict->listIndexes(myList, table_name)){
+      LOG_NDB_API_FATAL(table_name, myDict->getNdbError());
     }
     LOG_TRACE("got indexes --- " << myList.count);
     boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait * 10));
