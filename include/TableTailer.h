@@ -357,22 +357,6 @@ void TableTailer<TableRow>::waitForEvents() {
 
 template<typename TableRow>
 const char* TableTailer<TableRow>::getEventState(NdbEventOperation::State state) {
-
-  NdbDictionary::Dictionary::List myList;
-  if(myDict->listEvents(myList)){
-    LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
-  }
-
-  bool exists = false;
-  for (unsigned int i = 0; i < myList.count; i++) {
-    if(strcmp(mEventName.c_str(), myList.elements[i].name) == 0){
-      exists = true;
-      break;
-    }
-  }
-
-  LOG_TRACE("xxxx - num of events " << myList.count << " -- " << exists);
-  
   switch (state) {
     case NdbEventOperation::State::EO_CREATED:
       return "EO_CREATED";
