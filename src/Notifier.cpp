@@ -283,10 +283,9 @@ void Notifier::connectionCheck(){
   NdbDictionary::Dictionary *myDict = mTestConnection->getDictionary();
   NdbDictionary::Dictionary::List myList;
   while (true) {
-    const char* table_name = FsMutationsLogTable().getName().c_str();
-    LOG_TRACE("monitor database connection " << table_name);
-    if(myDict->listIndexes(myList, table_name)){
-      LOG_NDB_API_FATAL(table_name, myDict->getNdbError());
+    LOG_TRACE("monitor database connection");
+    if(myDict->listIndexes(myList, "hdfs_metadata_log")){
+      LOG_NDB_API_FATAL("hdfs_metadata_log", myDict->getNdbError());
     }
     LOG_TRACE("got indexes --- " << myList.count);
     boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait * 10));

@@ -42,7 +42,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include "tables/FsMutationsLogTable.h"
 
 class Notifier : public ClusterConnectionBase {
 public:
