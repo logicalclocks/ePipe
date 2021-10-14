@@ -256,6 +256,7 @@ void TableTailer<TableRow>::removeListenerEvent() {
 
 template<typename TableRow>
 void TableTailer<TableRow>::waitForEvents() {
+  NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
   NdbEventOperation* op;
   LOG_INFO("create EventOperation for [" << mEventName << "]");
   if ((op = mNdbConnection->createEventOperation(mEventName.c_str())) == NULL)
@@ -275,10 +276,9 @@ void TableTailer<TableRow>::waitForEvents() {
   if (op->execute())
     LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
   while (true) {
-
-    LOG_TRACE("xxx --- pollEvents " << getEventState(op->getState()));
+    //LOG_TRACE("xxx --- pollEvents " << getEventState(op->getState()));
     int r = mNdbConnection->pollEvents2(mPollMaxTimeToWait);
-    LOG_TRACE("xxx --- got events "<< r << " " << getEventState(op->getState()));
+    //LOG_TRACE("xxx --- got events "<< r << " " << getEventState(op->getState()));
 
     if (mFirstEpochToWatch == 0) {
       std::unique_lock<std::mutex> lk(mFirstEpochMutex);
@@ -340,6 +340,14 @@ void TableTailer<TableRow>::waitForEvents() {
         }
 
       }
+    } else if (r == 0){
+      // no events so try to connect to database to ensure it is alive
+      NdbDictionary::Dictionary::List myList;
+      if(myDict->listEvents(myList)){
+        LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
+      }
+    } else {
+      LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
     }
     //        boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait));
     checkIfBarrierReached(mNdbConnection->getHighestQueuedEpoch());
@@ -349,7 +357,6 @@ void TableTailer<TableRow>::waitForEvents() {
 
 template<typename TableRow>
 const char* TableTailer<TableRow>::getEventState(NdbEventOperation::State state) {
-  NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
 
   NdbDictionary::Dictionary::List myList;
   if(myDict->listEvents(myList)){
