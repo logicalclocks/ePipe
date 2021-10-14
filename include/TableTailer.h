@@ -351,14 +351,14 @@ template<typename TableRow>
 const char* TableTailer<TableRow>::getEventState(NdbEventOperation::State state) {
   NdbDictionary::Dictionary *myDict = mNdbConnection->getDictionary();
 
-  NdbDictionary::Dictionary::List *myList;
+  NdbDictionary::Dictionary::List myList;
   if(myDict->listEvents(myList)){
     LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
   }
 
-  LOG_TRACE("xxxx - num of events " << myList->count);
-  for (unsigned int i = 0; i < myList->count; i++) {
-    LOG_TRACE("xxxx - num of events i " << i << " -- " << myList->elements[i]->name << " db " << myList->elements[i]->database << " s " << myList->elements[i]->schema);
+  LOG_TRACE("xxxx - num of events " << myList.count);
+  for (unsigned int i = 0; i < myList.count; i++) {
+    LOG_TRACE("xxxx - num of events i " << i << " -- " << myList.elements[i].name << " db " << myList.elements[i].database << " s " << myList.elements[i].schema);
   }
 
   switch (state) {
