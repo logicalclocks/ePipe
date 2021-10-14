@@ -349,7 +349,7 @@ void TableTailer<TableRow>::waitForEvents() {
         if(myDict->listIndexes(myList, mTable->getName())){
           LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
         }
-        LOG_INFO("XXX -- got list of indexes -  " << mList.count << " for " << mTable->getName());
+        LOG_INFO("XXX -- got list of indexes -  " << myList.count << " for " << mTable->getName());
         lastConnectionCheckTime = curr;
       }
     } else {
