@@ -359,6 +359,7 @@ const char* TableTailer<TableRow>::getEventState(NdbEventOperation::State state)
     case NdbEventOperation::State::EO_ERROR:
       return "EO_ERROR";
   }
+  return "UNKOWN";
 }
 
 
