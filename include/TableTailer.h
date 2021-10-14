@@ -343,9 +343,10 @@ void TableTailer<TableRow>::waitForEvents() {
     } else if (r == 0){
       // no events so try to connect to database to ensure it is alive
       NdbDictionary::Dictionary::List myList;
-      if(myDict->listEvents(myList)){
+      if(myDict->listIndexes(myList, mTable->getName())){
         LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
       }
+      LOG_INFO("XXX -- got list of indexes -  " << mList.count << " for " << mTable->getName());
     } else {
       LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
     }
