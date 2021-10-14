@@ -284,7 +284,7 @@ void Notifier::connectionCheck(){
   NdbDictionary::Dictionary::List myList;
   const char* mutation_log_table = FsMutationsLogTable().getName().c_str();
   while (true) {
-    LOG_TRACE("monitor database connection");
+    LOG_TRACE("monitor database connection " << mutation_log_table);
     if(myDict->listIndexes(myList, mutation_log_table)){
       LOG_NDB_API_FATAL(mutation_log_table, myDict->getNdbError());
     }
