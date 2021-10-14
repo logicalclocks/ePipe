@@ -94,6 +94,9 @@ private:
   boost::unordered_map<Uint64, std::queue<DeferredEvent>> mEventsDuringRecovery;
   boost::unordered_set<std::string> mEventsPKDuringRecovery;
   boost::unordered_set<Uint64> mEpochsDuringRecovery;
+
+  const char* getEventState(NdbEventOperation::State state);
+
 };
 
 template<typename TableRow>
@@ -272,9 +275,10 @@ void TableTailer<TableRow>::waitForEvents() {
   if (op->execute())
     LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
   while (true) {
-    LOG_TRACE("xxx --- pollEvents");
+
+    LOG_TRACE("xxx --- pollEvents " << getEventState(op->getState()));
     int r = mNdbConnection->pollEvents2(mPollMaxTimeToWait);
-    LOG_TRACE("xxx --- got events "<< r);
+    LOG_TRACE("xxx --- got events "<< r << " " << getEventState(op->getState()));
 
     if (mFirstEpochToWatch == 0) {
       std::unique_lock<std::mutex> lk(mFirstEpochMutex);
@@ -342,6 +346,21 @@ void TableTailer<TableRow>::waitForEvents() {
   }
 
 }
+
+template<typename TableRow>
+const char* TableTailer<TableRow>::getEventState(NdbEventOperation::State state) {
+  switch (state) {
+    case NdbEventOperation::State::EO_CREATED:
+      return "EO_CREATED";
+    case NdbEventOperation::State::EO_EXECUTING:
+      return "EO_EXECUTING";
+    case NdbEventOperation::State::EO_DROPPED:
+      return "EO_EXECUTING";
+    case NdbEventOperation::State::EO_ERROR:
+      return "EO_ERROR";
+  }
+}
+
 
 template<typename TableRow>
 const char* TableTailer<TableRow>::getEventName(NdbDictionary::Event::TableEvent event) {
