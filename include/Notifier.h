@@ -115,9 +115,9 @@ private:
   MetricsProviders* mMetricsProviders;
   void setup();
 
-  boost::thread mTestThread;
-  void testThread();
   Ndb * mTestConnection;
+  boost::thread mConnectionChecker;
+  void connectionCheck();
 };
 
 #endif /* NOTIFIER_H */

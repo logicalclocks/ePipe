@@ -272,7 +272,9 @@ void TableTailer<TableRow>::waitForEvents() {
   if (op->execute())
     LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
   while (true) {
+    LOG_TRACE("xxx --- pollEvents");
     int r = mNdbConnection->pollEvents2(mPollMaxTimeToWait);
+    LOG_TRACE("xxx --- got events "<< r);
 
     if (mFirstEpochToWatch == 0) {
       std::unique_lock<std::mutex> lk(mFirstEpochMutex);

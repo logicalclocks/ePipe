@@ -128,6 +128,8 @@ void Notifier::start() {
     mSkewedLocTailer->waitToFinish();
     mSkewedValuesTailer->waitToFinish();
   }
+
+  mConnectionChecker.join();
 }
 
 void Notifier::setup() {
@@ -274,17 +276,16 @@ void Notifier::setup() {
   }
 
   mTestConnection = create_ndb_connection(mDatabaseName);
-  mTestThread = boost::thread(&Notifier::testThread, this);
+  mConnectionChecker = boost::thread(&Notifier::connectionCheck, this);
 }
 
-void Notifier::testThread(){
-  INodeTable table(10);
+void Notifier::connectionCheck(){
+  /*INodeTable table(10);
   while (true) {
-    LOG_INFO("XXXX -- test thread running --- ");
-    INodeRow row = table.get(mTestConnection, 3, "hdfs", 3);
-    LOG_INFO("XXXX inode " << row.mId << " user " << row.mUserId <<  " group " << row.mGroupId);
+    LOG_TRACE("monitor database connection");
+    table.get(mTestConnection, 0, "", 0);
     boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
-  }
+  }*/
 }
 
 Notifier::~Notifier() {
