@@ -280,12 +280,17 @@ void Notifier::setup() {
 }
 
 void Notifier::connectionCheck(){
-  /*INodeTable table(10);
+  NdbDictionary::Dictionary *myDict = mTestConnection->getDictionary();
+  NdbDictionary::Dictionary::List myList;
+  const char* mutation_log_table = FsMutationsLogTable().getName().c_str();
   while (true) {
     LOG_TRACE("monitor database connection");
-    table.get(mTestConnection, 0, "", 0);
-    boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
-  }*/
+    if(myDict->listIndexes(myList, mutation_log_table)){
+      LOG_NDB_API_FATAL(mutation_log_table, myDict->getNdbError());
+    }
+    LOG_TRACE("got indexes --- " << myList.count);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait * 10));
+  }
 }
 
 Notifier::~Notifier() {

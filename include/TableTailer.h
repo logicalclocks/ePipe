@@ -341,7 +341,7 @@ void TableTailer<TableRow>::waitForEvents() {
         }
 
       }
-    } else if (r == 0){
+    } /*else if (r == 0){
       // no events so try to connect to database to ensure it is alive
       ptime curr = Utils::getCurrentTime(); 
       if(Utils::getTimeDiffInMilliseconds(lastConnectionCheckTime, curr) > (mPollMaxTimeToWait * 5)){
@@ -354,7 +354,7 @@ void TableTailer<TableRow>::waitForEvents() {
       }
     } else {
       LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
-    }
+    }*/
     //        boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait));
     checkIfBarrierReached(mNdbConnection->getHighestQueuedEpoch());
   }
