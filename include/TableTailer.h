@@ -358,7 +358,7 @@ const char* TableTailer<TableRow>::getEventState(NdbEventOperation::State state)
 
   bool exists = false;
   for (unsigned int i = 0; i < myList.count; i++) {
-    if(strcmp((mEventName.c_str(), myList.elements[i].name) == 0){
+    if(strcmp(mEventName.c_str(), myList.elements[i].name) == 0){
       exists = true;
       break;
     }
