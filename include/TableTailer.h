@@ -272,13 +272,14 @@ void TableTailer<TableRow>::waitForEvents() {
   }
 
   LOG_INFO("Execute");
+  ptime lastConnectionCheckTime = Utils::getCurrentTime();
   // This starts changes to "start flowing"
   if (op->execute())
     LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
   while (true) {
-    //LOG_TRACE("xxx --- pollEvents " << getEventState(op->getState()));
+    LOG_TRACE("xxx --- pollEvents " << getEventState(op->getState()));
     int r = mNdbConnection->pollEvents2(mPollMaxTimeToWait);
-    //LOG_TRACE("xxx --- got events "<< r << " " << getEventState(op->getState()));
+    LOG_TRACE("xxx --- got events "<< r << " " << getEventState(op->getState()));
 
     if (mFirstEpochToWatch == 0) {
       std::unique_lock<std::mutex> lk(mFirstEpochMutex);
@@ -342,11 +343,15 @@ void TableTailer<TableRow>::waitForEvents() {
       }
     } else if (r == 0){
       // no events so try to connect to database to ensure it is alive
-      NdbDictionary::Dictionary::List myList;
-      if(myDict->listIndexes(myList, mTable->getName())){
-        LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
+      ptime curr = Utils::getCurrentTime(); 
+      if(Utils::getTimeDiffInMilliseconds(lastConnectionCheckTime, curr) > (mPollMaxTimeToWait * 5)){
+        NdbDictionary::Dictionary::List myList;
+        if(myDict->listIndexes(myList, mTable->getName())){
+          LOG_NDB_API_FATAL(mTable->getName(), myDict->getNdbError());
+        }
+        LOG_INFO("XXX -- got list of indexes -  " << mList.count << " for " << mTable->getName());
+        lastConnectionCheckTime = curr;
       }
-      LOG_INFO("XXX -- got list of indexes -  " << mList.count << " for " << mTable->getName());
     } else {
       LOG_NDB_API_FATAL(mTable->getName(), op->getNdbError());
     }
