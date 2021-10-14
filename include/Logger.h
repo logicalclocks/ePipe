@@ -44,7 +44,7 @@ enum LogSeverityLevel
 #define LOG_INFO(msg)  Logger::info(FORMAT(msg))
 #define LOG_WARN(msg)  Logger::warn(FORMAT(msg))
 #define LOG_ERROR(msg) Logger::error(FORMAT(msg))
-#define LOG_FATAL(msg) Logger::fatal(FORMAT(msg))
+#define LOG_FATAL(msg) Logger::warn(FORMAT(msg))
 #define LOG_NDB_API_FATAL(ctx, error) \
         LOG_FATAL(ctx << " - got error code: " << error.code << ", msg: " << error.message << ".")
 
