@@ -275,7 +275,6 @@ void Notifier::setup() {
 
   mTestConnection = create_ndb_connection(mDatabaseName);
   mTestThread = boost::thread(&Notifier::testThread, this);
-  mTestThread.start();
 }
 
 void Notifier::testThread(){
