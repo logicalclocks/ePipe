@@ -272,6 +272,20 @@ void Notifier::setup() {
     mMetricsProviders = new MetricsProviders(providers);
     mHttpServer = new HttpServer(mMetricsServer, *mMetricsProviders);
   }
+
+  mTestConnection = create_ndb_connection(mDatabaseName);
+  mTestThread = boost::thread(&Notifier::testThread, this);
+  mTestThread.start();
+}
+
+void Notifier::testThread(){
+  INodeTable table(10);
+  while (true) {
+    LOG_INFO("XXXX -- test thread running --- ");
+    INodeRow row = table.get(mTestConnection, 3, "hdfs", 3);
+    LOG_INFO("XXXX inode " << row.mId << " user " << row.mUserId <<  " group " << row.mGroupId);
+    boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
+  }
 }
 
 Notifier::~Notifier() {

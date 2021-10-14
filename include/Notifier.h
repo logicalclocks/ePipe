@@ -40,6 +40,10 @@
 #include "AppProvenanceElastic.h"
 #include "AppProvenanceElasticDataReader.h"
 
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include "tables/INodeTable.h"
+
 class Notifier : public ClusterConnectionBase {
 public:
   Notifier(const char* connection_string, const char* database_name,
@@ -110,6 +114,10 @@ private:
   HttpServer* mHttpServer;
   MetricsProviders* mMetricsProviders;
   void setup();
+
+  boost::thread mTestThread;
+  void testThread();
+  Ndb * mTestConnection;
 };
 
 #endif /* NOTIFIER_H */
