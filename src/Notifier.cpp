@@ -128,6 +128,8 @@ void Notifier::start() {
     mSkewedLocTailer->waitToFinish();
     mSkewedValuesTailer->waitToFinish();
   }
+
+  mConnectionChecker.join();
 }
 
 void Notifier::setup() {
@@ -271,6 +273,20 @@ void Notifier::setup() {
     }
     mMetricsProviders = new MetricsProviders(providers);
     mHttpServer = new HttpServer(mMetricsServer, *mMetricsProviders);
+  }
+
+  mTestConnection = create_ndb_connection(mDatabaseName);
+  mConnectionChecker = boost::thread(&Notifier::connectionCheck, this);
+}
+
+void Notifier::connectionCheck(){
+  NdbDictionary::Dictionary *myDict = mTestConnection->getDictionary();
+  NdbDictionary::Dictionary::List myList;
+  while (true) {
+    if(myDict->listIndexes(myList, "hdfs_metadata_log")){
+      LOG_NDB_API_FATAL("hdfs_metadata_log", myDict->getNdbError());
+    }
+    boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait * 20));
   }
 }
 
