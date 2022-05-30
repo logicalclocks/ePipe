@@ -28,7 +28,7 @@ rm -r cmake-${cmake_version}*
 
 RUN echo Installing Boost; \
 BOOST_V=`echo ${boost_version} | sed s/'\.'/'_'/g`; \
-wget --progress=bar:force https://dl.bintray.com/boostorg/release/${boost_version}/source/boost_${BOOST_V}.tar.gz; \
+wget --progress=bar:force https://boostorg.jfrog.io/artifactory/main/release/${boost_version}/source/boost_${BOOST_V}.tar.gz; \
 tar xzf boost_${BOOST_V}.tar.gz; \
 cd boost_${BOOST_V}; \
 ./bootstrap.sh; \
