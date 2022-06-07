@@ -33,6 +33,7 @@ FeaturestoreReindexer::FeaturestoreReindexer(const char* connection_string, cons
         mFeaturestoreIndex(featurestore_index), mLRUCap(lru_cap) {
   mElasticSearch = new ProjectsElasticSearch(elastic_client_config, elastic_issue_time, elastic_batch_size, false, MConn());
 }
+
 void FeaturestoreReindexer::run() {
   ptime start = Utils::getCurrentTime();
   mElasticSearch->start();
@@ -58,21 +59,25 @@ void FeaturestoreReindexer::run() {
       projectNames[dataset.mProjectId] = pRow.mInodeName;
     }
     std::string projectName = projectNames[dataset.mProjectId];
-
-    std::string docType = FileProvenanceConstants::isPartOfFeaturestore(dataset.mInodeId, dataset.mInodeId, projectName, dataset.mInodeName);
-    if (docType != DONT_EXIST_STR()) {
-      LOG_INFO("dataset:" << dataset.mInodeName << " has " << docType << "s");
-      //this is a featurestore doc - featuregroup or trainingdataset
-      //The partition id is the parent id for all files and directories under project subtree
-      INodeVec inodes = inodesTable.getByParentId(conn, dataset.mInodeId, dataset.mInodeId);
-      for (INodeVec::iterator it = inodes.begin(); it != inodes.end(); ++it) {
-        INodeRow inode = *it;
+    INodeVec inodes = inodesTable.getByParentId(conn, dataset.mInodeId, dataset.mInodeId);
+    for (INodeVec::iterator it = inodes.begin(); it != inodes.end(); ++it) {
+      INodeRow inode = *it;
+      std::string docType = FileProvenanceConstants::getFeatureStoreArtifact(conn, inodesTable, projectName, dataset.mInodeName, inode.mName, dataset.mInodeId, inode.mParentId);
+      if (docType != DONT_EXIST_STR()) {
+        LOG_INFO("dataset:" << dataset.mInodeName << " has " << docType << "s");
+        //this is a featurestore doc - featuregroup, featureview or trainingdataset
+        //The partition id is the parent id for all files and directories under project subtree
         boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(inode.mName);
         if (nameParts) {
           eBulk bulk;
-          LOG_INFO("featurestore type:" << docType << " name:" << nameParts.get().first << " version:" << std::to_string(nameParts.get().second));
-          std::string featurestoreDoc = FSMutationsJSONBuilder::featurestoreDoc(mFeaturestoreIndex, docType, inode.mId,
-                  nameParts.get().first, nameParts.get().second, dataset.mProjectId, projectName, dataset.mInodeId);
+          LOG_INFO("featurestore type:" << docType << " name:" << nameParts.get().first << " version:"
+                                        << std::to_string(nameParts.get().second));
+          std::string featurestoreDoc = FSMutationsJSONBuilder::featurestoreDoc(mFeaturestoreIndex, docType,
+                                                                                inode.mId,
+                                                                                nameParts.get().first,
+                                                                                nameParts.get().second,
+                                                                                dataset.mProjectId, projectName,
+                                                                                dataset.mInodeId);
           bulk.push(Utils::getCurrentTime(), featurestoreDoc);
           featurestoreDocs++;
 
@@ -82,7 +87,8 @@ void FeaturestoreReindexer::run() {
               XAttrRow xAttrRow = *xit;
               LOG_INFO("xattr:" << xAttrRow.mName);
               if (xAttrRow.mInodeId == inode.mId) {
-                bulk.push(Utils::getCurrentTime(), xAttrRow.to_upsert_json(mFeaturestoreIndex, FsOpType::XAttrUpdate));
+                bulk.push(Utils::getCurrentTime(),
+                          xAttrRow.to_upsert_json(mFeaturestoreIndex, FsOpType::XAttrUpdate));
               } else {
                 LOG_WARN("XAttrs doesn't exists for [" << inode.mId << "] - " << xAttrRow.to_string());
                 nonExistentXAttrs++;

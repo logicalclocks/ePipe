@@ -213,6 +213,30 @@ struct INodeRow {
 typedef boost::unordered_map<Int64, INodeRow> INodeMap;
 typedef std::vector<INodeRow> INodeVec;
 
+class FVInodeCache {
+public:
+  FVInodeCache(int lru_cap, const char* prefix) : mFeatureViewInodes(lru_cap, prefix) {}
+
+  bool contains(Int64 parentIId) {
+    return mFeatureViewInodes.contains(parentIId);
+  }
+
+  Int64 get(Int64 parentIId) {
+    return mFeatureViewInodes.get(parentIId).get();
+  }
+
+  void add(Int64 parentIId, Int64 featureViewIId) {
+    mFeatureViewInodes.put(parentIId, featureViewIId);
+  }
+
+  void remove(Int64 parentIId) {
+    mFeatureViewInodes.remove(parentIId);
+  }
+private:
+  Cache<Int64, Int64> mFeatureViewInodes;
+};
+typedef CacheSingleton<FVInodeCache> FeatureViewInodeCache;
+
 class INodeTable : public DBTable<INodeRow> {
 public:
 
@@ -229,6 +253,7 @@ public:
     addColumn("is_dir");
     addColumn("num_user_xattrs");
     addColumn("num_sys_xattrs");
+    FeatureViewInodeCache::getInstance(lru_cap, "FeatureViewInodeCache");
   }
 
   INodeRow getRow(NdbRecAttr* values[]) {
@@ -351,6 +376,5 @@ private:
   GroupTable mGroupsTable;
 
 };
-
 #endif /* INODETABLE_H */
 
