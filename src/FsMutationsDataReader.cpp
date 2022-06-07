@@ -76,7 +76,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         std::string projectName = mProjectTable.getProjectNameFromCache(projectId);
 
         std::string docType = FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, datasetINodeId, row.mInodeParentId);
-        LOG_DEBUG("featurestore type:" << docType);
+
         if(docType != DONT_EXIST_STR()) {
           boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(inode.mName);
           if(nameParts) {
