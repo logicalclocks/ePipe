@@ -22,6 +22,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include "tables/FileProvenanceLogTable.h"
 #include "FileProvenanceConstantsRaw.h"
+#include "tables/INodeTable.h"
 
 namespace FileProvenanceConstants {
 
@@ -208,10 +209,6 @@ namespace FileProvenanceConstants {
     && datasetName == featurestoreName(projectName);
   }
 
-  inline bool isFeaturegroup(Int64 parentIId, Int64 datasetIId, std::string projectName, std::string datasetName) {
-    return parentIId == datasetIId && isFeaturestore(projectName, datasetName);
-  }
-
   inline boost::optional<std::pair <std::string, int>> splitNameVersion(std::string val) {
     std::vector<std::string> strs;
     boost::split(strs, val, boost::is_any_of("_"));
@@ -254,14 +251,59 @@ namespace FileProvenanceConstants {
   }
 
   inline bool isTrainingDataset(Int64 parentIId, Int64 datasetIId, std::string projectName, std::string datasetName) {
-    return parentIId == datasetIId && isTrainingDataset(projectName, datasetName);
+    return  isTrainingDataset(projectName, datasetName)
+         && parentIId == datasetIId;
   }
 
-  inline std::string isPartOfFeaturestore(Int64 parentIId, Int64 datasetIId, std::string projectName, std::string datasetName) {
-    if(isFeaturegroup(parentIId, datasetIId, projectName, datasetName)) {
-      return "featuregroup";
-    } else if(isTrainingDataset(parentIId, datasetIId, projectName, datasetName)) {
-      return "trainingdataset";
+  inline std::string featureViewArtifact(Int64 parentIId, Int64 datasetIId, Int64 featureViewIId, std::string inodeName) {
+    if(parentIId == featureViewIId) {
+      return "featureview";
+    } else if(parentIId == datasetIId) {
+      if(inodeName == ".featureviews" || inodeName == "code" || inodeName == "transformation_functions") {
+        LOG_DEBUG("skipping training dataset basic folder:" << inodeName);
+        return DONT_EXIST_STR();
+      } else {
+        return "trainingdataset";
+      }
+    } else {
+      return DONT_EXIST_STR();
+    }
+  }
+
+  inline std::string featureStoreArtifact(Int64 parentIId, Int64 datasetIId, std::string inodeName) {
+    if(parentIId == datasetIId) {
+      if(inodeName == "code" || inodeName == "storage_connector_resources") {
+        LOG_DEBUG("skipping feature store basic folder:" << inodeName);
+        return DONT_EXIST_STR();
+      } else {
+        return "featuregroup";
+      }
+    } else {
+      return DONT_EXIST_STR();
+    }
+  }
+
+  inline Int64 getFeatureViewParentIId(Ndb* conn, INodeTable inodesTable, Int64 parentIId) {
+    if (FeatureViewInodeCache::getInstance().contains(parentIId)) {
+      return FeatureViewInodeCache::getInstance().get(parentIId);
+    }
+
+    //we do not know the partitionId
+    LOG_DEBUG("feature view parent iid:" << parentIId);
+    INodeRow row = inodesTable.get(conn, parentIId, ".featureviews", parentIId);
+    FeatureViewInodeCache::getInstance().add(parentIId, row.mId);
+    return row.mId;
+  }
+
+  inline std::string getFeatureStoreArtifact(Ndb* conn, INodeTable inodesTable,
+                                             std::string projectName, std::string datasetName, std::string inodeName,
+                                             Int64 datasetIId, Int64 parentIId) {
+    if(FileProvenanceConstants::isTrainingDataset(projectName, datasetName)) {
+      Int64 featureViewIId = getFeatureViewParentIId(conn, inodesTable, datasetIId);
+      LOG_DEBUG("feature view iid:" << featureViewIId);
+      return FileProvenanceConstants::featureViewArtifact(parentIId, datasetIId, featureViewIId, inodeName);
+    } else if(FileProvenanceConstants::isFeaturestore(projectName, datasetName)) {
+      return FileProvenanceConstants::featureStoreArtifact(parentIId, datasetIId, inodeName);
     } else {
       return DONT_EXIST_STR();
     }

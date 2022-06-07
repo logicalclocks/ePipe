@@ -72,10 +72,11 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       if (mHopsworksEnabled) {
         datasetINodeId = row.mDatasetINodeId;
         projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetINodeId);
-
         std::string datasetName = mDatasetTable.getDatasetNameFromCache(datasetINodeId);
         std::string projectName = mProjectTable.getProjectNameFromCache(projectId);
-        std::string docType = FileProvenanceConstants::isPartOfFeaturestore(inode.mParentId, datasetINodeId, projectName, datasetName);
+
+        std::string docType = FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, datasetINodeId, row.mInodeParentId);
+        LOG_DEBUG("featurestore type:" << docType);
         if(docType != DONT_EXIST_STR()) {
           boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(inode.mName);
           if(nameParts) {
@@ -104,7 +105,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
 
       if (!row.requiresReadingXAttr()) {
         //handle delete xattr
-        if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+        if(FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, datasetINodeId, row.mInodeParentId) != DONT_EXIST_STR()) {
           bulk.push(nullptr, row.mEventCreationTime, XAttrRow::to_delete_json(mFeaturestoreIndex, row));
         }
         bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime, XAttrRow::to_delete_json(mSearchIndex, row));
@@ -115,9 +116,8 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
 
       if(xattrs.find(mutationpk) == xattrs.end()){
         LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
-        << row.getNamespace() <<  " for inode " << row.mInodeId
-        << " was not found");
-        if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+        << row.getNamespace() <<  " for inode " << row.mInodeId << " was not found");
+        if(FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, datasetINodeId, row.mInodeParentId) != DONT_EXIST_STR()) {
           bulk.push(nullptr, row.mEventCreationTime, XAttrRow::to_delete_json(mFeaturestoreIndex, row));
         }
         bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime, XAttrRow::to_delete_json(mSearchIndex, row));
@@ -126,9 +126,8 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
 
       XAttrVec xattr = xattrs[mutationpk];
       if(xattr.empty()){
-        LOG_DEBUG(" Data for all xattrs of inode " << row.mInodeId
-                                      << " was not found");
-        if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+        LOG_DEBUG(" Data for all xattrs of inode " << row.mInodeId << " was not found");
+        if(FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, datasetINodeId, row.mInodeParentId) != DONT_EXIST_STR()) {
           bulk.push(nullptr, row.mEventCreationTime, XAttrRow::to_delete_json(mFeaturestoreIndex, row));
         }
         bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime, XAttrRow::to_delete_json(mSearchIndex, row));
@@ -140,7 +139,7 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         const LogHandler *const logh = std::next(it) != xattr.end() ? nullptr : mFSLogTable.getLogRemovalHandler(row);
         XAttrRow xAttrRow = *it;
         if (xAttrRow.mInodeId ==  row.mInodeId) {
-          if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+          if(FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, datasetINodeId, row.mInodeParentId) != DONT_EXIST_STR()) {
             boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(row.mInodeName);
             if(nameParts) {
 //              LOG_INFO("featurestore name:" << nameParts.get().first << " version:" << nameParts.get().second << " xattr:" << row.getXAttrName());
@@ -150,9 +149,8 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
           bulk.push(logh, row.mEventCreationTime, xAttrRow.to_upsert_json(mSearchIndex, row.mOperation));
         } else {
           LOG_DEBUG(" Data for xattr: " << row.getXAttrName() << ", "
-          << row.getNamespace() <<  " for inode " << row.mInodeId
-          << " was not ""found");
-          if(FileProvenanceConstants::isPartOfFeaturestore(row.mInodeParentId, datasetINodeId, projectName, datasetName) != DONT_EXIST_STR()) {
+          << row.getNamespace() <<  " for inode " << row.mInodeId << " was not ""found");
+          if(FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, datasetINodeId, row.mInodeParentId) != DONT_EXIST_STR()) {
             bulk.push(nullptr, row.mEventCreationTime, XAttrRow::to_delete_json(mFeaturestoreIndex, row));
           }
           bulk.push(logh, row.mEventCreationTime, XAttrRow::to_delete_json(mSearchIndex, row));
