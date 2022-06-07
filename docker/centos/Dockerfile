@@ -2,8 +2,8 @@ FROM centos:7.7.1908
 
 ARG cmake_version=3.16.4
 ARG boost_version=1.70.0
-ARG ndb_version_family=8.0
-ARG ndb_version=8.0.21
+ARG rondb_version=21.04.7
+ARG glibc_version=2.17
 ARG lib_ssl_version=1.1.1g
 ARG userid=1000
 ARG groupid=1000
@@ -42,7 +42,7 @@ rm -r cmake-${cmake_version}*
 RUN echo Installing Boost; \
 BOOST_V=`echo ${boost_version} | sed s/'\.'/'_'/g`; \
 source scl_source enable devtoolset-8; \
-wget --progress=bar:force https://dl.bintray.com/boostorg/release/${boost_version}/source/boost_${BOOST_V}.tar.gz; \
+wget --progress=bar:force https://boostorg.jfrog.io/artifactory/main/release/${boost_version}/source/boost_${BOOST_V}.tar.gz; \
 tar xzf boost_${BOOST_V}.tar.gz; \
 cd boost_${BOOST_V}; \
 ./bootstrap.sh; \
@@ -64,12 +64,12 @@ make install
 
 RUN echo Installing MySQL Cluster; \
 cd /usr/local; \
-wget --progress=bar:force https://repo.hops.works/master/mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
-tar xzf mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64.tar.gz; \
+wget --progress=bar:force https://repo.hops.works/master/rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64.tar.gz; \
+tar xzf rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64.tar.gz; \
 mkdir -p mysql/lib; \
-cp -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64/include mysql/; \
-cp -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64/lib/libndbclient* mysql/lib/; \
-rm -r mysql-cluster-${ndb_version}-linux-glibc2.12-x86_64*
+cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64/include mysql/; \
+cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64/lib/libndbclient* mysql/lib/; \
+rm -r rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64*
 
 RUN groupadd epipe --gid ${groupid}; \
 useradd -ms /bin/bash epipe --uid ${userid} --gid ${groupid}; \
