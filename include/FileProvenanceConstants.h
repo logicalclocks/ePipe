@@ -289,9 +289,10 @@ namespace FileProvenanceConstants {
     }
 
     //we do not know the partitionId
-    LOG_DEBUG("feature view parent iid:" << parentIId);
     INodeRow row = inodesTable.get(conn, parentIId, ".featureviews", parentIId);
-    FeatureViewInodeCache::getInstance().add(parentIId, row.mId);
+    if(row.mId != 0) {
+      FeatureViewInodeCache::getInstance().add(parentIId, row.mId);
+    }
     return row.mId;
   }
 
@@ -300,7 +301,6 @@ namespace FileProvenanceConstants {
                                              Int64 datasetIId, Int64 parentIId) {
     if(FileProvenanceConstants::isTrainingDataset(projectName, datasetName)) {
       Int64 featureViewIId = getFeatureViewParentIId(conn, inodesTable, datasetIId);
-      LOG_DEBUG("feature view iid:" << featureViewIId);
       return FileProvenanceConstants::featureViewArtifact(parentIId, datasetIId, featureViewIId, inodeName);
     } else if(FileProvenanceConstants::isFeaturestore(projectName, datasetName)) {
       return FileProvenanceConstants::featureStoreArtifact(parentIId, datasetIId, inodeName);
