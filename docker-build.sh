@@ -4,14 +4,30 @@ set -e
 
 if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
     echo "Usage."
-    echo "./docker_build.sh [image_prefix]"
+    echo "./docker_build.sh [image_prefix] [--with-rondb]"
     echo "  image_prefix - the prefix to be used with the docker image name."
     exit 0
 fi
 
 PREFIX=$1
+WITH_RONDB=$2
+
 USERID=`id -u`
 GROUPID=`id -g`
+
+RONDB_VERSION="21.04.7"
+GLIBC_VERSION="2.17"
+UBUNTU_IMAGE="bionic"
+
+# for testing on mac m1 
+ARCH="x86_64"
+if [ `uname -m` = "arm64" ]; then
+    echo "Running on ARM"
+    ARCH="arm64_v8"
+    RONDB_VERSION="21.04.6"
+    GLIBC_VERSION="2.31"
+    UBUNTU_IMAGE="focal"
+fi
 
 command -v "docker"
 if [[ "${?}" -ne 0 ]]; then
@@ -28,11 +44,22 @@ rm -rf builds
 mkdir builds
 echo "$EPIPE_VERSION" > builds/version
 
-for platform in debian rhel
+PLATFORMS=(debian rhel)
+# run with rondb only on ubuntu
+if [ "$PREFIX" != "" ] && [ "$WITH_RONDB" == "--with-rondb" ] ; then
+  PLATFORMS=(debian)
+fi
+
+for platform in "${PLATFORMS[@]}";
 do
   DOCKER_FILE_DIR="centos"
   if [ "$platform" == "debian" ]; then
     DOCKER_FILE_DIR="ubuntu"
+  fi
+
+  # run with rondb
+  if [ "$PREFIX" != "" ] && [ "$WITH_RONDB" == "--with-rondb" ] ; then
+    DOCKER_FILE_DIR="ubuntu/with-rondb"
   fi
 
   DOCKER_IMAGE="epipe_build_${DOCKER_FILE_DIR}:${EPIPE_VERSION}"
@@ -40,8 +67,10 @@ do
     DOCKER_IMAGE="${PREFIX}_epipe_build_${DOCKER_FILE_DIR}:${EPIPE_VERSION}"
   fi
 
-  echo "Creating docker image ${DOCKER_IMAGE}"
-  docker build --build-arg userid=${USERID} --build-arg groupid=${GROUPID} ./docker/${DOCKER_FILE_DIR} -t $DOCKER_IMAGE
+  DOCKER_BUILD_ARGS="--build-arg userid=${USERID} --build-arg groupid=${GROUPID} --build-arg arch=${ARCH} --build-arg rondb_version=${RONDB_VERSION} --build-arg glibc_version=${GLIBC_VERSION} --build-arg ubuntu_image=${UBUNTU_IMAGE}"
+  
+  echo "Creating docker image ${DOCKER_IMAGE} with args ${DOCKER_BUILD_ARGS}"
+  docker build ${DOCKER_BUILD_ARGS} ./docker/${DOCKER_FILE_DIR} -t $DOCKER_IMAGE
 
   echo "Building $platform using $DOCKER_IMAGE"
   docker run --rm -v "$PWD":/usr/epipe:z -w /usr/epipe "$DOCKER_IMAGE" ./build.sh

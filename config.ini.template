@@ -55,7 +55,7 @@ provenance_tu = 5
 
 # ElasticSearch configuration
 
-elastic_addr = localhost:9200
+elastic_addr = 127.0.0.1:9200
 index = projects
 featurestore_index = featurestore
 app_provenance_index = appprovenance

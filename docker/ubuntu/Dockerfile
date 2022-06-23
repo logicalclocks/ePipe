@@ -1,9 +1,12 @@
-FROM ubuntu:bionic
+ARG ubuntu_image=bionic
+
+FROM ubuntu:${ubuntu_image}
 
 ARG cmake_version=3.16.4
 ARG boost_version=1.70.0
 ARG rondb_version=21.04.7
 ARG glibc_version=2.17
+ARG arch=x86_64
 ARG userid=1000
 ARG groupid=1000
 
@@ -49,12 +52,12 @@ make install
 
 RUN echo Installing MySQL Cluster; \
 cd /usr/local; \
-wget --progress=bar:force https://repo.hops.works/master/rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64.tar.gz; \
-tar xzf rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64.tar.gz; \
+wget --progress=bar:force https://repo.hops.works/master/rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}.tar.gz; \
+tar xzf rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}.tar.gz; \
 mkdir -p mysql/lib; \
-cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64/include mysql/; \
-cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64/lib/libndbclient* mysql/lib/; \
-rm -r rondb-${rondb_version}-linux-glibc${glibc_version}-x86_64*
+cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}/include mysql/; \
+cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}/lib/libndbclient* mysql/lib/; \
+rm -r rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}*
 
 RUN groupadd epipe --gid ${groupid}; \
 useradd -ms /bin/bash epipe --uid ${userid} --gid ${groupid}
