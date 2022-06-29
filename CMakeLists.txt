@@ -3,7 +3,7 @@ project (ePipe)
 cmake_minimum_required (VERSION 3.5.0)
 
 set(EPIPE_VERSION_MAJOR 0)
-set(EPIPE_VERSION_MINOR 17)
+set(EPIPE_VERSION_MINOR 18)
 set(EPIPE_VERSION_BUILD 0)
 set(ENV{OPENSSL_ROOT_DIR} "/usr/local/ssl")
 configure_file(Version.h.in ${CMAKE_SOURCE_DIR}/include/Version.h)
