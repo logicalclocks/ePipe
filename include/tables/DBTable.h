@@ -61,7 +61,8 @@ private:
   void close();
   void applyConditionOnOperation(NdbOperation* operation, AnyMap& any);
   void applyConditionOnOperationOnCompanion(NdbOperation* operation, AnyMap& any);
-  
+  void applyValueOnOperation(NdbOperation* operation, AnyMap& any);
+
 protected:
   DBTableBase* mCompanionTableBase;
 
@@ -96,6 +97,8 @@ protected:
   void convert(UISet& ids, AnyVec& resultAny, IVec& resultVec);
   void convert(ULSet& ids, AnyVec& resultAny, LVec& resultVec);
   Int64 getRandomPartitionId();
+
+  void doWrite(Ndb* connection, Any any, AnyMap& values);
 };
 
 template<typename TableRow>
@@ -254,6 +257,20 @@ TableRow DBTable<TableRow>::doRead(Ndb* connection, AnyMap& any) {
   TableRow row = getRow(mCurrentRow);
   close();
   return row;
+}
+
+template<typename TableRow>
+void DBTable<TableRow>::doWrite(Ndb* connection, Any pk, AnyMap& values) {
+  AnyMap pkMap;
+  pkMap[0] = pk; 
+  start(connection);
+  LOG_DEBUG(getName() << " -- doWrite ");
+  mCurrentOperation = getNdbOperation(mCurrentTransaction, mTable);
+  mCurrentOperation->insertTuple();
+  applyConditionOnOperation(mCurrentOperation, pkMap);
+  applyValueOnOperation(mCurrentOperation, values);
+  executeTransaction(mCurrentTransaction, NdbTransaction::Commit);
+  close();
 }
 
 template<typename TableRow>
@@ -459,6 +476,42 @@ void DBTable<TableRow>::applyConditionOnOperation(NdbOperation* operation, AnyMa
     }
   }
   LOG_DEBUG(getName() << " -- apply conditions on operation " << std::endl << log.str());
+}
+
+template<typename TableRow>
+void DBTable<TableRow>::applyValueOnOperation(NdbOperation* operation, AnyMap& any) {
+  std::stringstream log;
+  LOG_DEBUG(getName() << " -- apply value");
+  for (AnyMap::iterator it = any.begin(); it != any.end(); ++it) {
+    int i = it->first;
+    Any a = it->second;
+    std::string colName = getColumn(i);
+    if (a.type() == typeid (int)) {
+      int value = boost::any_cast<int>(a);
+      log << colName << " = " << value << std::endl;
+      operation->setValue(colName.c_str(), value);
+    } else if(a.type() == typeid(Int64)){
+      Int64 value = boost::any_cast<Int64>(a);
+      log << colName << " = " << value << std::endl;
+      operation->setValue(colName.c_str(), value);
+    } else if(a.type() == typeid(Int8)){
+      Int8 value = boost::any_cast<Int8>(a);
+      log << colName << " = " << (int) value << std::endl;
+      operation->setValue(colName.c_str(), value);
+    } else if(a.type() == typeid(Int16)){
+      Int16 value = boost::any_cast<Int16>(a);
+      log << colName << " = " << value << std::endl;
+      operation->setValue(colName.c_str(), value);
+    } else if (a.type() == typeid (std::string)) {
+      std::string value = boost::any_cast<std::string>(a);
+      log << colName << " = " << value << std::endl;
+      operation->setValue(colName.c_str(), get_ndb_varchar(value,
+              mTable->getColumn(colName.c_str())->getArrayType()).c_str());
+    }else{
+      LOG_ERROR(getName() << " -- apply where unknown type" << a.type().name());
+    }
+  }
+  LOG_DEBUG(getName() << " -- apply values on operation " << std::endl << log.str());
 }
 
 template<typename TableRow>
