@@ -284,8 +284,10 @@ void Notifier::connectionCheck(){
   NdbDictionary::Dictionary::List myList;
   while (true) {
     if(myDict->listIndexes(myList, "hdfs_metadata_log")){
+      LOG_INFO("RonDB connection checker - failed to connect");
       LOG_NDB_API_FATAL("hdfs_metadata_log", myDict->getNdbError());
     }
+    LOG_INFO("RonDB connection checker - success");
     boost::this_thread::sleep(boost::posix_time::milliseconds(mPollMaxTimeToWait * 20));
   }
 }
