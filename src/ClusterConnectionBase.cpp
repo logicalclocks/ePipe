@@ -44,6 +44,8 @@ Ndb_cluster_connection* ClusterConnectionBase::connect_to_cluster(const char *co
 
   c = new Ndb_cluster_connection(connection_string);
 
+  c->set_name("ePipe");
+  
   if (c->connect(RETRIES, DELAY_BETWEEN_RETRIES, VERBOSE)) {
     LOG_FATAL("Unable to connect to cluster.\n\n");
   }
