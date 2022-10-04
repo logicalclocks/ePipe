@@ -28,8 +28,7 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
         const std::string elastic_app_provenance_index,
         const int elastic_batch_size, const int elastic_issue_time,
         const int lru_cap, const int prov_file_lru_cap, const int prov_core_lru_cap, const bool recovery,
-        const bool stats, Barrier barrier, const bool hiveCleaner, const
-        std::string metricsServer)
+        const bool stats, Barrier barrier, const bool hiveCleaner, const std::string metricsServer)
 : ClusterConnectionBase(connection_string, database_name, meta_database_name, hive_meta_database_name), 
     mMutationsTU(mutations_tu), mFileProvenanceTU(elastic_provenance_tu), mAppProvenanceTU(elastic_provenance_tu),
     mPollMaxTimeToWait(poll_maxTimeToWait),  mElasticClientConfig(elastic_client_config), mHopsworksEnabled(hopsworks),
