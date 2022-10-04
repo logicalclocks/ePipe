@@ -25,6 +25,10 @@
 #include "tables/INodeTable.h"
 
 namespace FileProvenanceConstants {
+  const std::string featureViewFolder = ".featureviews";
+  const std::set<std::string> featureGroupResourceFolders = {"code","storage_resource_connectors"};
+  const std::set<std::string> trainingDatasetResourceFolders = {"code", "transformation_functions"};
+  const std::set<std::string> featureViewResourceFolders = {};
 
   const std::string README_FILE = "README.md";
   
@@ -160,12 +164,6 @@ namespace FileProvenanceConstants {
     return row.mDatasetName == part;
   }
 
-  inline bool isDatasetName2(FileProvenanceRow row, std::string part) {
-    std::stringstream  mlDataset;
-    mlDataset << row.mProjectName << "_" << part;
-    return row.mDatasetName == mlDataset.str();
-  }
-
   inline bool isReadmeFile(FileProvenanceRow row) {
     return row.mInodeName == README_FILE;
   }
@@ -256,14 +254,22 @@ namespace FileProvenanceConstants {
   }
 
   inline std::string featureViewArtifact(Int64 parentIId, Int64 datasetIId, Int64 featureViewIId, std::string inodeName) {
-    if(parentIId == featureViewIId) {
-      return "featureview";
-    } else if(parentIId == datasetIId) {
-      if(inodeName == ".featureviews" || inodeName == "code" || inodeName == "transformation_functions") {
+    if(parentIId == datasetIId) {
+      const bool isResourceFolder =
+              trainingDatasetResourceFolders.find(inodeName) != trainingDatasetResourceFolders.end();
+      if (inodeName == featureViewFolder || isResourceFolder) {
         LOG_DEBUG("skipping training dataset basic folder:" << inodeName);
         return DONT_EXIST_STR();
       } else {
         return "trainingdataset";
+      }
+    } else if(parentIId == featureViewIId) {
+      const bool isResourceFolder = featureViewResourceFolders.find(inodeName) != featureViewResourceFolders.end();
+      if(isResourceFolder) {
+        LOG_DEBUG("skipping training dataset basic folder:" << inodeName);
+        return DONT_EXIST_STR();
+      } else {
+        return "featureview";
       }
     } else {
       return DONT_EXIST_STR();
@@ -272,7 +278,8 @@ namespace FileProvenanceConstants {
 
   inline std::string featureStoreArtifact(Int64 parentIId, Int64 datasetIId, std::string inodeName) {
     if(parentIId == datasetIId) {
-      if(inodeName == "code" || inodeName == "storage_connector_resources") {
+      const bool isResourceFolder = featureGroupResourceFolders.find(inodeName) != featureGroupResourceFolders.end();
+      if(isResourceFolder) {
         LOG_DEBUG("skipping feature store basic folder:" << inodeName);
         return DONT_EXIST_STR();
       } else {
@@ -289,7 +296,7 @@ namespace FileProvenanceConstants {
     }
 
     //we do not know the partitionId
-    INodeRow row = inodesTable.get(conn, parentIId, ".featureviews", parentIId);
+    INodeRow row = inodesTable.get(conn, parentIId, featureViewFolder, parentIId);
     if(row.mId != 0) {
       FeatureViewInodeCache::getInstance().add(parentIId, row.mId);
     }
@@ -310,15 +317,18 @@ namespace FileProvenanceConstants {
   }
 
   inline bool typeMLFeature(FileProvenanceRow row) {
-    return row.mProjectId == -1 && row.mDatasetName == featurestoreName(row.mProjectName);
+    const bool isHiveDir = row.mProjectId == -1;
+    const bool isFeaturestoreFolder = row.mDatasetName == featurestoreName(row.mProjectName);
+    const bool is_resource_folder = featureGroupResourceFolders.find(row.mP1Name) != featureGroupResourceFolders.end();
+    return isHiveDir && isFeaturestoreFolder && !is_resource_folder;
   }
 
   inline bool isMLFeature(FileProvenanceRow row) {
-    return typeMLFeature(row) && row.mDatasetId == row.mParentId;
+    return typeMLFeature(row) && oneLvlDeep(row);
   }
 
   inline bool partOfMLFeature(FileProvenanceRow row) {
-    return typeMLFeature(row) && row.mDatasetId != row.mParentId;
+    return typeMLFeature(row) && onePlusLvlDeep(row);
   }
 
   inline std::string getMLFeatureId(FileProvenanceRow row) {
@@ -329,12 +339,24 @@ namespace FileProvenanceConstants {
     return oneNameForPart(row);
   }
 
+  inline std::string getTrainingDatasetFolder(std::string projectName) {
+    std::stringstream name;
+    name << projectName << "_Training_Datasets";\
+    return name.str();
+  }
+
+  inline bool typeMLTDataset(FileProvenanceRow row) {
+    const bool isTrainingDatasetFolder = getTrainingDatasetFolder(row.mProjectName) == row.mDatasetName;
+    const bool isResourceFolder = trainingDatasetResourceFolders.find(row.mP1Name) != trainingDatasetResourceFolders.end();
+    const bool isFeatureViewFolder = row.mP1Name == featureViewFolder;
+    return isTrainingDatasetFolder && !isResourceFolder && !isFeatureViewFolder;
+  }
   inline bool isMLTDataset(FileProvenanceRow row) {
-    return isDatasetName2(row, "Training_Datasets") && oneLvlDeep(row);
+    return typeMLTDataset(row) && oneLvlDeep(row);
   }
 
   inline bool partOfMLTDataset(FileProvenanceRow row) {
-    return isDatasetName2(row, "Training_Datasets") && onePlusLvlDeep(row);
+    return typeMLTDataset(row) && onePlusLvlDeep(row);
   }
 
   inline std::string getMLTDatasetId(FileProvenanceRow row) {
