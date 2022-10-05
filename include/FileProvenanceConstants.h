@@ -26,7 +26,7 @@
 
 namespace FileProvenanceConstants {
   const std::string featureViewFolder = ".featureviews";
-  const std::set<std::string> featureGroupResourceFolders = {"code","storage_resource_connectors"};
+  const std::set<std::string> featureGroupResourceFolders = {"code","storage_connector_resources"};
   const std::set<std::string> trainingDatasetResourceFolders = {"code", "transformation_functions"};
   const std::set<std::string> featureViewResourceFolders = {};
 
