@@ -53,8 +53,7 @@ public:
           const std::string elastic_app_provenance_index,
           const int elastic_batch_size, const int elastic_issue_time,
           const int lru_cap, const int prov_file_lru_cap, const int prov_core_lru_cap, const bool recovery, const bool stats,
-          Barrier barrier, const bool hiveCleaner, const std::string
-          metricsServer);
+          Barrier barrier, const bool hiveCleaner, const std::string metricsServer);
   void start();
   virtual ~Notifier();
 
