@@ -42,6 +42,5 @@ protected:
 
   const bool mStats;
   MovingCountersSet* const mCounters;
-  const std::string DEFAULT_TYPE;
 };
 #endif //EPIPE_ELASTICSEARCHBASE_H

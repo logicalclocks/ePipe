@@ -24,11 +24,11 @@ elastic_client_config, int time_to_wait_before_inserting, int bulk_size,
 const bool statsEnabled, MovingCountersSet* const
 metricsCounters) : TimedRestBatcher(elastic_client_config,
     time_to_wait_before_inserting, bulk_size),  mStats
-    (statsEnabled), mCounters(metricsCounters), DEFAULT_TYPE("_doc") {
+    (statsEnabled), mCounters(metricsCounters) {
 }
 
 std::string ElasticSearchBase::getElasticSearchBulkUrl(std::string index) {
-  std::string str = "/" + index + "/" + DEFAULT_TYPE + "/_bulk";
+  std::string str = "/" + index + "/_bulk";
   return str;
 }
 
