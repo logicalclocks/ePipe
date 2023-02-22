@@ -1,4 +1,4 @@
-ARG ubuntu_image=bionic
+ARG ubuntu_image=22.04
 
 FROM ubuntu:${ubuntu_image}
 
@@ -18,6 +18,10 @@ apt-get install gcc-8 g++-8 -y; \
 update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 60 --slave /usr/bin/g++ g++ /usr/bin/g++-8; \
 update-alternatives --config gcc; \
 apt-get install -y wget openssl libssl-dev git make
+
+# will put repo.hops.works
+RUN wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+RUN -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
 
 RUN echo Installing cmake; \
 wget --progress=bar:force https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}.tar.gz; \
