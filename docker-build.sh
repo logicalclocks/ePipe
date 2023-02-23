@@ -17,7 +17,7 @@ GROUPID=`id -g`
 
 RONDB_VERSION="21.04.7"
 GLIBC_VERSION="2.17"
-UBUNTU_IMAGE="bionic"
+UBUNTU_IMAGE="22.04"
 
 # for testing on mac m1 
 ARCH="x86_64"
