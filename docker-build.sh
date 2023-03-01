@@ -72,7 +72,7 @@ do
   DOCKER_BUILD_ARGS="--build-arg userid=${USERID} --build-arg groupid=${GROUPID} --build-arg arch=${ARCH} --build-arg rondb_version=${RONDB_VERSION} --build-arg glibc_version=${GLIBC_VERSION} --build-arg ubuntu_image=${UBUNTU_IMAGE}"
   
   echo "Creating docker image ${DOCKER_IMAGE} with args ${DOCKER_BUILD_ARGS}"
-  docker build --no-cache ${DOCKER_BUILD_ARGS} ./docker/${DOCKER_FILE_DIR} -t $DOCKER_IMAGE
+  docker build ${DOCKER_BUILD_ARGS} ./docker/${DOCKER_FILE_DIR} -t $DOCKER_IMAGE
 
   echo "Building $platform using $DOCKER_IMAGE"
   docker run --rm -v "$PWD":/usr/epipe:z -w /usr/epipe "$DOCKER_IMAGE" ./build.sh
