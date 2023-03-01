@@ -52,9 +52,11 @@ fi
 
 for platform in "${PLATFORMS[@]}";
 do
+  SUFFIX_OS_VERSION="8"
   DOCKER_FILE_DIR="centos"
   if [ "$platform" == "debian" ]; then
     DOCKER_FILE_DIR="ubuntu"
+    SUFFIX_OS_VERSION="${UBUNTU_IMAGE}"
   fi
 
   # run with rondb
@@ -62,9 +64,9 @@ do
     DOCKER_FILE_DIR="ubuntu/with-rondb"
   fi
 
-  DOCKER_IMAGE="epipe_build_${DOCKER_FILE_DIR}:${EPIPE_VERSION}"
+  DOCKER_IMAGE="epipe_build_${DOCKER_FILE_DIR}_${SUFFIX_OS_VERSION}:${EPIPE_VERSION}"
   if [ "$PREFIX" != "" ]; then
-    DOCKER_IMAGE="${PREFIX}_epipe_build_${DOCKER_FILE_DIR}:${EPIPE_VERSION}"
+    DOCKER_IMAGE="${PREFIX}_epipe_build_${DOCKER_FILE_DIR}_${SUFFIX_OS_VERSION}:${EPIPE_VERSION}"
   fi
 
   DOCKER_BUILD_ARGS="--build-arg userid=${USERID} --build-arg groupid=${GROUPID} --build-arg arch=${ARCH} --build-arg rondb_version=${RONDB_VERSION} --build-arg glibc_version=${GLIBC_VERSION} --build-arg ubuntu_image=${UBUNTU_IMAGE}"
