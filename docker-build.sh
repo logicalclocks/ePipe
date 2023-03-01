@@ -15,7 +15,7 @@ WITH_RONDB=$2
 USERID=`id -u`
 GROUPID=`id -g`
 
-RONDB_VERSION="21.04.7"
+RONDB_VERSION="21.04.9"
 GLIBC_VERSION="2.17"
 UBUNTU_IMAGE="22.04"
 
@@ -70,7 +70,7 @@ do
   DOCKER_BUILD_ARGS="--build-arg userid=${USERID} --build-arg groupid=${GROUPID} --build-arg arch=${ARCH} --build-arg rondb_version=${RONDB_VERSION} --build-arg glibc_version=${GLIBC_VERSION} --build-arg ubuntu_image=${UBUNTU_IMAGE}"
   
   echo "Creating docker image ${DOCKER_IMAGE} with args ${DOCKER_BUILD_ARGS}"
-  docker build ${DOCKER_BUILD_ARGS} ./docker/${DOCKER_FILE_DIR} -t $DOCKER_IMAGE
+  docker build --no-cache ${DOCKER_BUILD_ARGS} ./docker/${DOCKER_FILE_DIR} -t $DOCKER_IMAGE
 
   echo "Building $platform using $DOCKER_IMAGE"
   docker run --rm -v "$PWD":/usr/epipe:z -w /usr/epipe "$DOCKER_IMAGE" ./build.sh

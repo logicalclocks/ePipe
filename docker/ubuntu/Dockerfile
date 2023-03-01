@@ -2,26 +2,23 @@ ARG ubuntu_image=22.04
 
 FROM ubuntu:${ubuntu_image}
 
-ARG cmake_version=3.16.4
-ARG boost_version=1.70.0
-ARG rondb_version=21.04.7
+ARG cmake_version=3.22.6
+ARG boost_version=1.73.0
+ARG rondb_version=21.04.9
 ARG glibc_version=2.17
 ARG arch=x86_64
 ARG userid=1000
 ARG groupid=1000
 
-RUN echo Installing GCC 8; \
+RUN echo Installing GCC 11; \
 apt-get update -y; \
 add-apt-repository ppa:ubuntu-toolchain-r/test -y; \
-apt-get update -y; \
-apt-get install gcc-8 g++-8 -y; \
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 60 --slave /usr/bin/g++ g++ /usr/bin/g++-8; \
+apt-get install software-properties-common -y; \
+apt-get install gcc-11 g++-11 -y; \
+update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 --slave /usr/bin/g++ g++ /usr/bin/g++-11; \
 update-alternatives --config gcc; \
 apt-get install -y wget openssl libssl-dev git make
 
-# will put repo.hops.works
-RUN wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
-RUN dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
 
 RUN echo Installing cmake; \
 wget --progress=bar:force https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}.tar.gz; \
@@ -60,7 +57,7 @@ wget --progress=bar:force https://repo.hops.works/master/rondb-${rondb_version}-
 tar xzf rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}.tar.gz; \
 mkdir -p mysql/lib; \
 cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}/include mysql/; \
-cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}/lib/libndbclient* mysql/lib/; \
+cp -r rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}/lib/* mysql/lib/; \
 rm -r rondb-${rondb_version}-linux-glibc${glibc_version}-${arch}*
 
 RUN groupadd epipe --gid ${groupid}; \
