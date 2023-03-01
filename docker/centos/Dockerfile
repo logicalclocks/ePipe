@@ -28,7 +28,6 @@ rm -rf openssl-${lib_ssl_version}
 
 RUN echo Installing Boost; \
 BOOST_V=`echo ${boost_version} | sed s/'\.'/'_'/g`; \
-source scl_source enable devtoolset-8; \
 wget --progress=bar:force https://boostorg.jfrog.io/artifactory/main/release/${boost_version}/source/boost_${BOOST_V}.tar.gz; \
 tar xzf boost_${BOOST_V}.tar.gz; \
 cd boost_${BOOST_V}; \
