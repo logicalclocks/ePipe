@@ -4,26 +4,13 @@ ARG boost_version=1.73.0
 ARG rondb_version=21.04.9
 ARG glibc_version=2.17
 ARG arch=x86_64
-ARG lib_ssl_version=3.0.8
 ARG userid=1000
 ARG groupid=1000
 
 RUN dnf -y update; \
 echo Setup environment; \
 dnf -y group install "Development Tools"; \
-dnf -y install wget git cmake perl-core zlib-devel
-
-RUN cd; \
-wget --progress=bar:force https://www.openssl.org/source/openssl-${lib_ssl_version}.tar.gz; \
-tar xf openssl-${lib_ssl_version}.tar.gz; \
-cd openssl-${lib_ssl_version}; \
-./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared zlib; \
-make -j$(nproc); \
-make install; \
-echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/openssl-${lib_ssl_version}.conf; \
-ldconfig -v; \
-cd ..; \
-rm -rf openssl-${lib_ssl_version} 
+dnf -y install wget git cmake perl-core zlib-devel openssl-devel
 
 
 RUN echo Installing Boost; \
