@@ -15,9 +15,9 @@ WITH_RONDB=$2
 USERID=`id -u`
 GROUPID=`id -g`
 
-RONDB_VERSION="21.04.7"
+RONDB_VERSION="21.04.9"
 GLIBC_VERSION="2.17"
-UBUNTU_IMAGE="bionic"
+UBUNTU_IMAGE="22.04"
 
 # for testing on mac m1 
 ARCH="x86_64"
@@ -52,9 +52,11 @@ fi
 
 for platform in "${PLATFORMS[@]}";
 do
+  SUFFIX_OS_VERSION="8"
   DOCKER_FILE_DIR="centos"
   if [ "$platform" == "debian" ]; then
     DOCKER_FILE_DIR="ubuntu"
+    SUFFIX_OS_VERSION="${UBUNTU_IMAGE}"
   fi
 
   # run with rondb
@@ -62,9 +64,9 @@ do
     DOCKER_FILE_DIR="ubuntu/with-rondb"
   fi
 
-  DOCKER_IMAGE="epipe_build_${DOCKER_FILE_DIR}:${EPIPE_VERSION}"
+  DOCKER_IMAGE="epipe_build_${DOCKER_FILE_DIR}_${SUFFIX_OS_VERSION}:${EPIPE_VERSION}"
   if [ "$PREFIX" != "" ]; then
-    DOCKER_IMAGE="${PREFIX}_epipe_build_${DOCKER_FILE_DIR}:${EPIPE_VERSION}"
+    DOCKER_IMAGE="${PREFIX}_epipe_build_${DOCKER_FILE_DIR}_${SUFFIX_OS_VERSION}:${EPIPE_VERSION}"
   fi
 
   DOCKER_BUILD_ARGS="--build-arg userid=${USERID} --build-arg groupid=${GROUPID} --build-arg arch=${ARCH} --build-arg rondb_version=${RONDB_VERSION} --build-arg glibc_version=${GLIBC_VERSION} --build-arg ubuntu_image=${UBUNTU_IMAGE}"
