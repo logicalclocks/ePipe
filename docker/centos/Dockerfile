@@ -1,7 +1,7 @@
 FROM quay.io/centos/centos:stream8
 
 ARG boost_version=1.73.0
-ARG rondb_version=21.04.9
+ARG rondb_version=21.04.12
 ARG glibc_version=2.17
 ARG arch=x86_64
 ARG userid=1000
