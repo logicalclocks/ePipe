@@ -56,7 +56,7 @@ void FeaturestoreReindexer::run() {
     DatasetRow dataset = datasetsTable.currRow();
     if (projectNames.find(dataset.mProjectId) == projectNames.end()) {
       ProjectRow pRow = projectsTable.get(metaConn, dataset.mProjectId);
-      projectNames[dataset.mProjectId] = pRow.mInodeName;
+      projectNames[dataset.mProjectId] = pRow.mProjectName;
     }
     std::string projectName = projectNames[dataset.mProjectId];
     INodeVec inodes = inodesTable.getByParentId(conn, dataset.mInodeId, dataset.mInodeId);

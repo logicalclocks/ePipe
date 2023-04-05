@@ -81,15 +81,16 @@ void Reindexer::run() {
   projectsTable.getAll(metaConn);
   while (projectsTable.next()) {
     ProjectRow project = projectsTable.currRow();
-    INodeRow projectInode = inodesTable.get(conn, project.mInodeParentId,
-            project.mInodeName, project.mInodePartitionId);
+    INodeRow projectsInode = inodesTable.getProjectsInode(conn);
+    //assumption is project dirs have parentId = partitionId
+    INodeRow projectInode = inodesTable.get(conn, projectsInode.mId, project.mProjectName, projectsInode.mId);
 
-    if (projectInode.is_equal(project)) {
+    if (projectInode.is_equal(projectsInode, project)) {
       eBulk bulk;
       bulk.push(Utils::getCurrentTime(), project.to_upsert_json(mSearchIndex, projectInode.mId));
       mElasticSearch->addData(bulk);
     } else {
-      LOG_WARN("Project [" << project.mId << ", " << project.mInodeName
+      LOG_WARN("Project [" << project.mId << ", " << project.mProjectName
               << "] doesn't have an inode ");
       nonExistentProject++;
     }

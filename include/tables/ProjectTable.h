@@ -27,9 +27,7 @@
 
 struct ProjectRow {
   int mId;
-  Int64 mInodeParentId;
-  Int64 mInodePartitionId;
-  std::string mInodeName;
+  std::string mProjectName;
   std::string mUserName;
   std::string mDescription;
 
@@ -91,7 +89,7 @@ struct ProjectRow {
     docWriter.String(mUserName.c_str());
 
     docWriter.String("name");
-    docWriter.String(mInodeName.c_str());
+    docWriter.String(mProjectName.c_str());
 
     docWriter.String("description");
     docWriter.String(mDescription.c_str());
@@ -115,9 +113,7 @@ public:
 
   ProjectTable(int lru_cap) : DBTable("project") {
     addColumn("id");
-    addColumn("inode_pid");
-    addColumn("partition_id");
-    addColumn("inode_name");
+    addColumn("projectname");
     addColumn("username");
     addColumn("description");
     ProjectCache::getInstance(lru_cap, "Project");
@@ -125,18 +121,16 @@ public:
 
   ProjectRow get(Ndb* connection, int projectId) {
     ProjectRow row = doRead(connection, projectId);
-    ProjectCache::getInstance().put(row.mId, row.mInodeName);
+    ProjectCache::getInstance().put(row.mId, row.mProjectName);
     return row;
   }
 
   ProjectRow getRow(NdbRecAttr* values[]) {
     ProjectRow row;
     row.mId = values[0]->int32_value();
-    row.mInodeParentId = values[1]->int64_value();
-    row.mInodePartitionId = values[2]->int64_value();
-    row.mInodeName = get_string(values[3]);
-    row.mUserName = get_string(values[4]);
-    row.mDescription = get_string(values[5]);
+    row.mProjectName = get_string(values[1]);
+    row.mUserName = get_string(values[2]);
+    row.mDescription = get_string(values[2]);
     return row;
   }
 
@@ -146,7 +140,7 @@ public:
     }
 
     ProjectRow row = get(connection, projectId);
-    ProjectCache::getInstance().put(projectId, row.mInodeName);
+    ProjectCache::getInstance().put(projectId, row.mProjectName);
   }
 
   std::string getProjectNameFromCache(int projectId) {

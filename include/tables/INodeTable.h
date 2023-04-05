@@ -50,9 +50,9 @@ struct INodeRow {
     return mNumUserXAttrs > 0 ||  mNumSysXAttrs > 0;
   }
 
-  bool is_equal(ProjectRow proj){
-    return proj.mInodeName == mName && proj.mInodeParentId == mParentId 
-            && proj.mInodePartitionId == mPartitionId;
+  //assumption is project dirs have parentId = partitionId
+  bool is_equal(INodeRow projectsInode, ProjectRow proj){
+    return proj.mProjectName == mName && projectsInode.mId == mParentId && projectsInode.mId == mPartitionId;
   }
   
   static std::string to_delete_json(std::string index, Int64 inodeId) {
@@ -307,7 +307,28 @@ public:
 
     return row;
   }
-  
+
+  // This method should be avoid as much as possible since it triggers an index scan
+  INodeRow getByParentIdAndName(Ndb* connection, Int64 parentId, std::string name) {
+    AnyMap key;
+    key[0] = parentId;
+    key[1] = name;
+    INodeVec inodes = doRead(connection, "inode_idx", key);
+    INodeRow row;
+    if (inodes.size() > 1) {
+      LOG_ERROR("Expected one - got " << inodes.size() << " rows for name " << name << "within parent:" << parentId);
+      return row;
+    }
+
+    if (inodes.size() == 1) {
+      row = inodes[0];
+      row.mUserName = mUsersTable.get(connection, row.mUserId).mName;
+      row.mGroupName = mGroupsTable.get(connection, row.mGroupId).mName;
+    }
+
+    return row;
+  }
+
   INodeRow get(Ndb* connection, Int64 parentId, std::string name, Int64 partitionId) {
     AnyMap a;
     a[0] = parentId;
@@ -369,6 +390,10 @@ public:
     row.mUserName = mUsersTable.get(connection, row.mUserId).mName;
     row.mGroupName = mGroupsTable.get(connection, row.mGroupId).mName;
     return row;
+  }
+
+  INodeRow getProjectsInode(Ndb* connection) {
+    return getByParentIdAndName(connection, 1, "Projects");
   }
 
 private:
