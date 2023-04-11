@@ -79,13 +79,12 @@ void Reindexer::run() {
   int projects = 0;
   int nonExistentProject = 0;
   projectsTable.getAll(metaConn);
+  INodeRow projectsInode = inodesTable.getProjectsInode(conn);
   while (projectsTable.next()) {
     ProjectRow project = projectsTable.currRow();
-    INodeRow projectsInode = inodesTable.getProjectsInode(conn);
     //assumption is project dirs have parentId = partitionId
     INodeRow projectInode = inodesTable.get(conn, projectsInode.mId, project.mProjectName, projectsInode.mId);
-
-    if (projectInode.is_equal(projectsInode, project)) {
+    if (project.mProjectName == projectInode.mName && projectsInode.mId == projectInode.mParentId) {
       eBulk bulk;
       bulk.push(Utils::getCurrentTime(), project.to_upsert_json(mSearchIndex, projectInode.mId));
       mElasticSearch->addData(bulk);

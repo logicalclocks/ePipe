@@ -49,11 +49,6 @@ struct INodeRow {
   bool has_xattrs(){
     return mNumUserXAttrs > 0 ||  mNumSysXAttrs > 0;
   }
-
-  //assumption is project dirs have parentId = partitionId
-  bool is_equal(INodeRow projectsInode, ProjectRow proj){
-    return proj.mProjectName == mName && projectsInode.mId == mParentId && projectsInode.mId == mPartitionId;
-  }
   
   static std::string to_delete_json(std::string index, Int64 inodeId) {
     rapidjson::StringBuffer sbOp;

@@ -130,7 +130,7 @@ public:
     row.mId = values[0]->int32_value();
     row.mProjectName = get_string(values[1]);
     row.mUserName = get_string(values[2]);
-    row.mDescription = get_string(values[2]);
+    row.mDescription = get_string(values[3]);
     return row;
   }
 
