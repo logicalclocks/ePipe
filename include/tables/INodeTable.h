@@ -24,10 +24,8 @@
 #include "UserTable.h"
 #include "GroupTable.h"
 #include "FsMutationsLogTable.h"
-#include "ProjectTable.h"
-#include "DatasetTable.h"
-
-#define DOC_TYPE_INODE "inode"
+#include "DocType.h"
+#include "Cache.h"
 
 struct INodeRow {
   Int64 mParentId;
@@ -207,6 +205,10 @@ struct INodeRow {
 
 typedef boost::unordered_map<Int64, INodeRow> INodeMap;
 typedef std::vector<INodeRow> INodeVec;
+//dataset inode id -> inode row
+typedef CacheSingleton<Cache<Int64, INodeRow>> DatasetInodeCache;
+//project inode id -> inode row
+typedef CacheSingleton<Cache<Int64, INodeRow>> ProjectInodeCache;
 
 class FVInodeCache {
 public:
@@ -249,6 +251,8 @@ public:
     addColumn("num_user_xattrs");
     addColumn("num_sys_xattrs");
     FeatureViewInodeCache::getInstance(lru_cap, "FeatureViewInodeCache");
+    DatasetInodeCache::getInstance(lru_cap, "DatasetInodeCache");
+    ProjectInodeCache::getInstance(lru_cap, "ProjectInodeCache");
   }
 
   INodeRow getRow(NdbRecAttr* values[]) {
@@ -389,6 +393,31 @@ public:
 
   INodeRow getProjectsInode(Ndb* connection) {
     return getByParentIdAndName(connection, 1, "Projects");
+  }
+
+  INodeRow loadProjectInode(Ndb* connection, Int64 projectInodeId) {
+    boost::optional<INodeRow> projectInodeOpt = ProjectInodeCache::getInstance().get(projectInodeId);
+    INodeRow projectInode;
+    if(projectInodeOpt) {
+      projectInode = projectInodeOpt.get();
+    } else {
+      //yes, index scan - cache here to reduce impact. not sure how to remove this call altogether.
+      projectInode = getByInodeId(connection, projectInodeId);
+      ProjectInodeCache::getInstance().put(projectInodeId, projectInode);
+    }
+    return projectInode;
+  }
+
+  INodeRow loadDatasetInode(Ndb* connection, Int64 datasetInodeId) {
+    boost::optional<INodeRow> datasetInodeOpt = DatasetInodeCache::getInstance().get(datasetInodeId);
+    if(datasetInodeOpt) {
+      return datasetInodeOpt.get();
+    } else {
+      //yes, index scan - cache here to reduce impact. not sure how to remove this call altogether.
+      INodeRow datasetInode = getByInodeId(connection, datasetInodeId);
+      DatasetInodeCache::getInstance().put(datasetInodeId, datasetInode);
+      return datasetInode;
+    }
   }
 
 private:

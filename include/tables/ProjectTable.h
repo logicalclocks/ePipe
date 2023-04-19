@@ -22,8 +22,8 @@
 
 #include "DBTable.h"
 #include "Cache.h"
-
-#define DOC_TYPE_PROJECT "proj"
+#include "DocType.h"
+#include "INodeTable.h"
 
 struct ProjectRow {
   int mId;
@@ -105,7 +105,8 @@ struct ProjectRow {
 
 };
 
-typedef CacheSingleton<Cache<int, std::string>> ProjectCache;
+typedef CacheSingleton<Cache<int, ProjectRow>> ProjectCacheById;
+typedef CacheSingleton<Cache<std::string, ProjectRow>> ProjectCacheByName;
 typedef std::vector<ProjectRow> ProjectVec;
 
 class ProjectTable : public DBTable<ProjectRow> {
@@ -116,13 +117,30 @@ public:
     addColumn("projectname");
     addColumn("username");
     addColumn("description");
-    ProjectCache::getInstance(lru_cap, "Project");
+    ProjectCacheById::getInstance(lru_cap, "ProjectCacheById");
+    ProjectCacheByName::getInstance(lru_cap, "ProjectCacheByName");
   }
 
   ProjectRow get(Ndb* connection, int projectId) {
     ProjectRow row = doRead(connection, projectId);
-    ProjectCache::getInstance().put(row.mId, row.mProjectName);
     return row;
+  }
+
+  ProjectRow getByName(Ndb* connection, std::string projectName) {
+    AnyMap args;
+    args[1] = projectName;
+    ProjectVec projects = doRead(connection, getColumn(1), args);
+    if(projects.size() == 1) {
+      return projects[0];
+    } else if (projects.size() == 0) {
+      std::stringstream cause;
+      cause << "Project [" << projectName << "] does not exist";
+      throw std::logic_error(cause.str());
+    } else {
+      std::stringstream cause;
+      cause << "Project [" << projectName << "] has multiple entries with the same name";
+      throw std::logic_error(cause.str());
+    }
   }
 
   ProjectRow getRow(NdbRecAttr* values[]) {
@@ -134,22 +152,34 @@ public:
     return row;
   }
 
-  void loadProject(Ndb* connection, int projectId) {
-    if (ProjectCache::getInstance().contains(projectId)) {
-      return;
-    }
+  void updateProjectCache(ProjectRow project) {
+    ProjectCacheById::getInstance().put(project.mId, project);
+    ProjectCacheByName::getInstance().put(project.mProjectName, project);
+  }
 
-    ProjectRow row = get(connection, projectId);
-    ProjectCache::getInstance().put(projectId, row.mProjectName);
+  ProjectRow loadProjectByName(Ndb* connection, std::string projectName) {
+    boost::optional<ProjectRow> projectOpt = ProjectCacheByName::getInstance().get(projectName);
+    if (projectOpt) {
+      return projectOpt.get();
+    } else {
+      ProjectRow project = getByName(connection, projectName);
+      updateProjectCache(project);
+      return project;
+    }
   }
 
   std::string getProjectNameFromCache(int projectId) {
-    boost::optional<std::string> projectName = ProjectCache::getInstance().get(projectId);
-    if(projectName) {
-      return projectName.get();
+    boost::optional<ProjectRow> project = ProjectCacheById::getInstance().get(projectId);
+    if(project) {
+      return project.get().mProjectName;
     } else {
       return DONT_EXIST_STR();
     }
+  }
+
+  ProjectRow getProjectByInodeId(Ndb* connection, INodeTable& inodesTable, Int64 projectInodeId) {
+    INodeRow projectInode = inodesTable.loadProjectInode(connection, projectInodeId);
+    return loadProjectByName(connection, projectInode.mName);
   }
 };
 

@@ -78,6 +78,9 @@ void Reindexer::run() {
 
   int projects = 0;
   int nonExistentProject = 0;
+  int totalDatasets = 0;
+  DatasetInfoMap dsInfoMap;
+
   projectsTable.getAll(metaConn);
   INodeRow projectsInode = inodesTable.getProjectsInode(conn);
   while (projectsTable.next()) {
@@ -93,23 +96,24 @@ void Reindexer::run() {
               << "] doesn't have an inode ");
       nonExistentProject++;
     }
-
     projects++;
+
+    DatasetVec projectDatasets = datasetsTable.getByProjectId(metaConn, project.mId);
+    for (DatasetVec::iterator datasetIt = projectDatasets.begin(); datasetIt != projectDatasets.end(); ++datasetIt) {
+      DatasetRow dataset = *datasetIt;
+
+      //assumption is dataset dirs have parentId = partitionId
+      INodeRow datasetInode = inodesTable.get(conn, projectInode.mId, dataset.mDatasetName, projectInode.mId);
+
+      eBulk bulk;
+      bulk.push(Utils::getCurrentTime(), dataset.to_upsert_json(mSearchIndex, datasetInode.mId));
+      mElasticSearch->addData(bulk);
+
+      dsInfoMap[datasetInode.mId] = DatasetInfo(dataset.mProjectId, dataset.mDatasetName);
+      totalDatasets++;
+    }
   }
   LOG_INFO((projects - nonExistentProject) << " Projects added, " << nonExistentProject << " project don't exist");
-
-
-  int totalDatasets = 0;
-  DatasetInfoMap dsInfoMap;
-  datasetsTable.getAll(metaConn);
-  while (datasetsTable.next()) {
-    DatasetRow dataset = datasetsTable.currRow();
-    eBulk bulk;
-    bulk.push(Utils::getCurrentTime(), dataset.to_upsert_json(mSearchIndex));
-    mElasticSearch->addData(bulk);
-    dsInfoMap[dataset.mInodeId] = DatasetInfo(dataset.mProjectId, dataset.mInodeName);
-    totalDatasets++;
-  }
 
   LOG_INFO(totalDatasets << " Datasets added");
 

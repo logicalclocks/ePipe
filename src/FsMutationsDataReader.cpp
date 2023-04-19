@@ -35,7 +35,7 @@ bulk) {
       FsMutationRow row = *it;
       dataset_inode_ids.insert(row.mDatasetINodeId);
     }
-    mDatasetTable.loadProjectIds(mNdbConnection.hopsworksConnection, dataset_inode_ids, mProjectTable);
+    mDatasetTable.loadProjectIds(mNdbConnection.hopsworksConnection, dataset_inode_ids, mProjectTable, mInodesTable);
   }
   createJSON(data_batch, inodes, xattrs, bulk);
 }

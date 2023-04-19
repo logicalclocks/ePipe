@@ -22,14 +22,14 @@
 
 #include "DBTable.h"
 #include "DatasetProjectCache.h"
-
-#define DOC_TYPE_DATASET "ds"
+#include "INodeTable.h"
+#include "ProjectTable.h"
+#include "Cache.h"
+#include "DocType.h"
 
 struct DatasetRow {
   int mId;
-  Int64 mInodeId;
-  Int64 mInodeParentId;
-  std::string mInodeName;
+  std::string mDatasetName;
   int mProjectId;
   std::string mDescription;
   bool mPublicDS;
@@ -54,7 +54,7 @@ struct DatasetRow {
     return sbOp.GetString();
   }
 
-  std::string to_upsert_json(std::string index) {
+  std::string to_upsert_json(std::string index, Int64 inodeId) {
     std::stringstream out;
     rapidjson::StringBuffer sbOp;
     rapidjson::Writer<rapidjson::StringBuffer> opWriter(sbOp);
@@ -65,7 +65,7 @@ struct DatasetRow {
     opWriter.StartObject();
 
     opWriter.String("_id");
-    opWriter.Int64(mInodeId);
+    opWriter.Int64(inodeId);
     opWriter.String("_index");
     opWriter.String(index.c_str());
     opWriter.EndObject();
@@ -85,7 +85,7 @@ struct DatasetRow {
     docWriter.String(DOC_TYPE_DATASET);
 
     docWriter.String("dataset_id");
-    docWriter.Int64(mInodeId);
+    docWriter.Int64(mId);
 
     docWriter.String("project_id");
     docWriter.Int(mProjectId);
@@ -122,9 +122,7 @@ public:
 
   DatasetTable(int lru_cap) : DBTable("dataset") {
     addColumn("id");
-    addColumn("inode_id");
-    addColumn("inode_pid");
-    addColumn("inode_name");
+    addColumn("dataset_name");
     addColumn("projectId");
     addColumn("description");
     addColumn("public_ds");
@@ -134,19 +132,42 @@ public:
   DatasetRow getRow(NdbRecAttr* values[]) {
     DatasetRow row;
     row.mId = values[0]->int32_value();
-    row.mInodeId = values[1]->int64_value();
-    row.mInodeParentId = values[2]->int64_value();
-    row.mInodeName = get_string(values[3]);
-    row.mProjectId = values[4]->int32_value();
-    row.mDescription = get_string(values[5]);
-    row.mPublicDS = values[6]->int8_value() == 1;
+    row.mDatasetName = get_string(values[1]);
+    row.mProjectId = values[2]->int32_value();
+    row.mDescription = get_string(values[3]);
+    row.mPublicDS = values[4]->int8_value() == 1;
     return row;
   }
 
   DatasetRow get(Ndb* connection, int datasetId) {
     DatasetRow ds = doRead(connection, datasetId);
-    DatasetProjectSCache::getInstance().add(ds.mInodeId, ds.mProjectId, ds.mInodeName);
+    DatasetProjectSCache::getInstance().add(ds.mId, ds.mProjectId, ds.mDatasetName);
     return ds;
+  }
+
+  DatasetRow get(Ndb* connection, std::string datasetName, int projectId) {
+    AnyMap args;
+    args[1] = datasetName;
+    args[2] = projectId;
+    DatasetVec datasets = doRead(connection, getColumn(1), args);
+    if(datasets.size() == 1) {
+      return datasets[0];
+    } else if (datasets.size() == 0) {
+      std::stringstream cause;
+      cause << "Dataset [" << datasetName << "] does not exist in Project[" << projectId << "]";
+      throw std::logic_error(cause.str());
+    } else {
+      std::stringstream cause;
+      cause << "Dataset [" << datasetName << "] has multiple entries in Project[" << projectId << "]";
+      throw std::logic_error(cause.str());
+    }
+  }
+
+  // This method should be avoided as much as possible since it triggers an index scan
+  DatasetVec getByProjectId(Ndb* connection, Int64 projectId) {
+    AnyMap key;
+    key[2] = projectId;
+    return doRead(connection, "projectId_name", key);
   }
 
   void removeDatasetFromCache(Int64 datasetINodeId) {
@@ -175,47 +196,17 @@ public:
     }
   }
 
-  void loadProjectIds(Ndb* connection, ULSet& datasetsINodeIds, ProjectTable& projectTable) {
+  void loadProjectIds(Ndb* connection, ULSet& datasetsINodeIds, ProjectTable& projectTable, INodeTable& inodesTable) {
     ULSet dataset_inode_ids;
     for (ULSet::iterator it = datasetsINodeIds.begin(); it != datasetsINodeIds.end(); ++it) {
-      Int64 datasetId = *it;
-      if (!DatasetProjectSCache::getInstance().containsDataset(datasetId)) {
-        dataset_inode_ids.insert(datasetId);
+      Int64 datasetInodeId = *it;
+      if (DatasetProjectSCache::getInstance().containsDataset(datasetInodeId)) {
+        continue;
       }
-    }
-
-    if (dataset_inode_ids.empty()) {
-      LOG_DEBUG("All required projectIds are already in the cache");
-      return;
-    }
-
-    for (ULSet::iterator it = dataset_inode_ids.begin(); it != dataset_inode_ids.end(); ++it) {
-      Int64 dataset_inode_id = *it;
-      AnyMap args;
-      //DatasetInodeId
-      args[1] = dataset_inode_id;
-      
-      DatasetVec datasets = doRead(connection, getColumn(1), args);
-
-      UISet projectIds;
-      for (DatasetVec::iterator it = datasets.begin(); it != datasets.end(); ++it) {
-        DatasetRow row = *it;
-        if (row.mInodeId != dataset_inode_id) {
-          LOG_ERROR("Dataset [" << dataset_inode_id << "] doesn't exists");
-          continue;
-        }
-        
-        if (projectIds.empty()) {
-          DatasetProjectSCache::getInstance().add(dataset_inode_id, row.mProjectId, row.mInodeName);
-          projectTable.loadProject(connection, row.mProjectId);
-        }
-        projectIds.insert(row.mProjectId);
-      }
-
-      if (projectIds.size() > 1) {
-        LOG_ERROR("Got " << datasets.size() << " rows of the original Dataset [" 
-                << dataset_inode_id << "] in projects " << Utils::to_string(projectIds) << ", only one was expected");
-      }
+      INodeRow datasetInode = inodesTable.loadDatasetInode(connection, datasetInodeId);
+      ProjectRow project = projectTable.getProjectByInodeId(connection, inodesTable, datasetInode.mParentId);
+      DatasetRow dataset = get(connection, datasetInode.mName, project.mId);
+      DatasetProjectSCache::getInstance().add(datasetInodeId, project.mId, dataset.mDatasetName);
     }
   }
 

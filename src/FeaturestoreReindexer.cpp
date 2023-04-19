@@ -46,57 +46,64 @@ void FeaturestoreReindexer::run() {
   DatasetTable datasetsTable(mLRUCap);
   XAttrTable xAttrTable;
 
-  boost::unordered_map<int, std::string> projectNames;
+  int featurestoreDocs = 0;
   int numXAttrs = 0;
   int nonExistentXAttrs = 0;
-  int featurestoreDocs = 0;
 
-  datasetsTable.getAll(metaConn);
-  while (datasetsTable.next()) {
-    DatasetRow dataset = datasetsTable.currRow();
-    if (projectNames.find(dataset.mProjectId) == projectNames.end()) {
-      ProjectRow pRow = projectsTable.get(metaConn, dataset.mProjectId);
-      projectNames[dataset.mProjectId] = pRow.mProjectName;
-    }
-    std::string projectName = projectNames[dataset.mProjectId];
-    INodeVec inodes = inodesTable.getByParentId(conn, dataset.mInodeId, dataset.mInodeId);
-    for (INodeVec::iterator it = inodes.begin(); it != inodes.end(); ++it) {
-      INodeRow inode = *it;
-      std::string docType = FileProvenanceConstants::getFeatureStoreArtifact(conn, inodesTable, projectName, dataset.mInodeName, inode.mName, dataset.mInodeId, inode.mParentId);
-      if (docType != DONT_EXIST_STR()) {
-        LOG_INFO("dataset:" << dataset.mInodeName << " has " << docType << "s");
-        //this is a featurestore doc - featuregroup, featureview or trainingdataset
-        //The partition id is the parent id for all files and directories under project subtree
-        boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(inode.mName);
-        if (nameParts) {
-          eBulk bulk;
-          LOG_INFO("featurestore type:" << docType << " name:" << nameParts.get().first << " version:"
-                                        << std::to_string(nameParts.get().second));
-          std::string featurestoreDoc = FSMutationsJSONBuilder::featurestoreDoc(mFeaturestoreIndex, docType,
-                                                                                inode.mId,
-                                                                                nameParts.get().first,
-                                                                                nameParts.get().second,
-                                                                                dataset.mProjectId, projectName,
-                                                                                dataset.mInodeId);
-          bulk.push(Utils::getCurrentTime(), featurestoreDoc);
-          featurestoreDocs++;
+  INodeRow projectsInode = inodesTable.getProjectsInode(conn);
 
-          if (inode.has_xattrs()) {
-            XAttrVec xattrs = xAttrTable.getByInodeId(conn, inode.mId);
-            for (XAttrVec::iterator xit = xattrs.begin(); xit != xattrs.end(); ++xit) {
-              XAttrRow xAttrRow = *xit;
-              LOG_INFO("xattr:" << xAttrRow.mName);
-              if (xAttrRow.mInodeId == inode.mId) {
-                bulk.push(Utils::getCurrentTime(),
-                          xAttrRow.to_upsert_json(mFeaturestoreIndex, FsOpType::XAttrUpdate));
-              } else {
-                LOG_WARN("XAttrs doesn't exists for [" << inode.mId << "] - " << xAttrRow.to_string());
-                nonExistentXAttrs++;
+  projectsTable.getAll(metaConn);
+  while(projectsTable.next()) {
+    ProjectRow project = projectsTable.currRow();
+    INodeRow projectInode = inodesTable.get(conn, projectsInode.mId, project.mProjectName, projectsInode.mId);
+
+    DatasetVec projectDatasets = datasetsTable.getByProjectId(metaConn, project.mId);
+    for (DatasetVec::iterator datasetIt = projectDatasets.begin(); datasetIt != projectDatasets.end(); ++datasetIt) {
+      DatasetRow dataset = *datasetIt;
+
+      if(FileProvenanceConstants::isTrainingDataset(project.mProjectName, dataset.mDatasetName) ||
+      FileProvenanceConstants::isFeaturestore(project.mProjectName, dataset.mDatasetName)) {
+        INodeRow datasetInode = inodesTable.get(conn, projectInode.mId, dataset.mDatasetName, projectInode.mId);
+        INodeVec artifactInodes = inodesTable.getByParentId(conn, datasetInode.mId, datasetInode.mId);
+        for (INodeVec::iterator artifactInodesIt = artifactInodes.begin(); artifactInodesIt != artifactInodes.end(); ++artifactInodesIt) {
+          INodeRow artifactInode = *artifactInodesIt;
+          std::string docType = FileProvenanceConstants::getFeatureStoreArtifact(conn, inodesTable, project.mProjectName, dataset.mDatasetName, artifactInode.mName, datasetInode.mId, artifactInode.mParentId);
+          if (docType != DONT_EXIST_STR()) {
+            LOG_INFO("dataset:" << dataset.mDatasetName << " has " << docType << "s");
+            //this is a featurestore doc - featuregroup, featureview or trainingdataset
+            //The partition id is the parent id for all files and directories under project subtree
+            boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(artifactInode.mName);
+            if (nameParts) {
+              eBulk bulk;
+              LOG_INFO("featurestore type:" << docType << " name:" << nameParts.get().first << " version:"
+                      << std::to_string(nameParts.get().second));
+              std::string featurestoreDoc = FSMutationsJSONBuilder::featurestoreDoc(mFeaturestoreIndex, docType,
+                                                                                    artifactInode.mId,
+                                                                                    nameParts.get().first,
+                                                                                    nameParts.get().second,
+                                                                                    dataset.mProjectId, project.mProjectName,
+                                                                                    datasetInode.mId);
+              bulk.push(Utils::getCurrentTime(), featurestoreDoc);
+              featurestoreDocs++;
+
+              if (artifactInode.has_xattrs()) {
+                XAttrVec xattrs = xAttrTable.getByInodeId(conn, artifactInode.mId);
+                for (XAttrVec::iterator xit = xattrs.begin(); xit != xattrs.end(); ++xit) {
+                  XAttrRow xAttrRow = *xit;
+                  LOG_INFO("xattr:" << xAttrRow.mName);
+                  if (xAttrRow.mInodeId == artifactInode.mId) {
+                    bulk.push(Utils::getCurrentTime(),
+                              xAttrRow.to_upsert_json(mFeaturestoreIndex, FsOpType::XAttrUpdate));
+                  } else {
+                    LOG_WARN("XAttrs doesn't exists for [" << artifactInode.mId << "] - " << xAttrRow.to_string());
+                    nonExistentXAttrs++;
+                  }
+                  numXAttrs++;
+                }
               }
-              numXAttrs++;
+              mElasticSearch->addData(bulk);
             }
           }
-          mElasticSearch->addData(bulk);
         }
       }
     }
