@@ -149,7 +149,7 @@ public:
     AnyMap args;
     args[1] = datasetName;
     args[2] = projectId;
-    DatasetVec datasets = doRead(connection, getColumn(1), args);
+    DatasetVec datasets = doRead(connection, "projectId_name", args);
     if(datasets.size() == 1) {
       return datasets[0];
     } else if (datasets.size() == 0) {

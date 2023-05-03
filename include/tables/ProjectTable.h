@@ -129,7 +129,7 @@ public:
   ProjectRow getByName(Ndb* connection, std::string projectName) {
     AnyMap args;
     args[1] = projectName;
-    ProjectVec projects = doRead(connection, getColumn(1), args);
+    ProjectVec projects = doRead(connection, "projectname", args);
     if(projects.size() == 1) {
       return projects[0];
     } else if (projects.size() == 0) {
