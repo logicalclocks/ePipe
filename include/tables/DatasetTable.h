@@ -122,7 +122,7 @@ public:
 
   DatasetTable(int lru_cap) : DBTable("dataset") {
     addColumn("id");
-    addColumn("dataset_name");
+    addColumn("inode_name");
     addColumn("projectId");
     addColumn("description");
     addColumn("public_ds");
