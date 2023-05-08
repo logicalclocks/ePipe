@@ -25,6 +25,7 @@
 #include "tables/HopsworksOpsLogTable.h"
 #include "tables/ProjectTable.h"
 #include "tables/DatasetTable.h"
+#include "DatasetProjectCache2.h"
 
 class HopsworksOpsLogTailer : public TableTailer<HopsworksOpRow> {
 public:

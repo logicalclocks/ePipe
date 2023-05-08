@@ -22,40 +22,39 @@
 
 FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopsworks, const int lru_cap, const std::string search_index, const std::string featurestore_index)
 : NdbDataReader<FsMutationRow, MConn>(connection, hopsworks), mInodesTable(lru_cap), mDatasetTable(lru_cap), mProjectTable(lru_cap), mSearchIndex(search_index), mFeaturestoreIndex(featurestore_index) {
+  DatasetProjectSCache2::getInstance(lru_cap, "DatasetProjectCache2");
 }
 
 void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, eBulk&
 bulk) {
-
+  LOG_INFO("handling mutation - process 1");
   INodeMap inodes = mInodesTable.get(mNdbConnection.hopsConnection, data_batch);
+  LOG_INFO("handling mutation - process 2");
   XAttrMap xattrs = mXAttrTable.get(mNdbConnection.hopsConnection, data_batch);
+  LOG_INFO("handling mutation - process 3");
   INodeRow projectsInode = mInodesTable.getProjectsInode(mNdbConnection.hopsConnection);
+  LOG_INFO("handling mutation - process 4");
   if (mHopsworksEnabled) {
-    ULSet dataset_inode_ids;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
-      if(row.mOperation == FsDelete) {
-        if (row.mDatasetINodeId == row.mInodeId) {
-          DatasetInodeCache::getInstance().remove(row.mInodeId);
-        }
-        if (row.mInodeParentId == projectsInode.mId) {
-          ProjectInodeCache::getInstance().remove(row.mInodeId);
-        }
-      }
-      dataset_inode_ids.insert(row.mDatasetINodeId);
+      DatasetProjectSCache2::getInstance().loadDatasetFromInode(row.mDatasetINodeId,
+                                                                mNdbConnection.hopsConnection, mInodesTable,
+                                                                mNdbConnection.hopsworksConnection, mProjectTable, mDatasetTable,
+                                                                projectsInode);
     }
-    mDatasetTable.loadProjectIds(mNdbConnection.hopsworksConnection, mNdbConnection.hopsConnection,dataset_inode_ids, mProjectTable, mInodesTable);
   }
+  LOG_INFO("handling mutation - process 5");
   createJSON(data_batch, inodes, xattrs, bulk);
 }
 
 void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
     XAttrMap& xattrs, eBulk& bulk) {
-
+  LOG_DEBUG("handling mutation - create json");
   for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it) {
     FsMutationRow row = *it;
-
+    LOG_DEBUG("handling mutation row json - " << row.getPKStr() << " - start");
     if (row.isINodeOperation()) {
+      LOG_DEBUG("handling mutation row json - " << row.getPKStr() << " - inode");
       if (!row.requiresReadingINode()) {
         bulk.push(nullptr, row.mEventCreationTime, INodeRow::to_delete_json(mFeaturestoreIndex, row.mInodeId));
         //Handle the delete and change dataset
@@ -80,11 +79,11 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       int projectId = DONT_EXIST_INT();
       if (mHopsworksEnabled) {
         datasetINodeId = row.mDatasetINodeId;
-        projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetINodeId);
-        std::string datasetName = mDatasetTable.getDatasetNameFromCache(datasetINodeId);
-        std::string projectName = mProjectTable.getProjectNameFromCache(projectId);
-
-        std::string docType = FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, datasetINodeId, row.mInodeParentId);
+        projectId = DatasetProjectSCache2::getInstance().getProjectId(row.mDatasetINodeId);
+        std::string datasetName = DatasetProjectSCache2::getInstance().getDatasetName(row.mDatasetINodeId);
+        std::string projectName = DatasetProjectSCache2::getInstance().getProjectName(row.mDatasetINodeId);
+        LOG_DEBUG("handling mutation row json - " << row.getPKStr() << " datasetInodeId:" << datasetINodeId << " projectId:" << projectId << " datasetName" << datasetName << " projectName" << projectName);
+        std::string docType = FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, row.mDatasetINodeId, row.mInodeParentId);
 
         if(docType != DONT_EXIST_STR()) {
           boost::optional<std::pair<std::string, int>> nameParts = FileProvenanceConstants::splitNameVersion(inode.mName);
@@ -92,14 +91,15 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
             LOG_DEBUG("featurestore type:" << docType << "name:" << nameParts.get().first << " version:" << std::to_string(nameParts.get().second));
             bulk.push(nullptr, row.mEventCreationTime,
                     FSMutationsJSONBuilder::featurestoreDoc(mFeaturestoreIndex, docType, inode.mId, nameParts.get().first,
-                            nameParts.get().second, projectId, projectName, datasetINodeId));
+                            nameParts.get().second, projectId, projectName, row.mDatasetINodeId));
           }
         }
       }
-
+      LOG_DEBUG("handling mutation row json - " << row.getPKStr() << " datasetInodeId:" << datasetINodeId << " projectId:" << projectId);
       //FsAdd, FsUpdate, FsRename are handled the same way
       bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime,
                 inode.to_create_json(mSearchIndex, datasetINodeId, projectId));
+      LOG_DEBUG("handling mutation row json " << row.getPKStr() << " - end");
     } else if (row.isXAttrOperation()) {
       Int64 datasetINodeId = DONT_EXIST_INT();
       int projectId = DONT_EXIST_INT();
@@ -107,9 +107,9 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
       std::string projectName = DONT_EXIST_STR();
       if (mHopsworksEnabled) {
         datasetINodeId = row.mDatasetINodeId;
-        projectId = mDatasetTable.getProjectIdFromCache(row.mDatasetINodeId);
-        datasetName = mDatasetTable.getDatasetNameFromCache(datasetINodeId);
-        projectName = mProjectTable.getProjectNameFromCache(projectId);
+        projectId = DatasetProjectSCache2::getInstance().getProjectId(row.mDatasetINodeId);
+        datasetName = DatasetProjectSCache2::getInstance().getDatasetName(row.mDatasetINodeId);
+        projectName = DatasetProjectSCache2::getInstance().getProjectName(row.mDatasetINodeId);
       }
 
       if (!row.requiresReadingXAttr()) {

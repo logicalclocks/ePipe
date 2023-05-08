@@ -205,10 +205,6 @@ struct INodeRow {
 
 typedef boost::unordered_map<Int64, INodeRow> INodeMap;
 typedef std::vector<INodeRow> INodeVec;
-//dataset inode id -> inode row
-typedef CacheSingleton<Cache<Int64, INodeRow>> DatasetInodeCache;
-//project inode id -> inode row
-typedef CacheSingleton<Cache<Int64, INodeRow>> ProjectInodeCache;
 
 class FVInodeCache {
 public:
@@ -251,8 +247,6 @@ public:
     addColumn("num_user_xattrs");
     addColumn("num_sys_xattrs");
     FeatureViewInodeCache::getInstance(lru_cap, "FeatureViewInodeCache");
-    DatasetInodeCache::getInstance(lru_cap, "DatasetInodeCache");
-    ProjectInodeCache::getInstance(lru_cap, "ProjectInodeCache");
   }
 
   INodeRow getRow(NdbRecAttr* values[]) {
@@ -286,6 +280,27 @@ public:
     return results;
   }
 
+  //quite expensive - use rarely - used to get the Projects inode
+  INodeRow getByParentIdFilterByName(Ndb* connection, Int64 parentId, std::string name){
+    AnyMap key;
+    key[0] = parentId;
+    INodeVec inodes = doRead(connection, "pidex", key);
+    INodeVec results;
+    INodeRow inode;
+    for(INodeVec::iterator it = inodes.begin(); it!=inodes.end(); ++it){
+      INodeRow row = *it;
+      if(row.mName == name) {
+        inode = row;
+        break;
+      }
+    }
+    if(inode.mName == name) {
+      inode.mUserName = mUsersTable.get(connection, inode.mUserId).mName;
+      inode.mGroupName = mGroupsTable.get(connection, inode.mGroupId).mName;
+    }
+    return inode;
+  }
+
   // This method should be avoid as much as possible since it triggers an index scan
   INodeRow getByInodeId(Ndb* connection, Int64 inodeId) {
     AnyMap key;
@@ -295,27 +310,6 @@ public:
     if (inodes.size() > 1) {
       LOG_ERROR("INodeId must be unique, got " << inodes.size()
               << " rows for InodeId " << inodeId);
-      return row;
-    }
-
-    if (inodes.size() == 1) {
-      row = inodes[0];
-      row.mUserName = mUsersTable.get(connection, row.mUserId).mName;
-      row.mGroupName = mGroupsTable.get(connection, row.mGroupId).mName;
-    }
-
-    return row;
-  }
-
-  // This method should be avoid as much as possible since it triggers an index scan
-  INodeRow getByParentIdAndName(Ndb* connection, Int64 parentId, std::string name) {
-    AnyMap key;
-    key[0] = parentId;
-    key[1] = name;
-    INodeVec inodes = doRead(connection, "inode_idx", key);
-    INodeRow row;
-    if (inodes.size() > 1) {
-      LOG_ERROR("Expected one - got " << inodes.size() << " rows for name " << name << "within parent:" << parentId);
       return row;
     }
 
@@ -392,32 +386,7 @@ public:
   }
 
   INodeRow getProjectsInode(Ndb* connection) {
-    return getByParentIdAndName(connection, 1, "Projects");
-  }
-
-  INodeRow loadProjectInode(Ndb* connection, Int64 projectInodeId) {
-    boost::optional<INodeRow> projectInodeOpt = ProjectInodeCache::getInstance().get(projectInodeId);
-    INodeRow projectInode;
-    if(projectInodeOpt) {
-      projectInode = projectInodeOpt.get();
-    } else {
-      //yes, index scan - cache here to reduce impact. not sure how to remove this call altogether.
-      projectInode = getByInodeId(connection, projectInodeId);
-      ProjectInodeCache::getInstance().put(projectInodeId, projectInode);
-    }
-    return projectInode;
-  }
-
-  INodeRow loadDatasetInode(Ndb* connection, Int64 datasetInodeId) {
-    boost::optional<INodeRow> datasetInodeOpt = DatasetInodeCache::getInstance().get(datasetInodeId);
-    if(datasetInodeOpt) {
-      return datasetInodeOpt.get();
-    } else {
-      //yes, index scan - cache here to reduce impact. not sure how to remove this call altogether.
-      INodeRow datasetInode = getByInodeId(connection, datasetInodeId);
-      DatasetInodeCache::getInstance().put(datasetInodeId, datasetInode);
-      return datasetInode;
-    }
+    return getByParentIdFilterByName(connection, 1, "Projects");
   }
 
 private:

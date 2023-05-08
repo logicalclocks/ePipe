@@ -46,9 +46,9 @@ void FeaturestoreReindexer::run() {
   DatasetTable datasetsTable(mLRUCap);
   XAttrTable xAttrTable;
 
-  int featurestoreDocs = 0;
   int numXAttrs = 0;
   int nonExistentXAttrs = 0;
+  int featurestoreDocs = 0;
 
   INodeRow projectsInode = inodesTable.getProjectsInode(conn);
 

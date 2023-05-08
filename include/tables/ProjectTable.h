@@ -21,7 +21,6 @@
 #define PROJECTTABLE_H
 
 #include "DBTable.h"
-#include "Cache.h"
 #include "DocType.h"
 #include "INodeTable.h"
 
@@ -102,11 +101,8 @@ struct ProjectRow {
     out << sbDoc.GetString() << std::endl;
     return out.str();
   }
-
 };
 
-typedef CacheSingleton<Cache<int, ProjectRow>> ProjectCacheById;
-typedef CacheSingleton<Cache<std::string, ProjectRow>> ProjectCacheByName;
 typedef std::vector<ProjectRow> ProjectVec;
 
 class ProjectTable : public DBTable<ProjectRow> {
@@ -117,8 +113,6 @@ public:
     addColumn("projectname");
     addColumn("username");
     addColumn("description");
-    ProjectCacheById::getInstance(lru_cap, "ProjectCacheById");
-    ProjectCacheByName::getInstance(lru_cap, "ProjectCacheByName");
   }
 
   ProjectRow get(Ndb* connection, int projectId) {
@@ -152,39 +146,6 @@ public:
     row.mUserName = get_string(values[2]);
     row.mDescription = get_string(values[3]);
     return row;
-  }
-
-  void updateProjectCache(ProjectRow project) {
-    ProjectCacheById::getInstance().put(project.mId, project);
-    ProjectCacheByName::getInstance().put(project.mProjectName, project);
-  }
-
-  ProjectRow loadProjectByName(Ndb* connection, std::string projectName) {
-    boost::optional<ProjectRow> projectOpt = ProjectCacheByName::getInstance().get(projectName);
-    if (projectOpt) {
-      return projectOpt.get();
-    } else {
-      ProjectRow project = getByName(connection, projectName);
-      updateProjectCache(project);
-      return project;
-    }
-  }
-
-  std::string getProjectNameFromCache(int projectId) {
-    if(projectId == DONT_EXIST_INT()) {
-      return DONT_EXIST_STR();
-    }
-    boost::optional<ProjectRow> project = ProjectCacheById::getInstance().get(projectId);
-    if(project) {
-      return project.get().mProjectName;
-    } else {
-      return DONT_EXIST_STR();
-    }
-  }
-
-  ProjectRow getProjectByInodeId(Ndb* hopsworksConnection, Ndb* hopsConnection, INodeTable& inodesTable, Int64 projectInodeId) {
-    INodeRow projectInode = inodesTable.loadProjectInode(hopsConnection, projectInodeId);
-    return loadProjectByName(hopsworksConnection, projectInode.mName);
   }
 };
 

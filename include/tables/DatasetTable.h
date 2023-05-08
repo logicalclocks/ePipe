@@ -21,10 +21,6 @@
 #define DATASETTABLE_H
 
 #include "DBTable.h"
-#include "DatasetProjectCache.h"
-#include "INodeTable.h"
-#include "ProjectTable.h"
-#include "Cache.h"
 #include "DocType.h"
 
 struct DatasetRow {
@@ -107,14 +103,6 @@ struct DatasetRow {
 
 };
 
-class DPCache : public DatasetProjectCache {
-public:
-
-  DPCache(int lru_cap, const char* prefix) : DatasetProjectCache(lru_cap, prefix) {
-  }
-};
-
-typedef CacheSingleton<DPCache> DatasetProjectSCache;
 typedef std::vector<DatasetRow> DatasetVec;
 
 class DatasetTable : public DBTable<DatasetRow> {
@@ -126,7 +114,6 @@ public:
     addColumn("projectId");
     addColumn("description");
     addColumn("public_ds");
-    DatasetProjectSCache::getInstance(lru_cap, "DatasetProject");
   }
 
   DatasetRow getRow(NdbRecAttr* values[]) {
@@ -141,7 +128,6 @@ public:
 
   DatasetRow get(Ndb* connection, int datasetId) {
     DatasetRow ds = doRead(connection, datasetId);
-    DatasetProjectSCache::getInstance().add(ds.mId, ds.mProjectId, ds.mDatasetName);
     return ds;
   }
 
@@ -170,53 +156,6 @@ public:
     AnyMap key;
     key[2] = projectId;
     return doRead(connection, "projectId_name", key);
-  }
-
-  void removeDatasetFromCache(Int64 datasetINodeId) {
-    DatasetProjectSCache::getInstance().removeDataset(datasetINodeId);
-  }
-
-  void removeProjectFromCache(int projectId) {
-    DatasetProjectSCache::getInstance().removeProject(projectId);
-  }
-
-  int getProjectIdFromCache(Int64 datasetINodeId) {
-    if(datasetINodeId == DONT_EXIST_INT()) {
-      return DONT_EXIST_INT();
-    }
-    boost::optional<int> projectId = DatasetProjectSCache::getInstance().getParentProject(datasetINodeId);
-    if(projectId) {
-      return projectId.get();
-    } else {
-      return DONT_EXIST_INT();
-    }
-  }
-
-  std::string getDatasetNameFromCache(Int64 datasetINodeId) {
-    if(datasetINodeId == DONT_EXIST_INT()) {
-      return DONT_EXIST_STR();
-    }
-    boost::optional<std::string> datasetName = DatasetProjectSCache::getInstance().getDatasetValue(datasetINodeId);
-    if(datasetName) {
-      return datasetName.get();
-    } else {
-      return DONT_EXIST_STR();
-    }
-  }
-
-  void loadProjectIds(Ndb* hopsworksConnection, Ndb* hopsConnection, ULSet& datasetsINodeIds,
-                      ProjectTable& projectTable, INodeTable& inodesTable) {
-    ULSet dataset_inode_ids;
-    for (ULSet::iterator it = datasetsINodeIds.begin(); it != datasetsINodeIds.end(); ++it) {
-      Int64 datasetInodeId = *it;
-      if (DatasetProjectSCache::getInstance().containsDataset(datasetInodeId)) {
-        continue;
-      }
-      INodeRow datasetInode = inodesTable.loadDatasetInode(hopsConnection, datasetInodeId);
-      ProjectRow project = projectTable.getProjectByInodeId(hopsworksConnection, hopsConnection, inodesTable, datasetInode.mParentId);
-      DatasetRow dataset = get(hopsworksConnection, datasetInode.mName, project.mId);
-      DatasetProjectSCache::getInstance().add(datasetInodeId, project.mId, dataset.mDatasetName);
-    }
   }
 
 protected:

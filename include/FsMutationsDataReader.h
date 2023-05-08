@@ -27,6 +27,7 @@
 #include "NdbDataReaders.h"
 #include "tables/XAttrTable.h"
 #include "FileProvenanceConstants.h"
+#include "DatasetProjectCache2.h"
 
 class FSMutationsJSONBuilder {
 public:
