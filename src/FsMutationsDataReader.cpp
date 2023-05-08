@@ -29,13 +29,22 @@ bulk) {
 
   INodeMap inodes = mInodesTable.get(mNdbConnection.hopsConnection, data_batch);
   XAttrMap xattrs = mXAttrTable.get(mNdbConnection.hopsConnection, data_batch);
+  INodeRow projectsInode = mInodesTable.getProjectsInode(mNdbConnection.hopsConnection);
   if (mHopsworksEnabled) {
     ULSet dataset_inode_ids;
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
+      if(row.mOperation == FsDelete) {
+        if (row.mDatasetINodeId == row.mInodeId) {
+          DatasetInodeCache::getInstance().remove(row.mInodeId);
+        }
+        if (row.mInodeParentId == projectsInode.mId) {
+          ProjectInodeCache::getInstance().remove(row.mInodeId);
+        }
+      }
       dataset_inode_ids.insert(row.mDatasetINodeId);
     }
-    mDatasetTable.loadProjectIds(mNdbConnection.hopsworksConnection, dataset_inode_ids, mProjectTable, mInodesTable);
+    mDatasetTable.loadProjectIds(mNdbConnection.hopsworksConnection, mNdbConnection.hopsConnection,dataset_inode_ids, mProjectTable, mInodesTable);
   }
   createJSON(data_batch, inodes, xattrs, bulk);
 }

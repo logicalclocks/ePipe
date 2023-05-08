@@ -150,17 +150,19 @@ public:
     args[1] = datasetName;
     args[2] = projectId;
     DatasetVec datasets = doRead(connection, "projectId_name", args);
+    DatasetRow dataset;
     if(datasets.size() == 1) {
-      return datasets[0];
+      dataset = datasets[0];
     } else if (datasets.size() == 0) {
       std::stringstream cause;
       cause << "Dataset [" << datasetName << "] does not exist in Project[" << projectId << "]";
-      throw std::logic_error(cause.str());
+      LOG_FATAL(cause.str());
     } else {
       std::stringstream cause;
       cause << "Dataset [" << datasetName << "] has multiple entries in Project[" << projectId << "]";
-      throw std::logic_error(cause.str());
+      LOG_FATAL(cause.str());
     }
+    return dataset;
   }
 
   // This method should be avoided as much as possible since it triggers an index scan
@@ -179,6 +181,9 @@ public:
   }
 
   int getProjectIdFromCache(Int64 datasetINodeId) {
+    if(datasetINodeId == DONT_EXIST_INT()) {
+      return DONT_EXIST_INT();
+    }
     boost::optional<int> projectId = DatasetProjectSCache::getInstance().getParentProject(datasetINodeId);
     if(projectId) {
       return projectId.get();
@@ -188,6 +193,9 @@ public:
   }
 
   std::string getDatasetNameFromCache(Int64 datasetINodeId) {
+    if(datasetINodeId == DONT_EXIST_INT()) {
+      return DONT_EXIST_STR();
+    }
     boost::optional<std::string> datasetName = DatasetProjectSCache::getInstance().getDatasetValue(datasetINodeId);
     if(datasetName) {
       return datasetName.get();
@@ -196,16 +204,17 @@ public:
     }
   }
 
-  void loadProjectIds(Ndb* connection, ULSet& datasetsINodeIds, ProjectTable& projectTable, INodeTable& inodesTable) {
+  void loadProjectIds(Ndb* hopsworksConnection, Ndb* hopsConnection, ULSet& datasetsINodeIds,
+                      ProjectTable& projectTable, INodeTable& inodesTable) {
     ULSet dataset_inode_ids;
     for (ULSet::iterator it = datasetsINodeIds.begin(); it != datasetsINodeIds.end(); ++it) {
       Int64 datasetInodeId = *it;
       if (DatasetProjectSCache::getInstance().containsDataset(datasetInodeId)) {
         continue;
       }
-      INodeRow datasetInode = inodesTable.loadDatasetInode(connection, datasetInodeId);
-      ProjectRow project = projectTable.getProjectByInodeId(connection, inodesTable, datasetInode.mParentId);
-      DatasetRow dataset = get(connection, datasetInode.mName, project.mId);
+      INodeRow datasetInode = inodesTable.loadDatasetInode(hopsConnection, datasetInodeId);
+      ProjectRow project = projectTable.getProjectByInodeId(hopsworksConnection, hopsConnection, inodesTable, datasetInode.mParentId);
+      DatasetRow dataset = get(hopsworksConnection, datasetInode.mName, project.mId);
       DatasetProjectSCache::getInstance().add(datasetInodeId, project.mId, dataset.mDatasetName);
     }
   }

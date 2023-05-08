@@ -130,17 +130,19 @@ public:
     AnyMap args;
     args[1] = projectName;
     ProjectVec projects = doRead(connection, "projectname", args);
+    ProjectRow project;
     if(projects.size() == 1) {
-      return projects[0];
+      project = projects[0];
     } else if (projects.size() == 0) {
       std::stringstream cause;
       cause << "Project [" << projectName << "] does not exist";
-      throw std::logic_error(cause.str());
+      LOG_FATAL(cause.str());
     } else {
       std::stringstream cause;
       cause << "Project [" << projectName << "] has multiple entries with the same name";
-      throw std::logic_error(cause.str());
+      LOG_FATAL(cause.str());
     }
+    return project;
   }
 
   ProjectRow getRow(NdbRecAttr* values[]) {
@@ -169,6 +171,9 @@ public:
   }
 
   std::string getProjectNameFromCache(int projectId) {
+    if(projectId == DONT_EXIST_INT()) {
+      return DONT_EXIST_STR();
+    }
     boost::optional<ProjectRow> project = ProjectCacheById::getInstance().get(projectId);
     if(project) {
       return project.get().mProjectName;
@@ -177,9 +182,9 @@ public:
     }
   }
 
-  ProjectRow getProjectByInodeId(Ndb* connection, INodeTable& inodesTable, Int64 projectInodeId) {
-    INodeRow projectInode = inodesTable.loadProjectInode(connection, projectInodeId);
-    return loadProjectByName(connection, projectInode.mName);
+  ProjectRow getProjectByInodeId(Ndb* hopsworksConnection, Ndb* hopsConnection, INodeTable& inodesTable, Int64 projectInodeId) {
+    INodeRow projectInode = inodesTable.loadProjectInode(hopsConnection, projectInodeId);
+    return loadProjectByName(hopsworksConnection, projectInode.mName);
   }
 };
 
