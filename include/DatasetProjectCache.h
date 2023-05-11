@@ -17,8 +17,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef DATASETPROJECTCACHE2_H
-#define DATASETPROJECTCACHE2_H
+#ifndef DATASETPROJECTCACHE_H
+#define DATASETPROJECTCACHE_H
 #include "Cache.h"
 #include "Utils.h"
 #include "tables/DBTableBase.h"
@@ -281,14 +281,14 @@ private:
   }
 };
 
-class DPCache2 : public DatasetProjectCache {
+class DPCache : public DatasetProjectCache {
 public:
 
-  DPCache2(int lru_cap, const char* prefix) : DatasetProjectCache(lru_cap, prefix) {
+  DPCache(int lru_cap, const char* prefix) : DatasetProjectCache(lru_cap, prefix) {
   }
 };
 
-typedef CacheSingleton<DPCache2> DatasetProjectSCache2;
+typedef CacheSingleton<DPCache> DatasetProjectSCache;
 
-#endif /* DATASETPROJECTCACHE2_H */
+#endif /* DATASETPROJECTCACHE_H */
 
