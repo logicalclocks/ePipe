@@ -77,7 +77,6 @@ void NdbDataReader<Data, Conn>::start(int readerId, DataReaderOutHandler* outHan
   mOutHandler = outHandler;
   mThread = boost::thread(&NdbDataReader::run, this);
   mReaderId = readerId;
-  LOG_INFO("Reader-" << readerId << " created with thread "  << mThread.get_id());
 }
 
 template<typename Data, typename Conn>
@@ -87,7 +86,6 @@ void NdbDataReader<Data, Conn>::run() {
     mBatchedQueue->wait_and_pop(batch);
 
     if (!batch.mDataBatch->empty()) {
-      LOG_INFO("Reader-" << mReaderId << " processing batch " << batch.mIndex << " start");
       eBulk bulk;
 
       bulk.mProcessingIndex = batch.mIndex;
@@ -102,7 +100,7 @@ void NdbDataReader<Data, Conn>::run() {
 
       mOutHandler->writeOutput(bulk);
 
-      LOG_INFO("Reader-" << mReaderId << " processing batch " << batch.mIndex << " of size [" << batch.mDataBatch->size() << "] took "
+      LOG_DEBUG("Reader-" << mReaderId << " processing batch " << batch.mIndex << " of size [" << batch.mDataBatch->size() << "] took "
           << getTimeDiffInMilliseconds(bulk.mStartProcessing, bulk.mEndProcessing) << " msec");
     }
 

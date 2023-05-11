@@ -38,12 +38,12 @@ public:
   bool loadDatasetFromInode(Int64 datasetInodeId, Ndb* hopsConnection, INodeTable& inodesTable, Ndb* hopsworksConnection,
                             ProjectTable& projectTable, DatasetTable& datasetTable, INodeRow projectsInode) {
 
-    LOG_INFO("handling mutation - dataset load 1");
+    LOG_DEBUG("handling mutation - cache load - dataset inode");
     INodeRow datasetInode = loadDatasetInode(datasetInodeId, hopsConnection, inodesTable);
     if(datasetInode.mId != datasetInodeId) {
       return false;
     }
-    LOG_INFO("handling mutation - dataset load 2");
+    LOG_DEBUG("handling mutation - cache load - project inode");
     Int64 projectInodeId = loadProjectInode(datasetInode, hopsConnection, inodesTable, projectsInode);
     if(projectInodeId == DONT_EXIST_INT64()) {
       return false;
@@ -52,12 +52,12 @@ public:
       return false;
     }
     INodeRow projectInode = mProjectInodes.get(projectInodeId).get();
-    LOG_INFO("handling mutation - dataset load 3");
+    LOG_DEBUG("handling mutation - cache load - project");
     ProjectRow project = loadProjectFromName(projectInode.mName, hopsworksConnection, projectTable);
     if(project.mProjectName != projectInode.mName) {
       return false;
     }
-    LOG_INFO("handling mutation - dataset load 4");
+    LOG_DEBUG("handling mutation - cache load - dataset");
     DatasetRow dataset = loadDataset(datasetInode.mName, project.mId, hopsworksConnection, datasetTable);
     if(dataset.mDatasetName != datasetInode.mName) {
       return false;
@@ -174,7 +174,7 @@ private:
       inode = inodesTable.getByInodeId(hopsConnection, datasetInode.mParentId);
       if(inode.mId == datasetInode.mParentId) {
         if(inode.mParentId != projectsInode.mId) {
-          LOG_INFO("not a dataset:" << datasetInode.mName);
+          LOG_DEBUG("skipping cache load - not a dataset:" << datasetInode.mName);
           return DONT_EXIST_INT64();
         }
         //cleanup possible previous leftovers - ProjectRow

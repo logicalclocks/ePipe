@@ -27,13 +27,9 @@ FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopswo
 
 void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, eBulk&
 bulk) {
-  LOG_INFO("handling mutation - process 1");
   INodeMap inodes = mInodesTable.get(mNdbConnection.hopsConnection, data_batch);
-  LOG_INFO("handling mutation - process 2");
   XAttrMap xattrs = mXAttrTable.get(mNdbConnection.hopsConnection, data_batch);
-  LOG_INFO("handling mutation - process 3");
   INodeRow projectsInode = mInodesTable.getProjectsInode(mNdbConnection.hopsConnection);
-  LOG_INFO("handling mutation - process 4");
   if (mHopsworksEnabled) {
     for (Fmq::iterator it = data_batch->begin(); it != data_batch->end(); ++it) {
       FsMutationRow row = *it;
@@ -43,18 +39,14 @@ bulk) {
                                                                 projectsInode);
     }
   }
-  LOG_INFO("handling mutation - process 5");
   createJSON(data_batch, inodes, xattrs, bulk);
 }
 
 void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
     XAttrMap& xattrs, eBulk& bulk) {
-  LOG_DEBUG("handling mutation - create json");
   for (Fmq::iterator it = pending->begin(); it != pending->end(); ++it) {
     FsMutationRow row = *it;
-    LOG_DEBUG("handling mutation row json - " << row.getPKStr() << " - start");
     if (row.isINodeOperation()) {
-      LOG_DEBUG("handling mutation row json - " << row.getPKStr() << " - inode");
       if (!row.requiresReadingINode()) {
         bulk.push(nullptr, row.mEventCreationTime, INodeRow::to_delete_json(mFeaturestoreIndex, row.mInodeId));
         //Handle the delete and change dataset
@@ -82,7 +74,6 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
         projectId = DatasetProjectSCache2::getInstance().getProjectId(row.mDatasetINodeId);
         std::string datasetName = DatasetProjectSCache2::getInstance().getDatasetName(row.mDatasetINodeId);
         std::string projectName = DatasetProjectSCache2::getInstance().getProjectName(row.mDatasetINodeId);
-        LOG_DEBUG("handling mutation row json - " << row.getPKStr() << " datasetInodeId:" << datasetINodeId << " projectId:" << projectId << " datasetName" << datasetName << " projectName" << projectName);
         std::string docType = FileProvenanceConstants::getFeatureStoreArtifact(mNdbConnection.hopsConnection, mInodesTable, projectName, datasetName, row.mInodeName, row.mDatasetINodeId, row.mInodeParentId);
 
         if(docType != DONT_EXIST_STR()) {
@@ -95,7 +86,6 @@ void FsMutationsDataReader::createJSON(Fmq* pending, INodeMap& inodes,
           }
         }
       }
-      LOG_DEBUG("handling mutation row json - " << row.getPKStr() << " datasetInodeId:" << datasetINodeId << " projectId:" << projectId);
       //FsAdd, FsUpdate, FsRename are handled the same way
       bulk.push(mFSLogTable.getLogRemovalHandler(row), row.mEventCreationTime,
                 inode.to_create_json(mSearchIndex, datasetINodeId, projectId));
