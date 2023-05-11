@@ -26,11 +26,11 @@
 #include "tables/DatasetTable.h"
 #include "tables/ProjectTable.h"
 
-class DatasetProjectCache2 {
+class DatasetProjectCache {
 public:
   typedef boost::unordered_map<std::string, int> PCKMap;
 
-  DatasetProjectCache2(int lru_cap, const char* prefix) :
+  DatasetProjectCache(int lru_cap, const char* prefix) :
           mDatasetInodes(lru_cap, prefix), mProjectInodes(lru_cap, prefix),
           mProjects(lru_cap, prefix), mProjectDatasets(lru_cap, prefix), mDatasets(lru_cap, prefix) {
   }
@@ -281,10 +281,10 @@ private:
   }
 };
 
-class DPCache2 : public DatasetProjectCache2 {
+class DPCache2 : public DatasetProjectCache {
 public:
 
-  DPCache2(int lru_cap, const char* prefix) : DatasetProjectCache2(lru_cap, prefix) {
+  DPCache2(int lru_cap, const char* prefix) : DatasetProjectCache(lru_cap, prefix) {
   }
 };
 

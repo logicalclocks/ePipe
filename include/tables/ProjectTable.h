@@ -128,9 +128,7 @@ public:
     if(projects.size() == 1) {
       project = projects[0];
     } else if (projects.size() == 0) {
-      std::stringstream cause;
-      cause << "Project [" << projectName << "] does not exist";
-      LOG_FATAL(cause.str());
+      LOG_INFO("Project [" << projectName << "] does not exist - skipping" );
     } else {
       std::stringstream cause;
       cause << "Project [" << projectName << "] has multiple entries with the same name";

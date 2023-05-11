@@ -140,9 +140,7 @@ public:
     if(datasets.size() == 1) {
       dataset = datasets[0];
     } else if (datasets.size() == 0) {
-      std::stringstream cause;
-      cause << "Dataset [" << datasetName << "] does not exist in Project[" << projectId << "]";
-      LOG_FATAL(cause.str());
+      LOG_INFO("Dataset [" << datasetName << "] does not exist in Project[" << projectId << "] - skipping");
     } else {
       std::stringstream cause;
       cause << "Dataset [" << datasetName << "] has multiple entries in Project[" << projectId << "]";

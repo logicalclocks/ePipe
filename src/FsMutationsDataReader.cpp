@@ -22,7 +22,7 @@
 
 FsMutationsDataReader::FsMutationsDataReader(MConn connection, const bool hopsworks, const int lru_cap, const std::string search_index, const std::string featurestore_index)
 : NdbDataReader<FsMutationRow, MConn>(connection, hopsworks), mInodesTable(lru_cap), mDatasetTable(lru_cap), mProjectTable(lru_cap), mSearchIndex(search_index), mFeaturestoreIndex(featurestore_index) {
-  DatasetProjectSCache2::getInstance(lru_cap, "DatasetProjectCache2");
+  DatasetProjectSCache2::getInstance(lru_cap, "DatasetProjectCache");
 }
 
 void FsMutationsDataReader::processAddedandDeleted(Fmq* data_batch, eBulk&
