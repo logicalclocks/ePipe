@@ -43,26 +43,49 @@ public:
     if(datasetInode.mId != datasetInodeId) {
       return false;
     }
-    LOG_DEBUG("handling mutation - cache load - project inode");
-    Int64 projectInodeId = loadProjectInode(datasetInode, hopsConnection, inodesTable, projectsInode);
-    if(projectInodeId == DONT_EXIST_INT64()) {
-      return false;
+    if(boost::algorithm::ends_with(datasetInode.mName, "_featurestore.db")) {
+      LOG_DEBUG("handling mutation - featurestore - dataset:" << datasetInode.mName);
+      DatasetRow dataset = loadFeaturestoreDatasetFromName(datasetInode.mName, hopsworksConnection, datasetTable);
+      if (dataset.mDatasetName != datasetInode.mName) {
+        return false;
+      }
+      LOG_DEBUG("handling mutation - featurestore - project:" << dataset.mProjectId);
+      ProjectRow project = loadProjectFromId(dataset.mProjectId, hopsworksConnection, projectTable);
+      LOG_DEBUG("handling mutation - featurestore - project2:" << project.mId << " " << dataset.mProjectId);
+      if (project.mId != dataset.mProjectId) {
+        return false;
+      }
+      LOG_DEBUG("handling mutation - featurestore - project inode:" << project.mProjectName);
+      Int64 projectInodeId = loadProjectInodeFromName(project.mProjectName, hopsConnection, inodesTable, projectsInode);
+      if (projectInodeId == DONT_EXIST_INT64()) {
+        return false;
+      }
+      INodeRow projectInode = mProjectInodes.get(projectInodeId).get();
+      mDatasetProjectInode.put(datasetInode.mId, projectInode.mId);
+      return true;
+    } else {
+      LOG_DEBUG("handling mutation - cache load - project inode");
+      Int64 projectInodeId = loadProjectInode(datasetInode, hopsConnection, inodesTable, projectsInode);
+      if (projectInodeId == DONT_EXIST_INT64()) {
+        return false;
+      }
+      if (projectInodeId != datasetInode.mParentId) {
+        return false;
+      }
+      INodeRow projectInode = mProjectInodes.get(projectInodeId).get();
+      mDatasetProjectInode.put(datasetInode.mId, projectInode.mId);
+      LOG_DEBUG("handling mutation - cache load - project");
+      ProjectRow project = loadProjectFromName(projectInode.mName, hopsworksConnection, projectTable);
+      if (project.mProjectName != projectInode.mName) {
+        return false;
+      }
+      LOG_DEBUG("handling mutation - cache load - dataset");
+      DatasetRow dataset = loadDataset(datasetInode.mName, project.mId, hopsworksConnection, datasetTable);
+      if (dataset.mDatasetName != datasetInode.mName) {
+        return false;
+      }
+      return true;
     }
-    if(projectInodeId != datasetInode.mParentId) {
-      return false;
-    }
-    INodeRow projectInode = mProjectInodes.get(projectInodeId).get();
-    LOG_DEBUG("handling mutation - cache load - project");
-    ProjectRow project = loadProjectFromName(projectInode.mName, hopsworksConnection, projectTable);
-    if(project.mProjectName != projectInode.mName) {
-      return false;
-    }
-    LOG_DEBUG("handling mutation - cache load - dataset");
-    DatasetRow dataset = loadDataset(datasetInode.mName, project.mId, hopsworksConnection, datasetTable);
-    if(dataset.mDatasetName != datasetInode.mName) {
-      return false;
-    }
-    return true;
   }
 
   DatasetRow loadDatasetFromId(int datasetId, Ndb* hopsworksConnection, DatasetTable& datasetTable) {
@@ -91,9 +114,9 @@ public:
   }
 
   std::string getProjectName(Int64 datasetInodeId) {
-    boost::optional<INodeRow> datasetInodeOpt = mDatasetInodes.get(datasetInodeId);
-    if(datasetInodeOpt) {
-      boost::optional<INodeRow> projectInodeOpt = mProjectInodes.get(datasetInodeOpt.get().mParentId);
+    boost::optional<Int64> projectInodeIdOpt = mDatasetProjectInode.get(datasetInodeId);
+    if(projectInodeIdOpt) {
+      boost::optional<INodeRow> projectInodeOpt = mProjectInodes.get(projectInodeIdOpt.get());
       if(projectInodeOpt) {
         return projectInodeOpt.get().mName;
       }
@@ -102,9 +125,9 @@ public:
   }
 
   int getProjectId(Int64 datasetInodeId) {
-    boost::optional<INodeRow> datasetInodeOpt = mDatasetInodes.get(datasetInodeId);
-    if(datasetInodeOpt) {
-      boost::optional<INodeRow> projectInodeOpt = mProjectInodes.get(datasetInodeOpt.get().mParentId);
+    boost::optional<Int64> projectInodeIdOpt = mDatasetProjectInode.get(datasetInodeId);
+    if(projectInodeIdOpt) {
+      boost::optional<INodeRow> projectInodeOpt = mProjectInodes.get(projectInodeIdOpt.get());
       if(projectInodeOpt) {
         boost::optional<int> projectOpt = mProjectNames.get(projectInodeOpt.get().mName);
         if(projectOpt) {
@@ -143,6 +166,7 @@ public:
 
 private:
   Cache<Int64, INodeRow> mDatasetInodes;
+  Cache<Int64, Int64> mDatasetProjectInode;
   Cache<Int64, INodeRow> mProjectInodes;
   Cache<std::string, int> mProjectNames;
   Cache<int, ProjectRow> mProjects;
@@ -156,8 +180,6 @@ private:
       inode = opt.get();
     } else {
       inode = inodesTable.getByInodeId(hopsConnection, inodeId);
-      //cleanup possible previous leftovers - DatasetRow
-      removeDatasetRow(inode.mName, inode.mParentId);
       if(inode.mId == inodeId) {
         mDatasetInodes.put(inodeId, inode);
       }
@@ -177,10 +199,16 @@ private:
           LOG_DEBUG("skipping cache load - not a dataset:" << datasetInode.mName);
           return DONT_EXIST_INT64();
         }
-        //cleanup possible previous leftovers - ProjectRow
-        removeProjectRowByName(inode.mName);
         mProjectInodes.put(inode.mId, inode);
       }
+    }
+    return inode.mId;
+  }
+
+  Int64 loadProjectInodeFromName(std::string name, Ndb* hopsConnection, INodeTable& inodesTable, INodeRow projectsInode) {
+    INodeRow inode = inodesTable.get(hopsConnection, projectsInode.mId, name, projectsInode.mId);
+    if(inode.mName == name) {
+      mProjectInodes.put(inode.mId, inode);
     }
     return inode.mId;
   }
@@ -193,7 +221,7 @@ private:
       ProjectRow project = projectTable.getByName(hopsworksConnection, name);
       if(project.mProjectName == name) {
         mProjects.put(project.mId, project);
-        mProjectNames.put(project.mProjectName, project.mId);
+        mProjectNames.put(name, project.mId);
       }
       return project;
     }
@@ -230,6 +258,33 @@ private:
           mDatasets.put(dataset.mId, dataset);
         }
       }
+    }
+    return dataset;
+  }
+
+  DatasetRow loadFeaturestoreDatasetFromName(std::string name, Ndb* hopsworksConnection, DatasetTable& datasetTable) {
+    DatasetRow dataset;
+    DatasetVec datasets = datasetTable.getByName(hopsworksConnection, name);
+    if(datasets.size() == 1) {
+      dataset = datasets[0];
+    } else if (datasets.size() == 0) {
+      LOG_INFO("Dataset [" << name << "] does not exist - skipping");
+    } else {
+      std::stringstream cause;
+      cause << "Dataset [" << name << "] has multiple entries - skipping";
+    }
+    if(dataset.mDatasetName == name) {
+      PCKMap* projectDatasets;
+      boost::optional<PCKMap*> opt = mProjectDatasets.get(dataset.mProjectId);
+      if(opt) {
+        projectDatasets = opt.get();
+      } else {
+        projectDatasets = new PCKMap();
+        mProjectDatasets.put(dataset.mProjectId, projectDatasets);
+      }
+      std::pair<std::string, int> newDatasetLink(name, dataset.mId);
+      projectDatasets->insert(newDatasetLink);
+      mDatasets.put(dataset.mId, dataset);
     }
     return dataset;
   }

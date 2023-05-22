@@ -156,6 +156,13 @@ public:
     return doRead(connection, "projectId_name", key);
   }
 
+  // This method should be avoided as much as possible since it triggers an index scan - but for hive/featurestore this is the only way
+  DatasetVec getByName(Ndb* connection, std::string name) {
+    AnyMap key;
+    key[1] = name;
+    return doRead(connection, "dataset_name", key);
+  }
+
 protected:
 
   void applyConditionOnGetAll(NdbScanFilter& filter) {
