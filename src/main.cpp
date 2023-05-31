@@ -21,7 +21,6 @@
 #include <boost/program_options.hpp>
 #include "Version.h"
 #include "Reindexer.h"
-#include "FeaturestoreReindexer.h"
 
 namespace po = boost::program_options;
 
@@ -45,7 +44,6 @@ int main(int argc, char** argv) {
     int elastic_batch_size = 5000;
     int elastic_issue_time = 5000;
 
-    std::string elastic_featurestore_index = "featurestore";
     std::string elastic_app_provenance_index = "appprovenance";
 
     int lru_cap = DEFAULT_MAX_CAPACITY;
@@ -112,7 +110,6 @@ int main(int argc, char** argv) {
          po::value<bool>(&hiveCleaner)->default_value(hiveCleaner),
          "enable or disable hiveCleaner")
         ("index", po::value<std::string>(&elastic_index)->default_value(elastic_index), "Elastic index to add the data to.")
-        ("featurestore_index", po::value<std::string>(&elastic_featurestore_index)->default_value(elastic_featurestore_index), "Elastic featurestore index.")
         ("app_provenance_index", po::value<std::string>(&elastic_app_provenance_index)->default_value(elastic_app_provenance_index), "Elastic index to add the app provenance data to.")
         ("elastic_batch",
          po::value<int>(&elastic_batch_size)->default_value(elastic_batch_size),
@@ -134,7 +131,7 @@ int main(int argc, char** argv) {
         ("reindex", po::value<bool>(&reindex)->default_value(reindex),
          "initialize an empty index with all metadata")
         ("reindex_of", po::value<std::string>(&reindex_of)->default_value(reindex_of),
-         "define index to initialize [project, featurestore]")
+         "define index to initialize [project]")
         ("ssl_enabled", po::value<bool>(&sslEnabled)->default_value(sslEnabled),
          "ssl enabled or disabled for elastic communication")
         ("ca_path", po::value<std::string>(&caPath)->default_value(caPath),
@@ -219,23 +216,12 @@ int main(int argc, char** argv) {
                                              config, elastic_index, elastic_batch_size,
                                              elastic_issue_time, lru_cap);
         reindexer->run();
-      } else if(reindex_of == "featurestore") {
-        LOG_INFO("Create Elasticsearch index at " << elastic_featurestore_index);
-        FeaturestoreReindexer *reindexer = new FeaturestoreReindexer(connection_string.c_str(),
-                database_name.c_str(), meta_database_name.c_str(), hive_meta_database_name.c_str(), config,
-                elastic_featurestore_index, elastic_batch_size, elastic_issue_time, lru_cap);
-        reindexer->run();
       } else if(reindex_of == "all") {
         LOG_INFO("Create Elasticsearch index at " << elastic_index);
         Reindexer *projectReindexer = new Reindexer(connection_string.c_str(),
                 database_name.c_str(), meta_database_name.c_str(), hive_meta_database_name.c_str(),
                 config, elastic_index, elastic_batch_size, elastic_issue_time, lru_cap);
         projectReindexer->run();
-        LOG_INFO("Create Elasticsearch index at " << elastic_featurestore_index);
-        FeaturestoreReindexer *featurestoreReindexer = new FeaturestoreReindexer(connection_string.c_str(),
-                database_name.c_str(), meta_database_name.c_str(), hive_meta_database_name.c_str(), config,
-                elastic_featurestore_index, elastic_batch_size, elastic_issue_time, lru_cap);
-        featurestoreReindexer->run();
       }
     } else {
       Notifier *notifer = new Notifier(connection_string.c_str(),
@@ -244,7 +230,7 @@ int main(int argc, char** argv) {
                                        hive_meta_database_name.c_str(),
                                        mutations_tu, provenance_tu,
                                        poll_maxTimeToWait, config,
-                                       hopsworks, elastic_index, elastic_featurestore_index,
+                                       hopsworks, elastic_index,
                                        elastic_app_provenance_index,
                                        elastic_batch_size, elastic_issue_time,
                                        lru_cap, prov_file_lru_cap, prov_core_lru_cap,

@@ -202,94 +202,6 @@ namespace FileProvenanceConstants {
     return auxProjectName + "_featurestore.db";
   }
 
-  inline bool isFeaturestore(std::string projectName, std::string datasetName) {
-    return projectName != DONT_EXIST_STR() && datasetName != DONT_EXIST_STR()
-    && datasetName == featurestoreName(projectName);
-  }
-
-  inline boost::optional<std::pair <std::string, int>> splitNameVersion(std::string val) {
-    std::vector<std::string> strs;
-    boost::split(strs, val, boost::is_any_of("_"));
-    std::string name = "";
-    int version;
-    for(std::vector<std::string>::iterator it = strs.begin(); it != strs.end(); it++) {
-      std::string part = *it;
-      if(std::next(it) == strs.end()) {
-        try {
-          version = std::stoi(part);
-          return std::make_pair(name, version);
-        } catch(std::invalid_argument const &e) {
-          LOG_WARN("problem with name_version:" << val << " name:" << name << " version:" << part);
-          return boost::none;
-        } catch(std::out_of_range const &e) {
-          LOG_WARN("problem with name_version:" << val << " name:" << name << " version:" << part);
-          return boost::none;
-        }
-      } else {
-        if(name == "") {
-          name = name + part;
-        } else {
-          name = name + std::string("_") + part;
-        }
-      }
-    }
-    //should not get here - removes warning
-    return boost::none;
-  }
-
-  inline std::string trainingdatasetDirName(std::string projectName) {
-    std::string auxProjectName = projectName;
-    //boost::to_lower(auxProjectName);
-    return auxProjectName + "_Training_Datasets";
-  }
-
-  inline bool isTrainingDataset(std::string projectName, std::string datasetName) {
-    return projectName != DONT_EXIST_STR() && datasetName != DONT_EXIST_STR()
-           && datasetName == trainingdatasetDirName(projectName);
-  }
-
-  inline bool isTrainingDataset(Int64 parentIId, Int64 datasetIId, std::string projectName, std::string datasetName) {
-    return  isTrainingDataset(projectName, datasetName)
-         && parentIId == datasetIId;
-  }
-
-  inline std::string featureViewArtifact(Int64 parentIId, Int64 datasetIId, Int64 featureViewIId, std::string inodeName) {
-    if(parentIId == datasetIId) {
-      const bool isResourceFolder =
-              trainingDatasetResourceFolders.find(inodeName) != trainingDatasetResourceFolders.end();
-      if (inodeName == featureViewFolder || isResourceFolder) {
-        LOG_DEBUG("skipping training dataset basic folder:" << inodeName);
-        return DONT_EXIST_STR();
-      } else {
-        return "trainingdataset";
-      }
-    } else if(parentIId == featureViewIId) {
-      const bool isResourceFolder = featureViewResourceFolders.find(inodeName) != featureViewResourceFolders.end();
-      if(isResourceFolder) {
-        LOG_DEBUG("skipping training dataset basic folder:" << inodeName);
-        return DONT_EXIST_STR();
-      } else {
-        return "featureview";
-      }
-    } else {
-      return DONT_EXIST_STR();
-    }
-  }
-
-  inline std::string featureStoreArtifact(Int64 parentIId, Int64 datasetIId, std::string inodeName) {
-    if(parentIId == datasetIId) {
-      const bool isResourceFolder = featureGroupResourceFolders.find(inodeName) != featureGroupResourceFolders.end();
-      if(isResourceFolder) {
-        LOG_DEBUG("skipping feature store basic folder:" << inodeName);
-        return DONT_EXIST_STR();
-      } else {
-        return "featuregroup";
-      }
-    } else {
-      return DONT_EXIST_STR();
-    }
-  }
-
   inline Int64 getFeatureViewParentIId(Ndb* conn, INodeTable inodesTable, Int64 parentIId) {
     if (FeatureViewInodeCache::getInstance().contains(parentIId)) {
       return FeatureViewInodeCache::getInstance().get(parentIId);
@@ -301,19 +213,6 @@ namespace FileProvenanceConstants {
       FeatureViewInodeCache::getInstance().add(parentIId, row.mId);
     }
     return row.mId;
-  }
-
-  inline std::string getFeatureStoreArtifact(Ndb* conn, INodeTable inodesTable,
-                                             std::string projectName, std::string datasetName, std::string inodeName,
-                                             Int64 datasetIId, Int64 parentIId) {
-    if(FileProvenanceConstants::isTrainingDataset(projectName, datasetName)) {
-      Int64 featureViewIId = getFeatureViewParentIId(conn, inodesTable, datasetIId);
-      return FileProvenanceConstants::featureViewArtifact(parentIId, datasetIId, featureViewIId, inodeName);
-    } else if(FileProvenanceConstants::isFeaturestore(projectName, datasetName)) {
-      return FileProvenanceConstants::featureStoreArtifact(parentIId, datasetIId, inodeName);
-    } else {
-      return DONT_EXIST_STR();
-    }
   }
 
   inline bool typeMLFeature(FileProvenanceRow row) {
@@ -459,20 +358,6 @@ namespace FileProvenanceConstants {
         LOG_WARN("prov type not recognized:" << provType);
         std::stringstream cause;
         cause << "prov type not recognized:" << provType;
-        throw std::logic_error(cause.str());
-      }
-    }
-  }
-
-  inline static const std::string provOpStoreTypeToStr(ProvOpStoreType type) {
-    switch(type) {
-      case STORE_NONE: return PROV_TYPE_STORE_NONE;
-      case STORE_STATE: return PROV_TYPE_STORE_STATE;
-      case STORE_ALL: return PROV_TYPE_STORE_ALL;
-      default : {
-        LOG_ERROR("ProvOpStoreType to string - enum not handled");
-        std::stringstream cause;
-        cause << "ProvOpStoreType to string - enum not handled";
         throw std::logic_error(cause.str());
       }
     }
