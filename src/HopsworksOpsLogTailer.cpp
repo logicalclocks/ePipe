@@ -48,10 +48,10 @@ void HopsworksOpsLogTailer::handleDataset(ptime arrivalTime, eBulk &bulk, Hopswo
   if (logEvent.mOpType == HopsworksDelete){
     json = DatasetRow::to_delete_json(mSearchIndex, logEvent.mInodeId);
     eventType = eEvent::EventType::DeleteEvent;
-    mDatasetTable.removeDatasetFromCache(logEvent.mInodeId);
+    DatasetProjectSCache::getInstance().removeDatasetByInodeId(logEvent.mInodeId);
   } else {
-    DatasetRow dataset = mDatasetTable.get(mNdbConnection, logEvent.mOpId);
-    json = dataset.to_upsert_json(mSearchIndex);
+    DatasetRow dataset = DatasetProjectSCache::getInstance().loadDatasetFromId(logEvent.mOpId, mNdbConnection, mDatasetTable);
+    json = dataset.to_upsert_json(mSearchIndex, logEvent.mDatasetINodeId);
     eventType = logEvent.mOpType == HopsworksAdd ? eEvent::EventType::AddEvent : eEvent::EventType::UpdateEvent;
   }
   bulk.push(mHopsworksLogTable.getLogRemovalHandler(logEvent), arrivalTime, json, eventType, eEvent::AssetType::Dataset);
@@ -63,9 +63,9 @@ void HopsworksOpsLogTailer::handleProject(ptime arrivalTime, eBulk &bulk, Hopswo
   if (logEvent.mOpType == HopsworksDelete){
     json = ProjectRow::to_delete_json(mSearchIndex, logEvent.mInodeId);
     eventType = eEvent::EventType::DeleteEvent;
-    mDatasetTable.removeProjectFromCache(logEvent.mInodeId);
+    DatasetProjectSCache::getInstance().removeProjectByInodeId(logEvent.mInodeId);
   } else {
-    ProjectRow project = mProjectTable.get(mNdbConnection, logEvent.mOpId);
+    ProjectRow project = DatasetProjectSCache::getInstance().loadProjectFromId(logEvent.mOpId, mNdbConnection, mProjectTable);
     json = project.to_upsert_json(mSearchIndex, logEvent.mInodeId);
     eventType = logEvent.mOpType == HopsworksAdd ? eEvent::EventType::AddEvent : eEvent::EventType::UpdateEvent;
   }

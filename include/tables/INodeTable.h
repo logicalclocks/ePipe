@@ -24,10 +24,8 @@
 #include "UserTable.h"
 #include "GroupTable.h"
 #include "FsMutationsLogTable.h"
-#include "ProjectTable.h"
-#include "DatasetTable.h"
-
-#define DOC_TYPE_INODE "inode"
+#include "DocType.h"
+#include "Cache.h"
 
 struct INodeRow {
   Int64 mParentId;
@@ -282,6 +280,27 @@ public:
     return results;
   }
 
+  //quite expensive - use rarely - used to get the Projects inode
+  INodeRow getByParentIdFilterByName(Ndb* connection, Int64 parentId, std::string name){
+    AnyMap key;
+    key[0] = parentId;
+    INodeVec inodes = doRead(connection, "pidex", key);
+    INodeVec results;
+    INodeRow inode;
+    for(INodeVec::iterator it = inodes.begin(); it!=inodes.end(); ++it){
+      INodeRow row = *it;
+      if(row.mName == name) {
+        inode = row;
+        break;
+      }
+    }
+    if(inode.mName == name) {
+      inode.mUserName = mUsersTable.get(connection, inode.mUserId).mName;
+      inode.mGroupName = mGroupsTable.get(connection, inode.mGroupId).mName;
+    }
+    return inode;
+  }
+
   // This method should be avoid as much as possible since it triggers an index scan
   INodeRow getByInodeId(Ndb* connection, Int64 inodeId) {
     AnyMap key;
@@ -291,27 +310,6 @@ public:
     if (inodes.size() > 1) {
       LOG_ERROR("INodeId must be unique, got " << inodes.size()
               << " rows for InodeId " << inodeId);
-      return row;
-    }
-
-    if (inodes.size() == 1) {
-      row = inodes[0];
-      row.mUserName = mUsersTable.get(connection, row.mUserId).mName;
-      row.mGroupName = mGroupsTable.get(connection, row.mGroupId).mName;
-    }
-
-    return row;
-  }
-
-  // This method should be avoid as much as possible since it triggers an index scan
-  INodeRow getByParentIdAndName(Ndb* connection, Int64 parentId, std::string name) {
-    AnyMap key;
-    key[0] = parentId;
-    key[1] = name;
-    INodeVec inodes = doRead(connection, "inode_idx", key);
-    INodeRow row;
-    if (inodes.size() > 1) {
-      LOG_ERROR("Expected one - got " << inodes.size() << " rows for name " << name << "within parent:" << parentId);
       return row;
     }
 
@@ -388,7 +386,7 @@ public:
   }
 
   INodeRow getProjectsInode(Ndb* connection) {
-    return getByParentIdAndName(connection, 1, "Projects");
+    return getByParentIdFilterByName(connection, 1, "Projects");
   }
 
 private:

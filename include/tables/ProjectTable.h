@@ -21,9 +21,8 @@
 #define PROJECTTABLE_H
 
 #include "DBTable.h"
-#include "Cache.h"
-
-#define DOC_TYPE_PROJECT "proj"
+#include "DocType.h"
+#include "INodeTable.h"
 
 struct ProjectRow {
   int mId;
@@ -102,10 +101,8 @@ struct ProjectRow {
     out << sbDoc.GetString() << std::endl;
     return out.str();
   }
-
 };
 
-typedef CacheSingleton<Cache<int, std::string>> ProjectCache;
 typedef std::vector<ProjectRow> ProjectVec;
 
 class ProjectTable : public DBTable<ProjectRow> {
@@ -116,13 +113,28 @@ public:
     addColumn("projectname");
     addColumn("username");
     addColumn("description");
-    ProjectCache::getInstance(lru_cap, "Project");
   }
 
   ProjectRow get(Ndb* connection, int projectId) {
     ProjectRow row = doRead(connection, projectId);
-    ProjectCache::getInstance().put(row.mId, row.mProjectName);
     return row;
+  }
+
+  ProjectRow getByName(Ndb* connection, std::string projectName) {
+    AnyMap args;
+    args[1] = projectName;
+    ProjectVec projects = doRead(connection, "projectname", args);
+    ProjectRow project;
+    if(projects.size() == 1) {
+      project = projects[0];
+    } else if (projects.size() == 0) {
+      LOG_INFO("Project [" << projectName << "] does not exist - skipping" );
+    } else {
+      std::stringstream cause;
+      cause << "Project [" << projectName << "] has multiple entries with the same name";
+      LOG_FATAL(cause.str());
+    }
+    return project;
   }
 
   ProjectRow getRow(NdbRecAttr* values[]) {
@@ -132,24 +144,6 @@ public:
     row.mUserName = get_string(values[2]);
     row.mDescription = get_string(values[3]);
     return row;
-  }
-
-  void loadProject(Ndb* connection, int projectId) {
-    if (ProjectCache::getInstance().contains(projectId)) {
-      return;
-    }
-
-    ProjectRow row = get(connection, projectId);
-    ProjectCache::getInstance().put(projectId, row.mProjectName);
-  }
-
-  std::string getProjectNameFromCache(int projectId) {
-    boost::optional<std::string> projectName = ProjectCache::getInstance().get(projectId);
-    if(projectName) {
-      return projectName.get();
-    } else {
-      return DONT_EXIST_STR();
-    }
   }
 };
 

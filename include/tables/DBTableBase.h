@@ -29,6 +29,10 @@ inline const static std::string DONT_EXIST_STR() {
   return "-1";
 }
 
+inline static Int64 DONT_EXIST_INT64() {
+  return -1;
+}
+
 typedef typename std::vector<std::string>::size_type strvec_size_type;
 
 struct NdbTupleDidNotExist : public std::exception {
