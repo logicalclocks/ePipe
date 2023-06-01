@@ -53,6 +53,35 @@ struct XAttrPartKey {
 
 typedef std::vector<XAttrPartKey> XAttrPartKeyVec;
 
+struct XAttrPartKey {
+  Int64 mInodeId;
+  Int8 mNamespace;
+  std::string mName;
+  Int16 mIndex;
+
+  XAttrPartKey(Int64 inodeId, Int8 ns, std::string name, Int16 index) {
+    mInodeId = inodeId;
+    mNamespace = ns;
+    mName = name;
+    mIndex = index;
+  }
+
+  bool operator==(const XAttrPartKey &pk) const {
+    return pk.mInodeId == mInodeId && pk.mNamespace == mNamespace && pk.mName == mName && pk.mIndex == mIndex;
+  }
+
+  AnyMap getAnyKey() {
+    AnyMap pk;
+    pk[0] = mInodeId;
+    pk[1] = mNamespace;
+    pk[2] = mName;
+    pk[3] = mIndex;
+    return pk;
+  }
+};
+
+typedef std::vector<XAttrPartKey> XAttrPartKeyVec;
+
 struct XAttrRowPart{
   Int64 mInodeId;
   Int8 mNamespace;
