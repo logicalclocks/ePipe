@@ -4,7 +4,7 @@ FROM ubuntu:${ubuntu_image}
 
 ARG cmake_version=3.16.4
 ARG boost_version=1.70.0
-ARG rondb_version=21.04.12
+ARG rondb_version=21.04.13
 ARG glibc_version=2.17
 ARG arch=x86_64
 ARG userid=1000
