@@ -202,19 +202,6 @@ namespace FileProvenanceConstants {
     return auxProjectName + "_featurestore.db";
   }
 
-  inline Int64 getFeatureViewParentIId(Ndb* conn, INodeTable inodesTable, Int64 parentIId) {
-    if (FeatureViewInodeCache::getInstance().contains(parentIId)) {
-      return FeatureViewInodeCache::getInstance().get(parentIId);
-    }
-
-    //we do not know the partitionId
-    INodeRow row = inodesTable.get(conn, parentIId, featureViewFolder, parentIId);
-    if(row.mId != 0) {
-      FeatureViewInodeCache::getInstance().add(parentIId, row.mId);
-    }
-    return row.mId;
-  }
-
   inline bool typeMLFeature(FileProvenanceRow row) {
     const bool isHiveDir = row.mProjectId == -1;
     const bool isFeaturestoreFolder = row.mDatasetName == featurestoreName(row.mProjectName);
