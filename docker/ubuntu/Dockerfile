@@ -3,7 +3,7 @@ ARG ubuntu_image=22.04
 FROM ubuntu:${ubuntu_image}
 
 ARG boost_version=1.73.0
-ARG rondb_version=21.04.14
+ARG rondb_version=21.04.15
 ARG glibc_version=2.17
 ARG arch=x86_64
 ARG userid=1000
