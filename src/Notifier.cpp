@@ -24,7 +24,7 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
         const TableUnitConf mutations_tu,
         const TableUnitConf elastic_provenance_tu, const int poll_maxTimeToWait,
         const HttpClientConfig elastic_client_config, const bool hopsworks,
-        const std::string elastic_search_index, const std::string elastic_featurestore_index,
+        const std::string elastic_search_index,
         const std::string elastic_app_provenance_index,
         const int elastic_batch_size, const int elastic_issue_time,
         const int lru_cap, const int prov_file_lru_cap, const int prov_core_lru_cap, const bool recovery,
@@ -32,7 +32,7 @@ Notifier::Notifier(const char* connection_string, const char* database_name,
 : ClusterConnectionBase(connection_string, database_name, meta_database_name, hive_meta_database_name), 
     mMutationsTU(mutations_tu), mFileProvenanceTU(elastic_provenance_tu), mAppProvenanceTU(elastic_provenance_tu),
     mPollMaxTimeToWait(poll_maxTimeToWait),  mElasticClientConfig(elastic_client_config), mHopsworksEnabled(hopsworks),
-    mElasticSearchIndex(elastic_search_index), mElasticFeaturestoreIndex(elastic_featurestore_index),
+    mElasticSearchIndex(elastic_search_index),
     mElasticAppProvenanceIndex(elastic_app_provenance_index),
     mElasticBatchsize(elastic_batch_size), mElasticIssueTime(elastic_issue_time),
     mLRUCap(lru_cap), mProvFileLRUCap(prov_file_lru_cap), mProvCoreLRUCap(prov_core_lru_cap),
@@ -157,7 +157,7 @@ void Notifier::setup() {
     }
 
     mFsMutationsDataReaders = new FsMutationsDataReaders(mutations_connections, mMutationsTU.mNumReaders,
-            mHopsworksEnabled, mProjectsElasticSearch, mLRUCap, mElasticSearchIndex, mElasticFeaturestoreIndex);
+            mHopsworksEnabled, mProjectsElasticSearch, mLRUCap, mElasticSearchIndex);
     mFsMutationsBatcher = new FsMutationsBatcher(mFsMutationsTableTailer, mFsMutationsDataReaders,
             mMutationsTU.mWaitTime, mMutationsTU.mBatchSize);
   }
