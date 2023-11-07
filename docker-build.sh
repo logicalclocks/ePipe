@@ -16,7 +16,7 @@ USERID=`id -u`
 GROUPID=`id -g`
 
 RONDB_VERSION="22.10.1"
-GLIBC_VERSION="2.17"
+GLIBC_VERSION="2.28"
 UBUNTU_IMAGE="22.04"
 
 # for testing on mac m1 
