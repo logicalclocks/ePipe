@@ -15,8 +15,8 @@ WITH_RONDB=$2
 USERID=`id -u`
 GROUPID=`id -g`
 
-RONDB_VERSION="21.04.15"
-GLIBC_VERSION="2.17"
+RONDB_VERSION="22.10.1"
+GLIBC_VERSION="2.28"
 UBUNTU_IMAGE="22.04"
 
 # for testing on mac m1 
@@ -24,7 +24,7 @@ ARCH="x86_64"
 if [ `uname -m` = "arm64" ]; then
     echo "Running on ARM"
     ARCH="arm64_v8"
-    RONDB_VERSION="21.04.15"
+    RONDB_VERSION="22.10.1"
     GLIBC_VERSION="2.31"
     UBUNTU_IMAGE="focal"
 fi
