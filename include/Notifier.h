@@ -35,10 +35,6 @@
 #include "hive/SkewedLocTailer.h"
 #include "hive/SkewedValuesTailer.h"
 #include "http/server/HttpServer.h"
-#include "FileProvenanceElastic.h"
-#include "FileProvenanceElasticDataReader.h"
-#include "AppProvenanceElastic.h"
-#include "AppProvenanceElasticDataReader.h"
 
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
@@ -47,12 +43,11 @@ class Notifier : public ClusterConnectionBase {
 public:
   Notifier(const char* connection_string, const char* database_name,
           const char* meta_database_name, const char* hive_meta_database_name,
-          const TableUnitConf mutations_tu,const TableUnitConf provenance_tu,
+          const TableUnitConf mutations_tu,
           const int poll_maxTimeToWait, const HttpClientConfig elastic_client_config, const bool hopsworks,
           const std::string elastic_search_index,
-          const std::string elastic_app_provenance_index,
           const int elastic_batch_size, const int elastic_issue_time,
-          const int lru_cap, const int prov_file_lru_cap, const int prov_core_lru_cap, const bool recovery, const bool stats,
+          const int lru_cap, const bool recovery, const bool stats,
           Barrier barrier, const bool hiveCleaner, const std::string metricsServer);
   void start();
   virtual ~Notifier();
@@ -60,19 +55,14 @@ public:
 private:
 
   const TableUnitConf mMutationsTU;
-  const TableUnitConf mFileProvenanceTU;
-  const TableUnitConf mAppProvenanceTU;
 
   const int mPollMaxTimeToWait;
   const HttpClientConfig mElasticClientConfig;
   const bool mHopsworksEnabled;
   const std::string mElasticSearchIndex;
-  const std::string mElasticAppProvenanceIndex;
   const int mElasticBatchsize;
   const int mElasticIssueTime;
   const int mLRUCap;
-  const int mProvFileLRUCap;
-  const int mProvCoreLRUCap;
   const bool mRecovery;
   const bool mStats;
   const Barrier mBarrier;
@@ -86,16 +76,6 @@ private:
   FsMutationsBatcher* mFsMutationsBatcher;
 
   HopsworksOpsLogTailer* mhopsworksOpsLogTailer;
-
-  FileProvenanceTableTailer* mFileProvenanceTableTailer;
-  FileProvenanceElasticDataReaders* mFileProvenanceElasticDataReaders;
-  RCBatcher<FileProvenanceRow, SConn>* mFileProvenanceBatcher;
-  FileProvenanceElastic* mFileProvenanceElastic;
-
-  AppProvenanceTableTailer* mAppProvenanceTableTailer;
-  AppProvenanceElasticDataReaders* mAppProvenanceElasticDataReaders;
-  RCBatcher<AppProvenanceRow, SConn>* mAppProvenanceBatcher;
-  AppProvenanceElastic* mAppProvenanceElastic;
 
   TBLSTailer* mTblsTailer;
   SDSTailer* mSDSTailer;

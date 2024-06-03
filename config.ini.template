@@ -12,8 +12,6 @@ meta_database = hopsworks
 hive_meta_database = metastore
 poll_maxTimeToWait = 2000
 lru_cap = 10000
-prov_file_lru_cap = 10000
-prov_core_lru_cap = 100
 recovery = false
 
 # log level trace=0, debug=1, info=2, warn=3, error=4, fatal=5
@@ -48,16 +46,10 @@ fs_mutations_tu = 5
 #schamebased_tu = 5
 #schamebased_tu = 5
 
-provenance_tu = 1000
-provenance_tu = 5
-provenance_tu = 5
-
-
 # ElasticSearch configuration
 
 elastic_addr = 127.0.0.1:9200
 index = projects
-app_provenance_index = appprovenance
 elastic_batch = 5000
 ewait_time = 5000
 

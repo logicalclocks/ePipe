@@ -37,18 +37,13 @@ int main(int argc, char** argv) {
     LogSeverityLevel log_level = LogSeverityLevel::info;
 
     TableUnitConf mutations_tu = TableUnitConf();
-    TableUnitConf provenance_tu = TableUnitConf();
 
     bool hopsworks = true;
     std::string elastic_index = "projects";
     int elastic_batch_size = 5000;
     int elastic_issue_time = 5000;
 
-    std::string elastic_app_provenance_index = "appprovenance";
-
     int lru_cap = DEFAULT_MAX_CAPACITY;
-    int prov_file_lru_cap = DEFAULT_MAX_CAPACITY;
-    int prov_core_lru_cap = 100;
     bool recovery = true;
     bool stats = true;
 
@@ -97,10 +92,6 @@ int main(int argc, char** argv) {
          po::value<std::vector<int> >()->default_value(mutations_tu.getVector(),
                                                   mutations_tu.getString())->multitoken(),
          "WAIT_TIME BATCH_SIZE NUM_READERS")
-        ("provenance_tu",
-         po::value<std::vector<int> >()->default_value(provenance_tu.getVector(),
-                                                  provenance_tu.getString())->multitoken(),
-         "WAIT_TIME BATCH_SIZE NUM_READERS")
          ("elastic_addr",
          po::value<std::string>(&elastic_addr)->default_value(elastic_addr),
          "ip and port of the elasticsearch server")
@@ -110,7 +101,6 @@ int main(int argc, char** argv) {
          po::value<bool>(&hiveCleaner)->default_value(hiveCleaner),
          "enable or disable hiveCleaner")
         ("index", po::value<std::string>(&elastic_index)->default_value(elastic_index), "Elastic index to add the data to.")
-        ("app_provenance_index", po::value<std::string>(&elastic_app_provenance_index)->default_value(elastic_app_provenance_index), "Elastic index to add the app provenance data to.")
         ("elastic_batch",
          po::value<int>(&elastic_batch_size)->default_value(elastic_batch_size),
          "Elastic batch size in bytes for bulk requests")
@@ -118,8 +108,6 @@ int main(int argc, char** argv) {
          po::value<int>(&elastic_issue_time)->default_value(elastic_issue_time),
          "time to wait in miliseconds before issuing a bulk request to Elasticsearch if the batch size wasn't reached")
         ("lru_cap", po::value<int>(&lru_cap)->default_value(lru_cap), "LRU Cache max capacity")
-        ("prov_file_lru_cap", po::value<int>(&prov_file_lru_cap)->default_value(prov_file_lru_cap), "Prov File LRU Cache max capacity")
-        ("prov_core_lru_cap", po::value<int>(&prov_core_lru_cap)->default_value(prov_core_lru_cap), "Prov Core LRU Cache max capacity")
         ("recovery", po::value<bool>(&recovery)->default_value(recovery),
          "enable or disable startup recovery")
         ("stats", po::value<bool>(&stats)->default_value(stats),
@@ -182,10 +170,6 @@ int main(int argc, char** argv) {
       mutations_tu.update(vm["fs_mutations_tu"].as<std::vector<int> >());
     }
 
-    if (vm.count("provenance_tu")) {
-      provenance_tu.update(vm["provenance_tu"].as<std::vector<int> >());
-    }
-
     if (vm.count("barrier")) {
       barrier = static_cast<Barrier> (vm["barrier"].as<int>());
     }
@@ -228,13 +212,11 @@ int main(int argc, char** argv) {
                                        database_name.c_str(),
                                        meta_database_name.c_str(),
                                        hive_meta_database_name.c_str(),
-                                       mutations_tu, provenance_tu,
+                                       mutations_tu,
                                        poll_maxTimeToWait, config,
                                        hopsworks, elastic_index,
-                                       elastic_app_provenance_index,
                                        elastic_batch_size, elastic_issue_time,
-                                       lru_cap, prov_file_lru_cap, prov_core_lru_cap,
-                                       recovery, stats, barrier,
+                                       lru_cap, recovery, stats, barrier,
                                        hiveCleaner, metricsServer);
       notifer->start();
     }

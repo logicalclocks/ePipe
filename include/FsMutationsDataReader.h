@@ -26,7 +26,6 @@
 #include "tables/DatasetTable.h"
 #include "NdbDataReaders.h"
 #include "tables/XAttrTable.h"
-#include "FileProvenanceConstants.h"
 #include "DatasetProjectCache.h"
 
 class FsMutationsDataReader : public NdbDataReader<FsMutationRow, MConn> {
