@@ -6,6 +6,11 @@ ARG glibc_version=2.28
 ARG arch=x86_64
 ARG userid=1000
 ARG groupid=1000
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN cd /etc/yum.repos.d/
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 
 RUN dnf -y update; \
 echo Setup environment; \
