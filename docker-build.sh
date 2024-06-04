@@ -25,7 +25,7 @@ if [ `uname -m` = "arm64" ]; then
     echo "Running on ARM"
     ARCH="arm64_v8"
     RONDB_VERSION="22.10.3"
-    GLIBC_VERSION="2.31"
+    GLIBC_VERSION="2.28"
     UBUNTU_IMAGE="focal"
 fi
 

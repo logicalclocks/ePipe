@@ -8,7 +8,7 @@ ARG glibc_version=2.28
 ARG arch=x86_64
 ARG userid=1000
 ARG groupid=1000
-
+ENV DEBIAN_FRONTEND=noninteractive 
 RUN echo Setup environmen; \
 apt-get update -y; \
 apt-get install -y build-essential wget openssl libssl-dev git make cmake
